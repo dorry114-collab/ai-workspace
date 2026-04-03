@@ -16,20 +16,22 @@ app = Flask(__name__)
 
 # --- GLOBAL SETTINGS ---
 ssl._create_default_https_context = ssl._create_unverified_context
-krx_df = None
+
+import json
+
+krx_dict = {}
+try:
+    with open('krx_tickers.json', 'r', encoding='utf-8') as f:
+        krx_data = json.load(f)
+        for item in krx_data:
+            suffix = '.KS' if item['Market'] in ['KOSPI', 'KOSPI200', '유가증권'] else '.KQ'
+            krx_dict[item['Name']] = f"{item['Code']}{suffix}"
+except Exception as e:
+    print("Warning: failed to load krx_tickers.json:", e)
 
 # --- STOCK APP LOGIC ---
 def get_ticker_from_name(name):
-    global krx_df
-    if krx_df is None:
-         krx_df = fdr.StockListing('KRX')
-    match = krx_df[krx_df['Name'] == name]
-    if not match.empty:
-        code = match.iloc[0]['Code']
-        market = match.iloc[0]['Market']
-        suffix = '.KS' if market in ['KOSPI', 'KOSPI200', '유가증권'] else '.KQ'
-        return f'{code}{suffix}'
-    return name
+    return krx_dict.get(name, name)
 
 @app.route('/api/stock')
 def get_stock_data():
