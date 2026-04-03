@@ -24,14 +24,16 @@ try:
     with open('krx_tickers.json', 'r', encoding='utf-8') as f:
         krx_data = json.load(f)
         for item in krx_data:
-            suffix = '.KS' if item['Market'] in ['KOSPI', 'KOSPI200', '유가증권'] else '.KQ'
-            krx_dict[item['Name']] = f"{item['Code']}{suffix}"
+            krx_dict[item['Name']] = str(item['Code']).zfill(6)
 except Exception as e:
     print("Warning: failed to load krx_tickers.json:", e)
 
 # --- STOCK APP LOGIC ---
 def get_ticker_from_name(name):
-    return krx_dict.get(name, name)
+    t = krx_dict.get(name, name)
+    if isinstance(t, str) and (t.endswith('.KS') or t.endswith('.KQ')):
+        t = t[:-3]
+    return t
 
 @app.route('/api/stock')
 def get_stock_data():
@@ -41,11 +43,19 @@ def get_stock_data():
     
     try:
         ticker = get_ticker_from_name(raw_ticker)
-        data = yf.Ticker(ticker)
-        hist = data.history(period=period)
         
-        if hist.empty:
-            return jsonify({'success': False, 'error': f"'{raw_ticker}'의 데이터를 찾을 수 없습니다. (한국 주식인 경우 종목코드에 .KS나 .KQ를 붙여 확인해보세요. 예: 005930.KS)"})
+        days = 365 * 2
+        if period == '1mo': days = 30
+        elif period == '3mo': days = 90
+        elif period == '6mo': days = 180
+        elif period == '1y': days = 365
+        elif period == '5y': days = 365 * 5
+        
+        start_date = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%Y-%m-%d')
+        hist = fdr.DataReader(ticker, start_date)
+        
+        if hist is None or hist.empty:
+            return jsonify({'success': False, 'error': f"'{raw_ticker}'의 데이터를 찾을 수 없습니다. 종목명 또는 코드를 정확히 확인해주세요."})
         
         hist = hist.reset_index()
         hist['Date'] = pd.to_datetime(hist['Date'])
