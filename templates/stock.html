@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Trend Forecasting - Stock Analysis</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Chart.js & Date Adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #00f0ff;
+            --primary-glow: rgba(0, 240, 255, 0.4);
+            --secondary: #ff0055;
+            --secondary-glow: rgba(255, 0, 85, 0.4);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --sma20-color: #fce83a;
+            --sma50-color: #ff8c00;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header */
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 14, 20, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        h1 i {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        /* Search Section */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .search-container:focus-within {
+            border-color: rgba(0, 240, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+
+        .search-input {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            padding: 8px 16px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            width: 200px;
+            outline: none;
+            text-transform: uppercase;
+        }
+        
+        .search-input::placeholder {
+            text-transform: none;
+            color: var(--text-muted);
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #00f0ff, #0088ff);
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 24px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        .search-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Main Content */
+        main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Dashboard Overview */
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .stat-sub {
+            font-size: 0.85rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .positive { color: #00ff88; }
+        .negative { color: #ff0055; }
+        .neutral { color: var(--primary); }
+
+        /* Chart Area */
+        .chart-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            height: 600px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+        
+        .chart-legend {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        #error-msg {
+            display: none;
+            background: rgba(255, 0, 85, 0.1);
+            color: var(--secondary);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            header { flex-direction: column; gap: 1rem; }
+            .chart-container { height: 400px; }
+        }
+        
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 520px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <a href="/" style="color: #8b949e; font-size: 1.2rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
+            <h1><i class="fa-solid fa-chart-line"></i> AI Trend Forecasting</h1>
+        </div>
+        <div class="search-container" style="gap: 15px; align-items: center; border: none; background: transparent; padding: 0;">
+            <div class="search-container" style="margin: 0;">
+                <input type="text" id="tickerInput" class="search-input" placeholder="종목 코드 또는 이름 (예: 삼성전자)" value="삼성전자" onkeypress="if(event.key === 'Enter') fetchStockData()">
+                <button class="search-btn" onclick="fetchStockData()">분석하기</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="error-msg"></div>
+
+        <div class="dashboard">
+            <div class="stat-card">
+                <div class="stat-title">현재가 (최근 거래일)<i class="fa-solid fa-dollar-sign"></i></div>
+                <div class="stat-value" id="currentPrice">--</div>
+                <div class="stat-sub neutral" id="tickerDisplay">종목을 검색해주세요</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title"><span id="predTitleText">1개월(30일) 예상가</span> <i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                <div class="stat-value" id="predictedPrice">--</div>
+                <div class="stat-sub" id="predictionChange">--</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">전반적 트렌드 <i class="fa-solid fa-arrow-trend-up"></i></div>
+                <div class="stat-value" id="trendDirection" style="font-size: 1.4rem; padding-top: 5px;">--</div>
+                <div class="stat-sub" style="color: var(--text-muted)">최근 6개월 기반 선형회귀 분석</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <div class="chart-title" id="chartTitle">주가 추이 및 AI 예측선</div>
+                <div class="chart-legend">
+                    <div class="legend-item"><div class="legend-color" style="background:var(--primary); box-shadow: 0 0 8px var(--primary-glow)"></div> 실제 주가</div>
+                    <div class="legend-item"><div class="legend-color" style="background:var(--secondary); box-shadow: 0 0 8px var(--secondary-glow)"></div> 향후 예측 방향</div>
+                    <div class="legend-item"><div class="legend-color" style="background:var(--sma50-color)"></div> 50일 이동평균</div>
+                    <div class="legend-item"><div class="legend-color" style="background:transparent; border-top: 2px dashed #fce83a;"></div> 1개월 전 백테스트</div>
+                </div>
+            </div>
+            <div class="loader" id="loader"></div>
+            <canvas id="stockChart"></canvas>
+        </div>
+    </main>
+
+    <script>
+        let myChart = null;
+
+        // 천단위 콤마 및 소수점 2자리 포맷팅
+        const formatCurrency = (val) => {
+            if (val === undefined || val === null) return '--';
+            if (val > 1000) {
+                // 한국 주식 등 단위가 클 경우 소수점 없이
+                return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
+            }
+            return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+        };
+
+        async function fetchStockData() {
+            const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+            if(!ticker) return;
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('error-msg').style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/stock?ticker=${encodeURIComponent(ticker)}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    showError(data.error);
+                    return;
+                }
+
+                updateDashboard(data);
+                renderChart(data);
+
+            } catch (err) {
+                const errMsg = err.message ? err.message : String(err);
+                showError("에러 상세: " + errMsg);
+                console.error(err);
+            } finally {
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+
+        function showError(msg) {
+            const errorEl = document.getElementById('error-msg');
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+            
+            // clear dashboard
+            document.getElementById('currentPrice').textContent = '--';
+            document.getElementById('predictedPrice').textContent = '--';
+            document.getElementById('predictionChange').textContent = '--';
+            document.getElementById('trendDirection').textContent = '--';
+            document.getElementById('predictionChange').className = 'stat-sub';
+            
+            if(myChart) {
+                myChart.destroy();
+                myChart = null;
+            }
+        }
+
+        function updateDashboard(data) {
+            document.getElementById('tickerDisplay').textContent = `${data.original_ticker} (${data.ticker}) / 최근 2년 데이터`;
+            document.getElementById('chartTitle').textContent = `${data.original_ticker} 주가 추이 및 AI 예측선`;
+            
+            // 향후 예측 타이틀 업데이트
+            document.getElementById('predTitleText').textContent = `1개월(30일) 단기 예상가`;
+            
+            const hist = data.historical;
+            const preds = data.predictions;
+            
+            if (hist.length > 0) {
+                const currentPrice = hist[hist.length - 1].close;
+                document.getElementById('currentPrice').textContent = formatCurrency(currentPrice);
+                
+                if (preds.length > 0) {
+                    const finalPred = preds[preds.length - 1].predicted_close;
+                    document.getElementById('predictedPrice').textContent = formatCurrency(finalPred);
+                    
+                    const diff = finalPred - currentPrice;
+                    const pct = (diff / currentPrice) * 100;
+                    
+                    const changeEl = document.getElementById('predictionChange');
+                    const trendEl = document.getElementById('trendDirection');
+                    
+                    if (diff > 0) {
+                        changeEl.innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 상승 예상`;
+                        changeEl.className = 'stat-sub positive';
+                        trendEl.innerHTML = '<span class="positive">상향 추세 (Bullish)</span>';
+                    } else if (diff < 0) {
+                        changeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 하락 예상`;
+                        changeEl.className = 'stat-sub negative';
+                        trendEl.innerHTML = '<span class="negative">하향 추세 (Bearish)</span>';
+                    } else {
+                        changeEl.innerHTML = `변동 없음`;
+                        changeEl.className = 'stat-sub neutral';
+                        trendEl.innerHTML = '<span class="neutral">횡보 (Sideways)</span>';
+                    }
+                }
+            }
+        }
+
+        function renderChart(data) {
+            const ctx = document.getElementById('stockChart').getContext('2d');
+            
+            if (myChart) {
+                myChart.destroy();
+            }
+
+            // 매핑 데이터 준비
+            const parsedHistorical = data.historical.map(d => ({ x: d.date, y: d.close }));
+            const parsedVolume = data.historical.map(d => ({ x: d.date, y: d.volume }));
+            const parsedSMA50 = data.historical.map(d => ({ x: d.date, y: d.sma_50 })).filter(d => d.y !== null);
+            
+            const parsedPredsCenter = data.predictions.map(d => ({ x: d.date, y: d.predicted_close }));
+            const parsedPredsUpper = data.predictions.map(d => ({ x: d.date, y: d.upper_band }));
+            const parsedPredsLower = data.predictions.map(d => ({ x: d.date, y: d.lower_band }));
+            const parsedPastPreds = (data.past_predictions || []).map(d => ({ x: d.date, y: d.backtest_close }));
+
+            // 그래디언트 생성
+            const gradientPrimary = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientPrimary.addColorStop(0, 'rgba(0, 240, 255, 0.4)');
+            gradientPrimary.addColorStop(1, 'rgba(0, 240, 255, 0.0)');
+
+            const gradientSecondary = ctx.createLinearGradient(0, 0, 0, 400);
+            gradientSecondary.addColorStop(0, 'rgba(255, 0, 85, 0.4)');
+            gradientSecondary.addColorStop(1, 'rgba(255, 0, 85, 0.0)');
+
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: '거래량',
+                            data: parsedVolume,
+                            backgroundColor: 'rgba(139, 148, 158, 0.3)',
+                            yAxisID: 'yVolume',
+                            order: 10
+                        },
+                        {
+                            label: '실제 주가',
+                            data: parsedHistorical,
+                            borderColor: '#00f0ff',
+                            backgroundColor: gradientPrimary,
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#00f0ff',
+                            yAxisID: 'y',
+                            order: 5
+                        },
+                        {
+                            label: '50일 이동평균',
+                            data: parsedSMA50,
+                            borderColor: '#ff8c00',
+                            borderWidth: 1.5,
+                            borderDash: [5, 5],
+                            fill: false,
+                            tension: 0.4,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            yAxisID: 'y',
+                            order: 4
+                        },
+                        {
+                            label: '하단 지지선 (예측)',
+                            data: parsedPredsLower,
+                            borderColor: 'transparent',
+                            backgroundColor: 'transparent',
+                            borderWidth: 0,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            yAxisID: 'y',
+                            order: 3
+                        },
+                        {
+                            label: '상단 저항선 (예측)',
+                            data: parsedPredsUpper,
+                            borderColor: 'transparent',
+                            backgroundColor: 'rgba(255, 0, 85, 0.15)',
+                            borderWidth: 0,
+                            fill: '-1', // Fill down to the previous dataset (Lower Band)
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            yAxisID: 'y',
+                            order: 1
+                        },
+                        {
+                            label: '종가 예측 중심선',
+                            data: parsedPredsCenter,
+                            borderColor: '#ff0055',
+                            borderWidth: 2,
+                            borderDash: [8, 4],
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 8,
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#ff0055',
+                            yAxisID: 'y',
+                            order: 0
+                        },
+                        {
+                            label: '1개월 전 백테스트 예측치',
+                            data: parsedPastPreds,
+                            borderColor: '#fce83a', // Yellow color for backtest
+                            borderWidth: 2,
+                            borderDash: [3, 3],
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 6,
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: '#fce83a',
+                            yAxisID: 'y',
+                            order: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(11, 14, 20, 0.9)',
+                            titleColor: '#f0f6fc',
+                            bodyColor: '#f0f6fc',
+                            borderColor: 'rgba(255, 255, 255, 0.1)',
+                            borderWidth: 1,
+                            padding: 12,
+                            boxPadding: 6,
+                            usePointStyle: true,
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'yyyy-MM'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                color: '#8b949e',
+                                maxRotation: 0,
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false,
+                            },
+                            ticks: {
+                                color: '#8b949e',
+                                callback: function(value) {
+                                    if(value >= 1000) return value.toLocaleString();
+                                    return value;
+                                }
+                            }
+                        },
+                        yVolume: {
+                            type: 'linear',
+                            display: false,
+                            position: 'right',
+                            min: 0,
+                            beginAtZero: true,
+                            // To overlay volume on bottom 20%, we multiply the max volume.
+                            suggestedMax: Math.max(...parsedVolume.map(v => v.y)) * 5
+                        }
+                    }
+                }
+            });
+        }
+
+        // 초기 로드
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchStockData();
+        });
+    </script>
+</body>
+</html>

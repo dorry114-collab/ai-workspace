@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workspace - JM LEE</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #00f0ff;
+            --secondary: #ff0055;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 1000px;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff, #8b949e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-bottom: 4rem;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 3rem 2rem;
+            text-decoration: none;
+            color: inherit;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--card-color, var(--primary));
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .icon-box {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--card-color, var(--primary));
+            filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.3));
+        }
+
+        .card[data-type="youtube"] { --card-color: #ff0000; }
+        .card[data-type="stock"] { --card-color: #00f0ff; }
+
+        .card[data-type="youtube"] .icon-box {
+            filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.3));
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .description {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Workspace</h1>
+        <p>환영합니다. 이용하실 애플리케이션을 선택해주세요.</p>
+
+        <div class="cards">
+            <a href="/youtube" class="card" data-type="youtube">
+                <div class="icon-box"><i class="fa-brands fa-youtube"></i></div>
+                <h2>주요 채널 영상 추출기</h2>
+                <div class="description">
+                    특정 유튜브 채널의 인기 영상을 분석하고, NotebookLM 등에서 활용 가능한 포맷으로 제목과 주소를 빠르게 추출합니다.
+                </div>
+            </a>
+            
+            <a href="/stock" class="card" data-type="stock">
+                <div class="icon-box"><i class="fa-solid fa-chart-line"></i></div>
+                <h2>AI 주식 기술적 분석 차트</h2>
+                <div class="description">
+                    과거 데이터를 바탕으로 이동평균, 볼린저 밴드, 지지저항 터널을 그려내어 1개월 향후 예측 및 백테스트 결과를 나타냅니다.
+                </div>
+            </a>
+        </div>
+    </div>
+</body>
+</html>

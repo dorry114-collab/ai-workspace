@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Vault Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --primary-color: #ec4899;
+            --primary-hover: #db2777;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-radius: 16px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color), #2e1065);
+            color: var(--text-primary);
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.8s ease-out;
+            padding-top: 1rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(to right, #fb7185, #c084fc, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .tab-btn {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            padding: 0.8rem 2rem;
+            border-radius: 100px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(30, 41, 59, 0.8);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Inputs */
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            background: var(--surface-color);
+            padding: 1.2rem;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        input {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        button.primary-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            padding: 0 2.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button.primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4);
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-top: 4rem;
+        }
+
+        /* Video Card */
+        .video-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .thumbnail-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .thumbnail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .video-card:hover .thumbnail {
+            transform: scale(1.05);
+        }
+
+        .video-info {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .video-title {
+            margin: 0 0 1.5rem 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .watch-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+        
+        .watch-link:hover {
+            color: var(--primary-color);
+        }
+
+        .btn-remove {
+            background: transparent;
+            color: rgba(239, 68, 68, 0.7);
+            font-size: 0.9rem;
+            padding: 0.4rem 1rem;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-remove:hover {
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        /* Extraction Panel */
+        .extract-panel {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+        
+        .extract-panel.show {
+            display: block;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .extract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .extract-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .btn-copy {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-copy:hover {
+            background: var(--success-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .text-area-result {
+            width: 100%;
+            height: 300px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            padding: 1.5rem;
+            font-family: monospace;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+            white-space: pre;
+            overflow-y: auto;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        .loading-state {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .loading-state.show {
+            display: block;
+        }
+        
+        .big-loader {
+            width: 50px;
+            height: 50px;
+            border-width: 4px;
+            border-top-color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(15, 23, 42, 0.9);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <a href="/" style="color: #8b949e; font-size: 1.2rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
+                <h1><i class="fa-brands fa-youtube" style="color: #ff0000; margin-right: 10px;"></i> YouTube 인기 동영상 추출기</h1>
+            </div>
+            <p class="subtitle">개인 유튜브 보관함 및 NotebookLM용 채널 데이터 일괄 추출기</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab-btn active" onclick="switchTab('single')">단일 영상 보관함</div>
+            <div class="tab-btn" onclick="switchTab('extract')">채널 50개 추출 (NotebookLM)</div>
+        </div>
+
+        <!-- Tab 1: Single Video -->
+        <div id="tab-single" class="tab-content active">
+            <form id="addForm" class="input-group">
+                <input type="text" id="urlInput" placeholder="유튜브 동영상 링크를 붙여넣으세요 (예: https://www.youtube.com/watch?v=...)" autocomplete="off">
+                <button type="submit" class="primary-btn">추가하기</button>
+            </form>
+            <div id="videoGrid" class="grid"></div>
+        </div>
+
+        <!-- Tab 2: Channel Extractor -->
+        <div id="tab-extract" class="tab-content">
+            <form id="extractForm" class="input-group">
+                <input type="text" id="channelInput" placeholder="추출할 채널명이나 URL을 입력하세요 (예: @침착맨, 슈카월드)" autocomplete="off">
+                <button type="submit" class="primary-btn" id="extractBtn">추출 시작</button>
+            </form>
+
+            <div id="loadingState" class="loading-state">
+                <div class="loader big-loader"></div>
+                <h2 style="margin:0; font-weight: 500;">유튜브 데이터를 긁어오는 중입니다...</h2>
+                <p style="color: var(--text-secondary);">인기 동영상 상위 50개를 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)</p>
+            </div>
+
+            <div id="extractPanel" class="extract-panel">
+                <div class="extract-header">
+                    <h3 id="extractTitle">추출 완료!</h3>
+                    <button class="btn-copy" onclick="copyResult()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        결과 복사하기
+                    </button>
+                </div>
+                <textarea id="resultText" class="text-area-result" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage">알림 메시지</span>
+    </div>
+
+    <script>
+        // --- UI Logic ---
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // --- Tab 1: Single Video Logic ---
+        let videos = JSON.parse(localStorage.getItem('yt_videos')) || [];
+        const videoGrid = document.getElementById('videoGrid');
+
+        function extractVideoId(url) {
+            const regex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+
+        function renderVideos() {
+            videoGrid.innerHTML = '';
+            if (videos.length === 0) return;
+
+            videos.forEach((video, index) => {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+                card.innerHTML = `
+                    <a href="${video.url}" target="_blank" rel="noopener noreferrer">
+                        <div class="thumbnail-container">
+                            <img class="thumbnail" src="https://img.youtube.com/vi/${video.id}/maxresdefault.jpg" onerror="this.src='https://img.youtube.com/vi/${video.id}/hqdefault.jpg'">
+                        </div>
+                    </a>
+                    <div class="video-info">
+                        <p class="video-title">${video.title || 'YouTube Video'}</p>
+                        <div class="video-actions">
+                            <a href="${video.url}" class="watch-link" target="_blank">시청하기</a>
+                            <button class="btn-remove" onclick="removeVideo('${video.id}')">삭제</button>
+                        </div>
+                    </div>
+                `;
+                videoGrid.appendChild(card);
+            });
+        }
+
+        window.removeVideo = function(id) {
+            videos = videos.filter(v => v.id !== id);
+            localStorage.setItem('yt_videos', JSON.stringify(videos));
+            renderVideos();
+        }
+
+        document.getElementById('addForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            if (!url) return;
+
+            const videoId = extractVideoId(url);
+            if (videoId) {
+                if (videos.some(v => v.id === videoId)) {
+                    showToast('이미 목록에 있는 영상입니다.');
+                    return;
+                }
+                
+                videos.unshift({ id: videoId, url: url, title: '불러오는 중...', addedAt: new Date().toISOString() });
+                renderVideos();
+                urlInput.value = '';
+
+                try {
+                    const response = await fetch(`https://noembed.com/embed?url=${encodeURIComponent(url)}`);
+                    const data = await response.json();
+                    if (data.title) {
+                        videos[0].title = data.title;
+                        localStorage.setItem('yt_videos', JSON.stringify(videos));
+                        renderVideos();
+                    }
+                } catch (error) {}
+            } else {
+                showToast('올바른 유튜브 링크가 아닙니다.');
+            }
+        });
+        renderVideos();
+
+        // --- Tab 2: Channel Extractor Logic ---
+        document.getElementById('extractForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const channelInput = document.getElementById('channelInput');
+            const channelName = channelInput.value.trim();
+            if (!channelName) return;
+
+            const extractBtn = document.getElementById('extractBtn');
+            const loadingState = document.getElementById('loadingState');
+            const extractPanel = document.getElementById('extractPanel');
+            const resultText = document.getElementById('resultText');
+
+            // Set loading state
+            extractBtn.innerHTML = '<span class="loader"></span> 진행중';
+            extractBtn.disabled = true;
+            loadingState.classList.add('show');
+            extractPanel.classList.remove('show');
+
+            try {
+                // Call local Flask Python API
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channel_id: channelName })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    let textOutput = "";
+                    data.data.forEach((video) => {
+                        textOutput += `${video.url}\n`;
+                    });
+
+                    document.getElementById('extractTitle').textContent = `'${channelName}' 링크 전용 추출 완료!`;
+                    resultText.value = textOutput.trim();
+                    extractPanel.classList.add('show');
+                    showToast('추출이 완료되었습니다!');
+                } else {
+                    showToast(data.error || '추출 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                showToast('서버 연결 오류! 백그라운드 파이썬 서버가 켜져 있는지 확인하세요.');
+            } finally {
+                extractBtn.innerHTML = '추출 시작';
+                extractBtn.disabled = false;
+                loadingState.classList.remove('show');
+            }
+        });
+
+        window.copyResult = function() {
+            const resultText = document.getElementById('resultText');
+            resultText.select();
+            resultText.setSelectionRange(0, 99999); // Mobile
+            navigator.clipboard.writeText(resultText.value).then(() => {
+                showToast('클립보드에 복사되었습니다. NotebookLM에 붙여넣으세요!');
+            });
+        }
+    </script>
+</body>
+</html>

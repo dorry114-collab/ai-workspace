@@ -1,0 +1,8 @@
+Flask==3.0.0
+yfinance==0.2.33
+pandas==2.1.4
+numpy==1.26.2
+scikit-learn==1.3.2
+finance-datareader==0.9.50
+yt-dlp==2023.11.16
+gunicorn==21.2.0
