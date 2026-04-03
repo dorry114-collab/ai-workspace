@@ -34,11 +34,11 @@ def get_ticker_from_name(name):
 @app.route('/api/stock')
 def get_stock_data():
     raw_ticker = request.args.get('ticker', '').strip()
-    ticker = get_ticker_from_name(raw_ticker)
     period = request.args.get('period', '2y')
     prediction_days = 30
     
     try:
+        ticker = get_ticker_from_name(raw_ticker)
         data = yf.Ticker(ticker)
         hist = data.history(period=period)
         
