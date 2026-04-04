@@ -284,6 +284,33 @@ def extract():
     return jsonify(result)
 
 # --- PROMPT OPTIMIZER LOGIC ---
+def _call_gemini_with_fallback(api_key, sys_prompt):
+    models_to_try = [
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-pro",
+        "gemini-1.0-pro",
+        "gemini-1.5-flash-latest"
+    ]
+    last_error = ""
+    for model_name in models_to_try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        payload = {"contents": [{"parts": [{"text": sys_prompt}]}]}
+        resp = requests.post(url, json=payload)
+        resp_data = resp.json()
+        
+        if 'error' not in resp_data:
+            try:
+                text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
+                return True, text
+            except Exception as e:
+                last_error = f"응답 파싱 오류: {str(e)}"
+        else:
+            last_error = resp_data['error'].get('message', '알 수 없는 오류')
+            if "API key not valid" in last_error or "API_KEY_INVALID" in last_error:
+                break # 치명적인 오류면 즉시 중단
+    return False, last_error
+
 @app.route('/api/prompt/ask', methods=['POST'])
 def prompt_ask():
     data = request.json
@@ -307,16 +334,11 @@ def prompt_ask():
   {{"id": 1, "question": "질문 내용...", "example": "예: ... 와 같이 적어주세요."}},
   {{"id": 2, "question": "...", "example": "..."}}
 ]"""
-        payload = {
-            "contents": [{"parts": [{"text": sys_prompt}]}]
-        }
-        resp = requests.post(url, json=payload)
-        resp_data = resp.json()
+        success, text = _call_gemini_with_fallback(api_key, sys_prompt)
         
-        if 'error' in resp_data:
-            return jsonify({"success": False, "error": f"API 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"})
+        if not success:
+            return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {text}"})
             
-        text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0].strip()
         elif "```" in text:
@@ -350,17 +372,11 @@ def prompt_generate():
 위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 영역에 작성해주세요.
 [역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 작성해주세요."""
 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-        payload = {
-            "contents": [{"parts": [{"text": sys_prompt}]}]
-        }
-        resp = requests.post(url, json=payload)
-        resp_data = resp.json()
+        success, final_text = _call_gemini_with_fallback(api_key, sys_prompt)
         
-        if 'error' in resp_data:
-            return jsonify({"success": False, "error": f"API 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"})
+        if not success:
+            return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {final_text}"})
             
-        final_text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
         return jsonify({"success": True, "prompt": final_text})
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 통신 오류: {str(e)}"})
