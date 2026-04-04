@@ -212,23 +212,36 @@ def extract_channel_top50(channel_input):
             err_reason = data['error'].get('message', '알 수 없는 오류')
             return {"success": False, "error": f"API 한도 초과 및 설정 오류: {err_reason}"}
             
-        results = []
-        # Google API returns HTML-escaped characters (like &#39;), let's unescape them
+        video_ids = []
+        video_titles = {}
         import html
         for item in data.get('items', []):
             video_id = item['id'].get('videoId')
             if not video_id: continue
+            video_ids.append(video_id)
+            video_titles[video_id] = html.unescape(item['snippet']['title'])
             
-            title = html.unescape(item['snippet']['title'])
-            url = f"https://www.youtube.com/watch?v={video_id}"
+        if not video_ids:
+            return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
+            
+        # 3. Get exact statistics for sorting
+        stats_url = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={','.join(video_ids)}&key={api_key}"
+        stats_resp = requests.get(stats_url)
+        stats_data = stats_resp.json()
+        
+        results = []
+        for item in stats_data.get('items', []):
+            v_id = item['id']
+            views = int(item['statistics'].get('viewCount', 0))
             results.append({
-                'title': title,
-                'url': url,
-                'id': video_id
+                'id': v_id,
+                'title': video_titles.get(v_id, 'No Title'),
+                'url': f"https://www.youtube.com/watch?v={v_id}",
+                'view_count': views
             })
             
-        if not results:
-            return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
+        # 4. Strict absolute sort by viewCount descending
+        results.sort(key=lambda x: x['view_count'], reverse=True)
             
         return {"success": True, "data": results, "channel": channel_input}
         
