@@ -284,23 +284,20 @@ def extract():
     return jsonify(result)
 
 # --- PROMPT OPTIMIZER LOGIC ---
-def _call_gemini(api_key, sys_prompt):
+def _call_openai(api_key, sys_prompt):
     import requests
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    url = "https://api.openai.com/v1/chat/completions"
     headers = {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
     }
     payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": sys_prompt}
-                ]
-            }
+        "model": "gpt-4o-mini",
+        "messages": [
+            {"role": "system", "content": "당신은 세계 최고의 프롬프트 엔지니어입니다."},
+            {"role": "user", "content": sys_prompt}
         ],
-        "generationConfig": {
-            "temperature": 0.7
-        }
+        "temperature": 0.7
     }
     
     try:
@@ -308,15 +305,12 @@ def _call_gemini(api_key, sys_prompt):
         resp_data = resp.json()
         
         if 'error' in resp_data:
-            return False, f"Gemini 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"
+            return False, f"OpenAI 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"
             
-        if 'candidates' not in resp_data or not resp_data['candidates']:
-            return False, "Gemini API 응답에서 후보(candidates)를 찾을 수 없습니다."
-            
-        text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
+        text = resp_data['choices'][0]['message']['content'].strip()
         return True, text
     except Exception as e:
-        return False, f"Gemini 시스템 오류 발생: {str(e)}"
+        return False, f"OpenAI 시스템 오류 발생: {str(e)}"
 
 @app.route('/api/prompt/ask', methods=['POST'])
 def prompt_ask():
@@ -325,9 +319,9 @@ def prompt_ask():
     if not idea:
         return jsonify({"success": False, "error": "아이디어를 입력해주세요."})
         
-    api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+    api_key = os.environ.get('OPENAI_API_KEY')
     if not api_key:
-        return jsonify({"success": False, "error": "[필수] Gemini API 키가 없습니다. Render Environment에 GEMINI_API_KEY를 등록해주세요."})
+        return jsonify({"success": False, "error": "[필수] OpenAI API 키가 없습니다. Render Environment에 OPENAI_API_KEY를 등록해주세요."})
         
     try:
         sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
@@ -340,7 +334,7 @@ def prompt_ask():
   {{"id": 1, "question": "질문 내용...", "example": "예: ... 와 같이 적어주세요."}},
   {{"id": 2, "question": "...", "example": "..."}}
 ]"""
-        success, text = _call_gemini(api_key, sys_prompt)
+        success, text = _call_openai(api_key, sys_prompt)
         
         if not success:
             return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {text}"})
@@ -362,7 +356,7 @@ def prompt_generate():
     idea = data.get('idea', '')
     answers = data.get('answers', [])
     
-    api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
+    api_key = os.environ.get('OPENAI_API_KEY')
     if not api_key:
         return jsonify({"success": False, "error": "API 키가 없습니다."})
         
@@ -377,7 +371,7 @@ def prompt_generate():
 위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 형태의 코드 블록(```) 영역 안에 작성해주세요.
 [역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 작성해주세요."""
 
-        success, final_text = _call_gemini(api_key, sys_prompt)
+        success, final_text = _call_openai(api_key, sys_prompt)
         
         if not success:
             return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {final_text}"})
