@@ -292,7 +292,7 @@ def _call_groq(api_key, sys_prompt):
         "Authorization": f"Bearer {api_key}"
     }
     payload = {
-        "model": "llama3-70b-8192",
+        "model": "llama-3.3-70b-versatile",
         "messages": [
             {"role": "system", "content": "당신은 세계 최고의 프롬프트 엔지니어입니다."},
             {"role": "user", "content": sys_prompt}
