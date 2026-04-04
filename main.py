@@ -6,6 +6,7 @@ import datetime
 from sklearn.linear_model import LinearRegression
 import urllib.request
 import ssl
+import requests
 import FinanceDataReader as fdr
 import yt_dlp
 import threading
@@ -169,55 +170,70 @@ def get_stock_data():
         return jsonify({'success': False, 'error': str(e)})
 
 # --- YOUTUBE EXTRACTOR LOGIC ---
-def extract_channel_top50(channel_id):
-    if not channel_id.startswith('http'):
-        if not channel_id.startswith('@'):
-            channel_id = '@' + channel_id
-        url = f"https://www.youtube.com/{channel_id}/popular"
+def extract_channel_top50(channel_input):
+    api_key = os.environ.get('YOUTUBE_API_KEY')
+    if not api_key:
+        return {"success": False, "error": "[필수] 공식 YouTube API 키가 없습니다. Render 설정의 Environment에 가서 YOUTUBE_API_KEY를 등록해주세요."}
+        
+    channel_input = channel_input.strip()
+    
+    # 1. Resolve to channel ID (UC...)
+    channel_id = None
+    if channel_input.startswith('UC') and len(channel_input) == 24:
+        channel_id = channel_input
+    elif 'youtube.com/channel/UC' in channel_input:
+        channel_id = 'UC' + channel_input.split('channel/UC')[1].split('/')[0].split('?')[0]
     else:
-        url = channel_id
-        if not url.endswith('/popular') and '/@' in url:
-            url = url.rstrip('/') + '/popular'
+        handle = channel_input
+        if 'youtube.com/@' in handle:
+            handle = '@' + handle.split('youtube.com/@')[1].split('/')[0].split('?')[0]
+        if not handle.startswith('@') and 'youtube.com/' not in handle:
+            handle = '@' + handle
             
-    ydl_opts = {
-        'extract_flat': True,
-        'playlistend': 50,
-        'quiet': True,
-        'nocheckcertificate': True,
-    }
-
+        channels_url = f"https://youtube.googleapis.com/youtube/v3/channels?part=id&forHandle={handle}&key={api_key}"
+        try:
+            resp = requests.get(channels_url)
+            data = resp.json()
+            if 'items' in data and len(data['items']) > 0:
+                channel_id = data['items'][0]['id']
+        except Exception as e:
+            pass
+            
+    if not channel_id:
+        return {"success": False, "error": f"채널({channel_input})을 찾을 수 없습니다. 정확한 @핸들 형식이나 채널 프로필 URL을 기입해주세요."}
+        
+    # 2. Fetch Top 50 by exact viewCount
+    search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults=50&order=viewCount&type=video&key={api_key}"
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            try:
-                info = ydl.extract_info(url, download=False)
-            except Exception as e:
-                if "does not have a popular tab" in str(e):
-                    fallback_url = url.replace('/popular', '/videos')
-                    info = ydl.extract_info(fallback_url, download=False)
-                else:
-                    raise e
-                    
-            if 'entries' in info:
-                entries = info['entries']
-                results = []
-                for entry in entries:
-                    video_url = entry.get('url', '')
-                    if not video_url.startswith('http'):
-                        video_url = "https://www.youtube.com/watch?v=" + entry.get('id', '')
-                    
-                    results.append({
-                        'title': entry.get('title', 'No Title'),
-                        'url': video_url,
-                        'id': entry.get('id', '')
-                     })
-                return {"success": True, "data": results, "channel": channel_id}
-            else:
-                return {"success": False, "error": "채널 동영상을 찾을 수 없습니다."}
+        resp = requests.get(search_url)
+        data = resp.json()
+        
+        if 'error' in data:
+            err_reason = data['error'].get('message', '알 수 없는 오류')
+            return {"success": False, "error": f"API 한도 초과 및 설정 오류: {err_reason}"}
+            
+        results = []
+        # Google API returns HTML-escaped characters (like &#39;), let's unescape them
+        import html
+        for item in data.get('items', []):
+            video_id = item['id'].get('videoId')
+            if not video_id: continue
+            
+            title = html.unescape(item['snippet']['title'])
+            url = f"https://www.youtube.com/watch?v={video_id}"
+            results.append({
+                'title': title,
+                'url': url,
+                'id': video_id
+            })
+            
+        if not results:
+            return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
+            
+        return {"success": True, "data": results, "channel": channel_input}
+        
     except Exception as e:
-        error_msg = str(e)
-        if "HTTP Error 404" in error_msg:
-            return {"success": False, "error": "채널을 찾지 못했습니다 (404). 한글명 대신 유튜브 채널의 [전체 URL] 또는 [공식 영문 핸들(@syukaworld)]을 입력해주세요!"}
-        return {"success": False, "error": f"오류가 발생했습니다: {error_msg}"}
+        return {"success": False, "error": f"유튜브 통신 중 서버 오류가 발생했습니다: {str(e)}"}
 
 @app.route('/api/extract', methods=['POST'])
 def extract():
