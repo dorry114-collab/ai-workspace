@@ -170,7 +170,7 @@ def get_stock_data():
         return jsonify({'success': False, 'error': str(e)})
 
 # --- YOUTUBE EXTRACTOR LOGIC ---
-def extract_channel_top50(channel_input):
+def extract_channel_videos(channel_input, limit=50):
     api_key = os.environ.get('YOUTUBE_API_KEY')
     if not api_key:
         return {"success": False, "error": "[필수] 공식 YouTube API 키가 없습니다. Render 설정의 Environment에 가서 YOUTUBE_API_KEY를 등록해주세요."}
@@ -202,35 +202,59 @@ def extract_channel_top50(channel_input):
     if not channel_id:
         return {"success": False, "error": f"채널({channel_input})을 찾을 수 없습니다. 정확한 @핸들 형식이나 채널 프로필 URL을 기입해주세요."}
         
-    # 2. Fetch Top 50 by exact viewCount
-    search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults=50&order=viewCount&type=video&key={api_key}"
+    # 2. Fetch Top X by exact viewCount via Pagination
+    import html
+    video_ids = []
+    video_titles = {}
+    
+    next_page_token = ""
     try:
-        resp = requests.get(search_url)
-        data = resp.json()
-        
-        if 'error' in data:
-            err_reason = data['error'].get('message', '알 수 없는 오류')
-            return {"success": False, "error": f"API 한도 초과 및 설정 오류: {err_reason}"}
+        while len(video_ids) < limit:
+            q_limit = min(50, limit - len(video_ids))
+            search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults={q_limit}&order=viewCount&type=video&key={api_key}"
+            if next_page_token:
+                search_url += f"&pageToken={next_page_token}"
+                
+            resp = requests.get(search_url)
+            data = resp.json()
             
-        video_ids = []
-        video_titles = {}
-        import html
-        for item in data.get('items', []):
-            video_id = item['id'].get('videoId')
-            if not video_id: continue
-            video_ids.append(video_id)
-            video_titles[video_id] = html.unescape(item['snippet']['title'])
+            if 'error' in data:
+                err_reason = data['error'].get('message', '알 수 없는 오류')
+                return {"success": False, "error": f"API 통신 오류: {err_reason}"}
+                
+            items = data.get('items', [])
+            if not items:
+                break
+                
+            for item in items:
+                video_id = item['id'].get('videoId')
+                if not video_id: continue
+                if video_id not in video_titles:
+                    video_ids.append(video_id)
+                    video_titles[video_id] = html.unescape(item['snippet']['title'])
             
+            next_page_token = data.get('nextPageToken')
+            if not next_page_token:
+                break
+                
+            if len(video_ids) >= limit:
+                break
+                
         if not video_ids:
             return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
             
-        # 3. Get exact statistics for sorting
-        stats_url = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={','.join(video_ids)}&key={api_key}"
-        stats_resp = requests.get(stats_url)
-        stats_data = stats_resp.json()
+        # 3. Get exact statistics for sorting (Batch API accepts max 50 per request)
+        stats_data_items = []
+        for i in range(0, len(video_ids), 50):
+            chunk = video_ids[i:i+50]
+            stats_url = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={','.join(chunk)}&key={api_key}"
+            stats_resp = requests.get(stats_url)
+            s_data = stats_resp.json()
+            if 'items' in s_data:
+                stats_data_items.extend(s_data['items'])
         
         results = []
-        for item in stats_data.get('items', []):
+        for item in stats_data_items:
             v_id = item['id']
             views = int(item['statistics'].get('viewCount', 0))
             results.append({
@@ -243,7 +267,7 @@ def extract_channel_top50(channel_input):
         # 4. Strict absolute sort by viewCount descending
         results.sort(key=lambda x: x['view_count'], reverse=True)
             
-        return {"success": True, "data": results, "channel": channel_input}
+        return {"success": True, "data": results[:limit], "channel": channel_input}
         
     except Exception as e:
         return {"success": False, "error": f"유튜브 통신 중 서버 오류가 발생했습니다: {str(e)}"}
@@ -252,10 +276,11 @@ def extract_channel_top50(channel_input):
 def extract():
     data = request.json
     channel_id = data.get('channel_id')
+    limit = int(data.get('limit', 50))
     if not channel_id:
         return jsonify({"success": False, "error": "채널명을 입력해주세요."})
     
-    result = extract_channel_top50(channel_id)
+    result = extract_channel_videos(channel_id, limit)
     return jsonify(result)
 
 # --- ROUTES ---

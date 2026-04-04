@@ -390,6 +390,12 @@
                 <input type="text" id="channelInput" placeholder="추출할 채널명이나 URL을 입력하세요 (예: @침착맨, 슈카월드)" autocomplete="off">
                 <button type="submit" class="primary-btn" id="extractBtn">추출 시작</button>
             </form>
+            
+            <div class="limit-options" style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
+                <button type="button" class="btn-limit active" data-limit="50" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(0, 240, 255, 0.5); background: rgba(0, 240, 255, 0.1); color: white; cursor: pointer; transition: all 0.2s;">상위 50개</button>
+                <button type="button" class="btn-limit" data-limit="100" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">상위 100개</button>
+                <button type="button" class="btn-limit" data-limit="500" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">최대 (500개)</button>
+            </div>
 
             <div id="loadingState" class="loading-state">
                 <div class="loader big-loader"></div>
@@ -422,6 +428,27 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // --- Limit Selection Logic ---
+        let currentLimit = 50;
+        document.querySelectorAll('.btn-limit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-limit').forEach(b => {
+                    b.style.background = 'transparent';
+                    b.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    b.style.color = 'rgba(255, 255, 255, 0.7)';
+                    b.classList.remove('active');
+                });
+                
+                const target = e.target;
+                target.style.background = 'rgba(0, 240, 255, 0.1)';
+                target.style.borderColor = 'rgba(0, 240, 255, 0.5)';
+                target.style.color = 'white';
+                target.classList.add('active');
+                
+                currentLimit = parseInt(target.getAttribute('data-limit'));
+            });
+        });
+
         // --- Channel Extractor Logic ---
         let currentUrlOnlyText = "";
         
@@ -447,7 +474,7 @@
                 const response = await fetch('/api/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ channel_id: channelName })
+                    body: JSON.stringify({ channel_id: channelName, limit: currentLimit })
                 });
 
                 const data = await response.json();
@@ -479,7 +506,7 @@
 
         window.copyResult = function() {
             navigator.clipboard.writeText(currentUrlOnlyText).then(() => {
-                showToast('상위 50개 URL만 클립보드에 깔끔하게 복사되었습니다!');
+                showToast(`상위 ${currentLimit}개 URL만 클립보드에 깔끔하게 복사되었습니다!`);
             });
         }
     </script>
