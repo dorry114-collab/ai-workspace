@@ -423,6 +423,8 @@
         }
 
         // --- Channel Extractor Logic ---
+        let currentUrlOnlyText = "";
+        
         document.getElementById('extractForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const channelInput = document.getElementById('channelInput');
@@ -451,13 +453,16 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    let textOutput = "";
-                    data.data.forEach((video) => {
-                        textOutput += `${video.url}\n`;
+                    let displayText = "";
+                    currentUrlOnlyText = "";
+                    data.data.forEach((video, index) => {
+                        let views = Number(video.view_count).toLocaleString();
+                        displayText += `${index + 1}위. [조회수: ${views}회] ${video.title}\n`;
+                        currentUrlOnlyText += `${video.url}\n`;
                     });
 
                     document.getElementById('extractTitle').textContent = `'${channelName}' 링크 전용 추출 완료!`;
-                    resultText.value = textOutput.trim();
+                    resultText.value = displayText.trim();
                     extractPanel.classList.add('show');
                     showToast('추출이 완료되었습니다!');
                 } else {
@@ -473,11 +478,8 @@
         });
 
         window.copyResult = function() {
-            const resultText = document.getElementById('resultText');
-            resultText.select();
-            resultText.setSelectionRange(0, 99999); // Mobile
-            navigator.clipboard.writeText(resultText.value).then(() => {
-                showToast('클립보드에 복사되었습니다. NotebookLM에 붙여넣으세요!');
+            navigator.clipboard.writeText(currentUrlOnlyText).then(() => {
+                showToast('상위 50개 URL만 클립보드에 깔끔하게 복사되었습니다!');
             });
         }
     </script>
