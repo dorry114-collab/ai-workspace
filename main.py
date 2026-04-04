@@ -284,60 +284,39 @@ def extract():
     return jsonify(result)
 
 # --- PROMPT OPTIMIZER LOGIC ---
-def _call_gemini_with_fallback(api_key, sys_prompt):
+def _call_gemini(api_key, sys_prompt):
     import requests
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    headers = {
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": sys_prompt}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7
+        }
+    }
     
-    # 1단계: API 키에 실제로 허락된 모델 목록을 구글에 실시간으로 물어봅니다.
-    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
     try:
-        list_resp = requests.get(list_url)
-        list_data = list_resp.json()
-    except Exception as e:
-        return False, f"모델 목록 확인 실패: {str(e)}"
+        resp = requests.post(url, headers=headers, json=payload)
+        resp_data = resp.json()
         
-    if 'error' in list_data:
-        return False, f"API 키 오류: {list_data['error'].get('message', '알 수 없는 코드')}"
-        
-    if 'models' not in list_data:
-        return False, "사용 가능한 모델 리스트를 서버에서 받지 못했습니다."
-        
-    target_model = None
-    priorities = ["1.5-flash", "1.5-pro", "gemini-pro"]
-    
-    for p in priorities:
-        for m in list_data['models']:
-            name = m.get('name', '')
-            methods = m.get('supportedGenerationMethods', [])
-            if p in name and "generateContent" in methods:
-                target_model = name
-                break
-        if target_model:
-            break
+        if 'error' in resp_data:
+            return False, f"Gemini 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"
             
-    if not target_model:
-        for m in list_data['models']:
-            if "generateContent" in m.get('supportedGenerationMethods', []):
-                target_model = m.get('name')
-                break
-                
-    if not target_model:
-        return False, f"회원님의 API 키로 접속 가능한 텍스트 생성 전용 모델이 하나도 존재하지 않습니다. 구글 계정 권한이나 API 신청 내역을 확인해주세요."
-        
-    # 2단계: 찾아낸 모델 이름을 그대로 넣어서 통신합니다. (예: models/gemini-1.5-flash)
-    url = f"https://generativelanguage.googleapis.com/v1beta/{target_model}:generateContent?key={api_key}"
-    payload = {"contents": [{"parts": [{"text": sys_prompt}]}]}
-    
-    resp = requests.post(url, json=payload)
-    resp_data = resp.json()
-    
-    if 'error' not in resp_data:
-        try:
-            text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
-            return True, text
-        except Exception as e:
-            return False, f"응답 해석 오류: {str(e)}"
-    else:
-        return False, f"성공적으로 찾은 모델({target_model})에서 통신 오류 발생: {resp_data['error'].get('message', '알 수 없는 에러')}"
+        if 'candidates' not in resp_data or not resp_data['candidates']:
+            return False, "Gemini API 응답에서 후보(candidates)를 찾을 수 없습니다."
+            
+        text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
+        return True, text
+    except Exception as e:
+        return False, f"Gemini 시스템 오류 발생: {str(e)}"
 
 @app.route('/api/prompt/ask', methods=['POST'])
 def prompt_ask():
@@ -346,12 +325,11 @@ def prompt_ask():
     if not idea:
         return jsonify({"success": False, "error": "아이디어를 입력해주세요."})
         
-    api_key = os.environ.get('GEMINI_API_KEY')
+    api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     if not api_key:
-        return jsonify({"success": False, "error": "[필수] 구글 Gemini API 키가 없습니다. Render Environment에 GEMINI_API_KEY를 등록해주세요."})
+        return jsonify({"success": False, "error": "[필수] Gemini API 키가 없습니다. Render Environment에 GEMINI_API_KEY를 등록해주세요."})
         
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
 사용자가 다음의 작업을 수행하는 AI 프롬프트를 만들고 싶어합니다:
 "{idea}"
@@ -362,7 +340,7 @@ def prompt_ask():
   {{"id": 1, "question": "질문 내용...", "example": "예: ... 와 같이 적어주세요."}},
   {{"id": 2, "question": "...", "example": "..."}}
 ]"""
-        success, text = _call_gemini_with_fallback(api_key, sys_prompt)
+        success, text = _call_gemini(api_key, sys_prompt)
         
         if not success:
             return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {text}"})
@@ -384,23 +362,22 @@ def prompt_generate():
     idea = data.get('idea', '')
     answers = data.get('answers', [])
     
-    api_key = os.environ.get('GEMINI_API_KEY')
+    api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     if not api_key:
         return jsonify({"success": False, "error": "API 키가 없습니다."})
         
     try:
         answers_text = "\n".join([f"Q: {a['question']}\nA: {a['answer']}" for a in answers])
         
-        sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
-초기 아이디어: {idea}
+        sys_prompt = f"""초기 아이디어: {idea}
 
 사용자의 추가 답변:
 {answers_text}
 
-위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 영역에 작성해주세요.
+위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 형태의 코드 블록(```) 영역 안에 작성해주세요.
 [역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 작성해주세요."""
 
-        success, final_text = _call_gemini_with_fallback(api_key, sys_prompt)
+        success, final_text = _call_gemini(api_key, sys_prompt)
         
         if not success:
             return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {final_text}"})
