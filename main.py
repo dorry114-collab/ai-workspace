@@ -285,31 +285,59 @@ def extract():
 
 # --- PROMPT OPTIMIZER LOGIC ---
 def _call_gemini_with_fallback(api_key, sys_prompt):
-    models_to_try = [
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-pro",
-        "gemini-1.0-pro",
-        "gemini-1.5-flash-latest"
-    ]
-    last_error = ""
-    for model_name in models_to_try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-        payload = {"contents": [{"parts": [{"text": sys_prompt}]}]}
-        resp = requests.post(url, json=payload)
-        resp_data = resp.json()
+    import requests
+    
+    # 1단계: API 키에 실제로 허락된 모델 목록을 구글에 실시간으로 물어봅니다.
+    list_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={api_key}"
+    try:
+        list_resp = requests.get(list_url)
+        list_data = list_resp.json()
+    except Exception as e:
+        return False, f"모델 목록 확인 실패: {str(e)}"
         
-        if 'error' not in resp_data:
-            try:
-                text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
-                return True, text
-            except Exception as e:
-                last_error = f"응답 파싱 오류: {str(e)}"
-        else:
-            last_error = resp_data['error'].get('message', '알 수 없는 오류')
-            if "API key not valid" in last_error or "API_KEY_INVALID" in last_error:
-                break # 치명적인 오류면 즉시 중단
-    return False, last_error
+    if 'error' in list_data:
+        return False, f"API 키 오류: {list_data['error'].get('message', '알 수 없는 코드')}"
+        
+    if 'models' not in list_data:
+        return False, "사용 가능한 모델 리스트를 서버에서 받지 못했습니다."
+        
+    target_model = None
+    priorities = ["1.5-flash", "1.5-pro", "gemini-pro"]
+    
+    for p in priorities:
+        for m in list_data['models']:
+            name = m.get('name', '')
+            methods = m.get('supportedGenerationMethods', [])
+            if p in name and "generateContent" in methods:
+                target_model = name
+                break
+        if target_model:
+            break
+            
+    if not target_model:
+        for m in list_data['models']:
+            if "generateContent" in m.get('supportedGenerationMethods', []):
+                target_model = m.get('name')
+                break
+                
+    if not target_model:
+        return False, f"회원님의 API 키로 접속 가능한 텍스트 생성 전용 모델이 하나도 존재하지 않습니다. 구글 계정 권한이나 API 신청 내역을 확인해주세요."
+        
+    # 2단계: 찾아낸 모델 이름을 그대로 넣어서 통신합니다. (예: models/gemini-1.5-flash)
+    url = f"https://generativelanguage.googleapis.com/v1beta/{target_model}:generateContent?key={api_key}"
+    payload = {"contents": [{"parts": [{"text": sys_prompt}]}]}
+    
+    resp = requests.post(url, json=payload)
+    resp_data = resp.json()
+    
+    if 'error' not in resp_data:
+        try:
+            text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
+            return True, text
+        except Exception as e:
+            return False, f"응답 해석 오류: {str(e)}"
+    else:
+        return False, f"성공적으로 찾은 모델({target_model})에서 통신 오류 발생: {resp_data['error'].get('message', '알 수 없는 에러')}"
 
 @app.route('/api/prompt/ask', methods=['POST'])
 def prompt_ask():
