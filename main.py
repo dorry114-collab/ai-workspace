@@ -283,6 +283,76 @@ def extract():
     result = extract_channel_videos(channel_id, limit)
     return jsonify(result)
 
+# --- PROMPT OPTIMIZER LOGIC ---
+@app.route('/api/prompt/ask', methods=['POST'])
+def prompt_ask():
+    data = request.json
+    idea = data.get('idea', '')
+    if not idea:
+        return jsonify({"success": False, "error": "아이디어를 입력해주세요."})
+        
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "[필수] 구글 Gemini API 키가 없습니다. Render Environment에 GEMINI_API_KEY를 등록해주세요."})
+        
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
+사용자가 다음의 작업을 수행하는 AI 프롬프트를 만들고 싶어합니다:
+"{idea}"
+
+이 프롬프트를 완벽하고 구체적인 지시문을 갖춘 템플릿으로 완성하기 위해, 사용자에게 의도를 묻는 핵심 역질문 5가지를 생성하세요. (타겟, 분량, 어조, 필수 포함사항 등)
+반드시 아래의 JSON 배열 형식으로만 응답해야 합니다. 다른 말은 절대 하지 마세요.
+[
+  {{"id": 1, "question": "질문 내용...", "example": "예: ... 와 같이 적어주세요."}},
+  {{"id": 2, "question": "...", "example": "..."}}
+]"""
+        response = model.generate_content(sys_prompt)
+        text = response.text.strip()
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        import json
+        questions = json.loads(text)
+        return jsonify({"success": True, "questions": questions[:5]})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"AI 통신 오류: {str(e)}"})
+
+@app.route('/api/prompt/generate', methods=['POST'])
+def prompt_generate():
+    data = request.json
+    idea = data.get('idea', '')
+    answers = data.get('answers', [])
+    
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "API 키가 없습니다."})
+        
+    try:
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        answers_text = "\n".join([f"Q: {a['question']}\nA: {a['answer']}" for a in answers])
+        
+        sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
+초기 아이디어: {idea}
+
+사용자의 추가 답변:
+{answers_text}
+
+위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 영역에 작성해주세요.
+[역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 작성해주세요."""
+
+        response = model.generate_content(sys_prompt)
+        return jsonify({"success": True, "prompt": response.text.strip()})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"AI 통신 오류: {str(e)}"})
+
 # --- ROUTES ---
 @app.route('/')
 def home():
@@ -295,6 +365,10 @@ def youtube():
 @app.route('/stock')
 def stock():
     return render_template('stock.html')
+
+@app.route('/prompt')
+def prompt():
+    return render_template('prompt.html')
 
 
 if __name__ == '__main__':

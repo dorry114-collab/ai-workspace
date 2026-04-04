@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt Optimizer</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Highlight.js for markdown code formatting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #b100ff;
+            --primary-hover: #d24dff;
+            --text-main: #f0f6fc;
+            --text-secondary: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(177, 0, 255, 0.05), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.05), transparent 30%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .workspace {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin: 0 0 0.5rem 0;
+            background: linear-gradient(135deg, #fff, #b100ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            margin-bottom: 2rem;
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* --- Forms & Inputs --- */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .input-text {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem;
+            color: var(--text-main);
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            outline: none;
+        }
+
+        .input-text:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(177, 0, 255, 0.2);
+        }
+
+        .primary-btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(177, 0, 255, 0.4);
+        }
+
+        .primary-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* --- Question Cards --- */
+        .question-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-left: 4px solid var(--primary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .q-label {
+            font-size: 0.9rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .q-text {
+            font-size: 1.15rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .q-example {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        .q-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.8rem;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            box-sizing: border-box;
+        }
+
+        .q-input:focus {
+            border-color: var(--primary);
+        }
+
+        /* --- Formatting markdown --- */
+        .markdown-body {
+            background: #0d1117;
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+        .markdown-body pre {
+            background: #161b22;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+        }
+        .markdown-body code {
+            font-family: monospace;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .copy-btn:hover {
+            background: rgba(177, 0, 255, 0.1);
+        }
+
+        /* --- Loader --- */
+        .loader {
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        .big-loader {
+            width: 50px;
+            height: 50px;
+            border-color: rgba(177, 0, 255, 0.3);
+            border-top-color: var(--primary);
+            margin: 0 auto 1.5rem auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-state {
+            text-align: center;
+            padding: 3rem 0;
+            display: none;
+        }
+        .loading-state.active {
+            display: block;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #238636;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 600;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="workspace">
+        <header>
+            <div style="display: flex; gap: 1rem; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
+                <a href="/" style="color: var(--text-secondary); font-size: 1.2rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
+                <h1><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary); margin-right: 10px;"></i> AI Prompt Optimizer</h1>
+            </div>
+            <p class="subtitle">구글 1.5 Flash 엔진이 당신의 막연한 아이디어를 궁극의 마스터 프롬프트로 변환해 줍니다.</p>
+        </header>
+
+        <!-- Phase 1: Idea Input -->
+        <div id="phase1" class="panel active">
+            <h2 style="margin-top:0;">💡 1단계: 무엇을 만들고 싶으신가요?</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">생각나는 대로 편하게 적어주세요. 나머지는 AI가 알아서 물어볼 것입니다.</p>
+            
+            <form id="ideaForm" class="input-group">
+                <textarea id="ideaInput" class="input-text" rows="4" placeholder="예: 유튜브 대본을 써주는 프롬프트를 만들고 싶어. 주요 타겟은 2030 직장인이야."></textarea>
+                <button type="submit" class="primary-btn" id="btnAsk">
+                    <i class="fa-solid fa-brain"></i> AI의 역질문 받아보기
+                </button>
+            </form>
+        </div>
+
+        <div id="loading1" class="loading-state">
+            <div class="loader big-loader"></div>
+            <h3>AI가 회원님의 의도를 분석하여 질문을 생성중입니다...</h3>
+            <p style="color: var(--text-secondary);">약 5~10초 정도 소요됩니다.</p>
+        </div>
+
+        <!-- Phase 2: Questions -->
+        <div id="phase2" class="panel">
+            <h2 style="margin-top:0;">📝 2단계: AI의 질문에 답해주세요</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">보다 완벽한 프롬프트 구성을 위해 몇 가지 세부 사항이 필요합니다.</p>
+            
+            <form id="answersForm">
+                <div id="questionsContainer"></div>
+                <div style="display: flex; gap: 15px; margin-top: 2rem;">
+                    <button type="button" class="copy-btn" onclick="resetApp()" style="flex: 1; justify-content: center;">처음으로</button>
+                    <button type="submit" class="primary-btn" id="btnGenerate" style="flex: 3;">
+                        <i class="fa-solid fa-wand-sparkles"></i> 마스터 프롬프트 생성하기
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="loading2" class="loading-state">
+            <div class="loader big-loader"></div>
+            <h3>답변을 조합하여 완벽한 프롬프트를 조립중입니다...</h3>
+        </div>
+
+        <!-- Phase 3: Final Prompt -->
+        <div id="phase3" class="panel">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin:0;">✨ 3단계: 당신만의 마스터 프롬프트</h2>
+                <button class="copy-btn" onclick="copyPrompt()">
+                    <i class="fa-regular fa-copy"></i> 복사하기
+                </button>
+            </div>
+            
+            <div id="finalPromptContainer" class="markdown-body"></div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="copy-btn" onclick="resetApp()">새로운 프롬프트 만들기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage">알림 메시지</span>
+    </div>
+
+    <script>
+        let globalQuestions = [];
+        let finalPromptRaw = "";
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function switchPhase(hideId, showId) {
+            document.querySelectorAll('.panel, .loading-state').forEach(el => {
+                el.classList.remove('active');
+            });
+            document.getElementById(showId).classList.add('active');
+        }
+
+        function resetApp() {
+            document.getElementById('ideaInput').value = '';
+            document.getElementById('questionsContainer').innerHTML = '';
+            switchPhase('phase2', 'phase1');
+            switchPhase('phase3', 'phase1');
+        }
+
+        // --- Phase 1: Ask ---
+        document.getElementById('ideaForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idea = document.getElementById('ideaInput').value.trim();
+            if (!idea) {
+                showToast("아이디어를 입력해주세요!");
+                return;
+            }
+
+            switchPhase('phase1', 'loading1');
+
+            try {
+                const res = await fetch('/api/prompt/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idea: idea })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    globalQuestions = data.questions;
+                    const container = document.getElementById('questionsContainer');
+                    container.innerHTML = '';
+                    
+                    globalQuestions.forEach((q, idx) => {
+                        container.innerHTML += `
+                            <div class="question-card">
+                                <div class="q-label">Q${idx + 1}</div>
+                                <div class="q-text">${q.question}</div>
+                                <div class="q-example">${q.example}</div>
+                                <input type="text" class="q-input" id="q_ans_${q.id}" placeholder="답변을 일상어로 편하게 적어주세요. (모르면 공란)" autocomplete="off">
+                            </div>
+                        `;
+                    });
+                    
+                    switchPhase('loading1', 'phase2');
+                } else {
+                    showToast(data.error);
+                    switchPhase('loading1', 'phase1');
+                }
+            } catch (err) {
+                showToast("서버 통신 오류가 발생했습니다.");
+                switchPhase('loading1', 'phase1');
+            }
+        });
+
+        // --- Phase 2: Generate ---
+        document.getElementById('answersForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const idea = document.getElementById('ideaInput').value.trim();
+            const answers = [];
+            
+            globalQuestions.forEach(q => {
+                const ans = document.getElementById(`q_ans_${q.id}`).value.trim();
+                answers.push({
+                    question: q.question,
+                    answer: ans || "특별히 지정하지 않음. AI가 알아서 최적화 해줘."
+                });
+            });
+
+            switchPhase('phase2', 'loading2');
+
+            try {
+                const res = await fetch('/api/prompt/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idea: idea, answers: answers })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    finalPromptRaw = data.prompt;
+                    
+                    // Render markdown using Marked.js
+                    const container = document.getElementById('finalPromptContainer');
+                    container.innerHTML = marked.parse(data.prompt);
+                    
+                    // Apply highlight.js formatting to code blocks
+                    document.querySelectorAll('pre code').forEach((block) => {
+                        hljs.highlightElement(block);
+                    });
+                    
+                    switchPhase('loading2', 'phase3');
+                    showToast("성공적으로 마스터 프롬프트가 완성되었습니다!");
+                } else {
+                    showToast(data.error);
+                    switchPhase('loading2', 'phase2');
+                }
+            } catch (err) {
+                showToast("서버 통신 오류가 발생했습니다.");
+                switchPhase('loading2', 'phase2');
+            }
+        });
+
+        // --- Copy Logic ---
+        function copyPrompt() {
+            // Strip out markdown code block backticks if the AI wrapped the entire thing in it,
+            // or just copy the raw text. 
+            let textToCopy = finalPromptRaw;
+            if (textToCopy.startsWith('```markdown')) {
+                textToCopy = textToCopy.substring(11);
+                if (textToCopy.endsWith('```')) {
+                    textToCopy = textToCopy.substring(0, textToCopy.length - 3);
+                }
+            } else if (textToCopy.startsWith('```')) {
+                textToCopy = textToCopy.substring(3);
+                if (textToCopy.endsWith('```')) {
+                    textToCopy = textToCopy.substring(0, textToCopy.length - 3);
+                }
+            }
+
+            navigator.clipboard.writeText(textToCopy.trim()).then(() => {
+                showToast("클립보드에 복사 완료! ChatGPT에 가서 붙여넣기 하세요!");
+            });
+        }
+    </script>
+</body>
+</html>
