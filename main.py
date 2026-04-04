@@ -284,15 +284,48 @@ def extract():
     return jsonify(result)
 
 # --- PROMPT OPTIMIZER LOGIC ---
+GROQ_MODEL_CACHE = None
+
+def get_best_groq_model(api_key):
+    global GROQ_MODEL_CACHE
+    if GROQ_MODEL_CACHE:
+        return GROQ_MODEL_CACHE
+    
+    import requests
+    try:
+        url = "https://api.groq.com/openai/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            available_models = [m['id'] for m in data.get('data', [])]
+            for target in ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"]:
+                if target in available_models:
+                    GROQ_MODEL_CACHE = target
+                    return target
+            
+            # Fallback to any llama model
+            llama_models = [m for m in available_models if 'llama' in m.lower()]
+            if llama_models:
+                GROQ_MODEL_CACHE = llama_models[0]
+                return GROQ_MODEL_CACHE
+    except Exception:
+        pass
+        
+    # Ultimate hardcoded fallback
+    return "llama-3.3-70b-versatile"
+
 def _call_groq(api_key, sys_prompt):
     import requests
+    model_name = get_best_groq_model(api_key)
+    
     url = "https://api.groq.com/openai/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
     payload = {
-        "model": "llama-3.3-70b-versatile",
+        "model": model_name,
         "messages": [
             {"role": "system", "content": "당신은 세계 최고의 프롬프트 엔지니어입니다."},
             {"role": "user", "content": sys_prompt}
@@ -317,6 +350,9 @@ def _call_groq(api_key, sys_prompt):
 def prompt_ask():
     data = request.json
     idea = data.get('idea', '')
+    history = data.get('history', [])
+    q_index = data.get('questionIndex', 1)
+    
     if not idea:
         return jsonify({"success": False, "error": "아이디어를 입력해주세요."})
         
@@ -325,16 +361,25 @@ def prompt_ask():
         return jsonify({"success": False, "error": "[필수] Groq API 키가 없습니다. Render Environment에 GROQ_API_KEY를 등록해주세요."})
         
     try:
+        if history:
+            history_text = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in history])
+        else:
+            history_text = "없음"
+            
         sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
-사용자가 다음의 작업을 수행하는 AI 프롬프트를 만들고 싶어합니다:
-"{idea}"
+초기 아이디어: "{idea}"
+지금까지 진행된 질의응답:
+{history_text}
 
-이 프롬프트를 완벽하고 구체적인 지시문을 갖춘 템플릿으로 완성하기 위해, 사용자에게 의도를 묻는 핵심 역질문 5가지를 생성하세요. (타겟, 분량, 어조, 필수 포함사항 등)
-반드시 아래의 JSON 배열 형식으로만 응답해야 합니다. 다른 말은 절대 하지 마세요.
-[
-  {{"id": 1, "question": "질문 내용...", "example": "예: ... 와 같이 적어주세요."}},
-  {{"id": 2, "question": "...", "example": "..."}}
-]"""
+이 사용자의 아이디어를 완벽한 프롬프트로 발전시키기 위해, 추가로 물어봐야 할 가장 핵심적인 **단 하나의 질문**을 생성하세요.
+이 질문은 {q_index}번째 질문입니다. (총 5개의 질문을 할 예정입니다.)
+답변을 쉽게 할 수 있도록 구체적인 예시도 포함해 주세요.
+
+반드시 아래의 단일 JSON 객체 형식으로만 응답해야 합니다. 다른 말은 절대 덧붙이지 마세요.
+{{
+  "question": "핵심 질문 내용...",
+  "example": "예: ... 와 같이 적어주세요."
+}}"""
         success, text = _call_groq(api_key, sys_prompt)
         
         if not success:
@@ -346,8 +391,8 @@ def prompt_ask():
             text = text.split("```")[1].split("```")[0].strip()
             
         import json
-        questions = json.loads(text)
-        return jsonify({"success": True, "questions": questions[:5]})
+        question_data = json.loads(text)
+        return jsonify({"success": True, "question": question_data})
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 통신 오류: {str(e)}"})
 

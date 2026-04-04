@@ -277,7 +277,7 @@
                 <a href="/" style="color: var(--text-secondary); font-size: 1.2rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
                 <h1><i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary); margin-right: 10px;"></i> AI Prompt Optimizer</h1>
             </div>
-            <p class="subtitle">구글 1.5 Flash 엔진이 당신의 막연한 아이디어를 궁극의 마스터 프롬프트로 변환해 줍니다.</p>
+            <p class="subtitle">오픈AI의 GPT-4o-mini 엔진이 당신의 막연한 아이디어를 궁극의 마스터 프롬프트로 변환해 줍니다.</p>
         </header>
 
         <!-- Phase 1: Idea Input -->
@@ -288,36 +288,45 @@
             <form id="ideaForm" class="input-group">
                 <textarea id="ideaInput" class="input-text" rows="4" placeholder="예: 유튜브 대본을 써주는 프롬프트를 만들고 싶어. 주요 타겟은 2030 직장인이야."></textarea>
                 <button type="submit" class="primary-btn" id="btnAsk">
-                    <i class="fa-solid fa-brain"></i> AI의 역질문 받아보기
+                    <i class="fa-solid fa-brain"></i> 대화 시작하기
                 </button>
             </form>
         </div>
 
-        <div id="loading1" class="loading-state">
-            <div class="loader big-loader"></div>
-            <h3>AI가 회원님의 의도를 분석하여 질문을 생성중입니다...</h3>
-            <p style="color: var(--text-secondary);">약 5~10초 정도 소요됩니다.</p>
-        </div>
-
         <!-- Phase 2: Questions -->
         <div id="phase2" class="panel">
-            <h2 style="margin-top:0;">📝 2단계: AI의 질문에 답해주세요</h2>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">보다 완벽한 프롬프트 구성을 위해 몇 가지 세부 사항이 필요합니다.</p>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem;">
+                <h2 style="margin:0;">📝 2단계: 대화형 질의응답 <span id="qProgress" style="font-size: 1.2rem; color: var(--primary);">(1/5)</span></h2>
+            </div>
             
-            <form id="answersForm">
-                <div id="questionsContainer"></div>
-                <div style="display: flex; gap: 15px; margin-top: 2rem;">
-                    <button type="button" class="copy-btn" onclick="resetApp()" style="flex: 1; justify-content: center;">처음으로</button>
-                    <button type="submit" class="primary-btn" id="btnGenerate" style="flex: 3;">
-                        <i class="fa-solid fa-wand-sparkles"></i> 마스터 프롬프트 생성하기
-                    </button>
+            <div id="chatHistory" style="margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+                <!-- History of Q&A goes here -->
+            </div>
+            
+            <div id="currentQuestionBox" class="question-card" style="border-left-color: var(--text-main);">
+                <div class="loader big-loader" id="qLoader" style="display:none; margin: 2rem auto; border-color: rgba(255,255,255,0.2); border-top-color: var(--primary);"></div>
+                <div id="qContent">
+                    <div class="q-label">AI의 질문</div>
+                    <div class="q-text" id="qText">...</div>
+                    <div class="q-example" id="qExample">...</div>
+                    
+                    <form id="answersForm" style="margin-top: 1rem; display: flex; gap: 10px;">
+                        <input type="text" class="q-input" id="currentAnswerInput" placeholder="답변을 입력하세요. (건너뛰려면 비워두고 '다음' 클릭)" autocomplete="off" style="flex: 1;">
+                        <button type="submit" class="primary-btn" style="padding: 0.8rem 1.5rem; font-size: 1rem;">
+                            다음 <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </form>
                 </div>
-            </form>
+            </div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <button type="button" class="copy-btn" onclick="resetApp()">처음부터 다시하기</button>
+            </div>
         </div>
 
         <div id="loading2" class="loading-state">
             <div class="loader big-loader"></div>
-            <h3>답변을 조합하여 완벽한 프롬프트를 조립중입니다...</h3>
+            <h3>5개의 답변을 조립하여 완벽한 프롬프트를 생성중입니다...</h3>
         </div>
 
         <!-- Phase 3: Final Prompt -->
@@ -342,8 +351,11 @@
     </div>
 
     <script>
-        let globalQuestions = [];
+        let globalHistory = [];
+        let currentQuestionIndex = 1;
         let finalPromptRaw = "";
+        let currentIdea = "";
+        let currentQuestionText = "";
 
         function showToast(msg) {
             const toast = document.getElementById('toast');
@@ -361,9 +373,42 @@
 
         function resetApp() {
             document.getElementById('ideaInput').value = '';
-            document.getElementById('questionsContainer').innerHTML = '';
+            document.getElementById('chatHistory').innerHTML = '';
+            globalHistory = [];
+            currentQuestionIndex = 1;
+            currentIdea = "";
             switchPhase('phase2', 'phase1');
             switchPhase('phase3', 'phase1');
+        }
+
+        async function fetchNextQuestion() {
+            switchPhase('phase1', 'phase2');
+            document.getElementById('qContent').style.display = 'none';
+            document.getElementById('qLoader').style.display = 'block';
+            document.getElementById('qProgress').textContent = `(${currentQuestionIndex}/5)`;
+            document.getElementById('currentAnswerInput').value = '';
+
+            try {
+                const res = await fetch('/api/prompt/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idea: currentIdea, history: globalHistory, questionIndex: currentQuestionIndex })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentQuestionText = data.question.question;
+                    document.getElementById('qText').textContent = data.question.question;
+                    document.getElementById('qExample').textContent = data.question.example || "";
+                    document.getElementById('qLoader').style.display = 'none';
+                    document.getElementById('qContent').style.display = 'block';
+                    document.getElementById('currentAnswerInput').focus();
+                } else {
+                    showToast(data.error);
+                }
+            } catch (err) {
+                showToast("서버 통신 오류가 발생했습니다.");
+            }
         }
 
         // --- Phase 1: Ask ---
@@ -374,89 +419,66 @@
                 showToast("아이디어를 입력해주세요!");
                 return;
             }
-
-            switchPhase('phase1', 'loading1');
-
-            try {
-                const res = await fetch('/api/prompt/ask', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ idea: idea })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    globalQuestions = data.questions;
-                    const container = document.getElementById('questionsContainer');
-                    container.innerHTML = '';
-                    
-                    globalQuestions.forEach((q, idx) => {
-                        container.innerHTML += `
-                            <div class="question-card">
-                                <div class="q-label">Q${idx + 1}</div>
-                                <div class="q-text">${q.question}</div>
-                                <div class="q-example">${q.example}</div>
-                                <input type="text" class="q-input" id="q_ans_${q.id}" placeholder="답변을 일상어로 편하게 적어주세요. (모르면 공란)" autocomplete="off">
-                            </div>
-                        `;
-                    });
-                    
-                    switchPhase('loading1', 'phase2');
-                } else {
-                    showToast(data.error);
-                    switchPhase('loading1', 'phase1');
-                }
-            } catch (err) {
-                showToast("서버 통신 오류가 발생했습니다.");
-                switchPhase('loading1', 'phase1');
-            }
+            currentIdea = idea;
+            globalHistory = [];
+            currentQuestionIndex = 1;
+            document.getElementById('chatHistory').innerHTML = '';
+            
+            fetchNextQuestion();
         });
 
-        // --- Phase 2: Generate ---
+        // --- Phase 2: Iterate or Generate ---
         document.getElementById('answersForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const idea = document.getElementById('ideaInput').value.trim();
-            const answers = [];
+            const ans = document.getElementById('currentAnswerInput').value.trim() || "특별히 지정하지 않음. 문맥에 맞게 알아서 설정해줘.";
             
-            globalQuestions.forEach(q => {
-                const ans = document.getElementById(`q_ans_${q.id}`).value.trim();
-                answers.push({
-                    question: q.question,
-                    answer: ans || "특별히 지정하지 않음. AI가 알아서 최적화 해줘."
-                });
+            // Visual history
+            const cHist = document.getElementById('chatHistory');
+            cHist.innerHTML += `
+                <div style="background: rgba(255, 255, 255, 0.05); border-left: 3px solid var(--primary); border-radius: 8px; padding: 1rem;">
+                    <div style="color: var(--primary); font-size: 0.9rem; font-weight: bold; margin-bottom: 0.4rem;">Q${currentQuestionIndex}. ${currentQuestionText}</div>
+                    <div style="color: var(--text-main); line-height: 1.4;">A. ${ans}</div>
+                </div>
+            `;
+            
+            globalHistory.push({
+                question: currentQuestionText,
+                answer: ans
             });
+            
+            if (currentQuestionIndex < 5) {
+                currentQuestionIndex++;
+                fetchNextQuestion();
+            } else {
+                switchPhase('phase2', 'loading2');
 
-            switchPhase('phase2', 'loading2');
-
-            try {
-                const res = await fetch('/api/prompt/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ idea: idea, answers: answers })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    finalPromptRaw = data.prompt;
-                    
-                    // Render markdown using Marked.js
-                    const container = document.getElementById('finalPromptContainer');
-                    container.innerHTML = marked.parse(data.prompt);
-                    
-                    // Apply highlight.js formatting to code blocks
-                    document.querySelectorAll('pre code').forEach((block) => {
-                        hljs.highlightElement(block);
+                try {
+                    const res = await fetch('/api/prompt/generate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ idea: currentIdea, answers: globalHistory })
                     });
+                    const data = await res.json();
                     
-                    switchPhase('loading2', 'phase3');
-                    showToast("성공적으로 마스터 프롬프트가 완성되었습니다!");
-                } else {
-                    showToast(data.error);
+                    if (data.success) {
+                        finalPromptRaw = data.prompt;
+                        const container = document.getElementById('finalPromptContainer');
+                        container.innerHTML = marked.parse(data.prompt);
+                        
+                        document.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                        
+                        switchPhase('loading2', 'phase3');
+                        showToast("성공적으로 마스터 프롬프트가 완성되었습니다!");
+                    } else {
+                        showToast(data.error);
+                        switchPhase('loading2', 'phase2');
+                    }
+                } catch (err) {
+                    showToast("서버 통신 오류가 발생했습니다.");
                     switchPhase('loading2', 'phase2');
                 }
-            } catch (err) {
-                showToast("서버 통신 오류가 발생했습니다.");
-                switchPhase('loading2', 'phase2');
             }
         });
 
