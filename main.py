@@ -298,7 +298,7 @@ def prompt_ask():
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
 사용자가 다음의 작업을 수행하는 AI 프롬프트를 만들고 싶어합니다:
 "{idea}"
@@ -335,7 +335,7 @@ def prompt_generate():
     try:
         import google.generativeai as genai
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-pro')
         
         answers_text = "\n".join([f"Q: {a['question']}\nA: {a['answer']}" for a in answers])
         
