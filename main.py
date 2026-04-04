@@ -296,9 +296,7 @@ def prompt_ask():
         return jsonify({"success": False, "error": "[필수] 구글 Gemini API 키가 없습니다. Render Environment에 GEMINI_API_KEY를 등록해주세요."})
         
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
         sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
 사용자가 다음의 작업을 수행하는 AI 프롬프트를 만들고 싶어합니다:
 "{idea}"
@@ -309,8 +307,16 @@ def prompt_ask():
   {{"id": 1, "question": "질문 내용...", "example": "예: ... 와 같이 적어주세요."}},
   {{"id": 2, "question": "...", "example": "..."}}
 ]"""
-        response = model.generate_content(sys_prompt)
-        text = response.text.strip()
+        payload = {
+            "contents": [{"parts": [{"text": sys_prompt}]}]
+        }
+        resp = requests.post(url, json=payload)
+        resp_data = resp.json()
+        
+        if 'error' in resp_data:
+            return jsonify({"success": False, "error": f"API 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"})
+            
+        text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
         if "```json" in text:
             text = text.split("```json")[1].split("```")[0].strip()
         elif "```" in text:
@@ -333,10 +339,6 @@ def prompt_generate():
         return jsonify({"success": False, "error": "API 키가 없습니다."})
         
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-pro')
-        
         answers_text = "\n".join([f"Q: {a['question']}\nA: {a['answer']}" for a in answers])
         
         sys_prompt = f"""당신은 세계 최고의 프롬프트 엔지니어입니다.
@@ -348,8 +350,18 @@ def prompt_generate():
 위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 영역에 작성해주세요.
 [역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 작성해주세요."""
 
-        response = model.generate_content(sys_prompt)
-        return jsonify({"success": True, "prompt": response.text.strip()})
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+        payload = {
+            "contents": [{"parts": [{"text": sys_prompt}]}]
+        }
+        resp = requests.post(url, json=payload)
+        resp_data = resp.json()
+        
+        if 'error' in resp_data:
+            return jsonify({"success": False, "error": f"API 통신 실패: {resp_data['error'].get('message', '알 수 없는 오류')}"})
+            
+        final_text = resp_data['candidates'][0]['content']['parts'][0]['text'].strip()
+        return jsonify({"success": True, "prompt": final_text})
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 통신 오류: {str(e)}"})
 
