@@ -173,12 +173,15 @@ def get_stock_data():
             sma50 = hist['SMA_50'].iloc[-1]
             rsi = hist['RSI'].iloc[-1]
             
+            sma50_str = f"{sma50:.2f}" if pd.notnull(sma50) else "N/A"
+            rsi_str = f"{rsi:.2f}" if pd.notnull(rsi) else "N/A"
+            
             p_prompt = f"""당신은 세계 최고의 월스트리트 기술적 차트 분석가입니다.
 종목: {ticker} ({raw_ticker})
 현재가: {current_p:.2f}
 최근 1개월 최고가: {high_1m:.2f} / 최저가: {low_1m:.2f}
-50일 이동평균선: {sma50:.2f if pd.notnull(sma50) else 'N/A'}
-현재 RSI (14일): {rsi:.2f if pd.notnull(rsi) else 'N/A'}
+50일 이동평균선: {sma50_str}
+현재 RSI (14일): {rsi_str}
 
 위 기술적 지표들을 종합하여 향후 차트 전개 방향을 예측하세요. 
 반드시 아래 JSON 형식으로만 응답해야 합니다.
