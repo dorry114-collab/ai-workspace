@@ -326,7 +326,10 @@
             <div class="stat-card" id="aiStopLossCard" style="display: none; border-color: rgba(255, 0, 85, 0.3); box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);">
                 <div class="stat-title">AI 제안 손절가 (Stop-Loss) <i class="fa-solid fa-shield-halved"></i></div>
                 <div class="stat-value" id="aiStopLossValue" style="color: #ff0055; font-size: 1.4rem; padding-top: 5px;">--</div>
-                <div class="stat-sub">주요 지지선 붕괴 방어선</div>
+                <div class="stat-sub" style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="aiStopLossSub">주요 지지선 붕괴 방어선</span>
+                    <span id="volTrendBadge" style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; color: #fff;">--</span>
+                </div>
             </div>
         </div>
 
@@ -409,6 +412,7 @@
             document.getElementById('backtestSub').textContent = '1달 전 예측 vs 현재가 비교';
             document.getElementById('aiAnalysisPanel').style.display = 'none';
             document.getElementById('aiStopLossCard').style.display = 'none';
+            document.getElementById('volTrendBadge').textContent = '--';
             
             if(myChart) {
                 myChart.destroy();
@@ -482,6 +486,18 @@
                     if (data.ai_analysis.stop_loss) {
                         document.getElementById('aiStopLossCard').style.display = 'block';
                         document.getElementById('aiStopLossValue').textContent = formatCurrency(data.ai_analysis.stop_loss);
+                        
+                        // 볼륨 트렌드
+                        if (data.volume_trend) {
+                            const badge = document.getElementById('volTrendBadge');
+                            badge.textContent = data.volume_trend;
+                            
+                            // 색상 설정
+                            if(data.volume_ratio >= 150) badge.style.background = 'rgba(255, 0, 85, 0.3)';
+                            else if(data.volume_ratio >= 110) badge.style.background = 'rgba(0, 240, 255, 0.2)';
+                            else if(data.volume_ratio <= 90) badge.style.background = 'rgba(139, 148, 158, 0.4)';
+                            else badge.style.background = 'rgba(255, 255, 255, 0.1)';
+                        }
                     }
                 } else {
                     document.getElementById('aiAnalysisPanel').style.display = 'none';

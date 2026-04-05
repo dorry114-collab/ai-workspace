@@ -176,6 +176,8 @@ def get_stock_data():
             past_predictions = []
             
         ai_data = None
+        vol_trend_str = "데이터 부족"
+        vol_ratio = 100
         if len(recent_data) > 30 and os.environ.get('GROQ_API_KEY'):
             api_key = os.environ.get('GROQ_API_KEY')
             current_p = recent_data['Close'].iloc[-1]
@@ -200,7 +202,13 @@ def get_stock_data():
             
             vol_ratio = (vol_today / vol_ma20 * 100) if pd.notnull(vol_ma20) and vol_ma20 > 0 else 100
             
-            p_prompt = f"""당신은 세계 최고의 월스트리트 기술적 차트 분석가입니다.
+            if vol_ratio >= 150: vol_trend_str = "거래량 폭발 (수급 집중) 💥"
+            elif vol_ratio >= 110: vol_trend_str = "거래량 증가 추세 📈"
+            elif vol_ratio <= 70: vol_trend_str = "거래량 대폭 감소 📉"
+            elif vol_ratio <= 90: vol_trend_str = "거래량 감소 추세 🔻"
+            else: vol_trend_str = "평균 수준의 거래량"
+            
+            p_prompt = f"""당신은 왕초보들을 가르치는 동네 주식 학원의 가장 다정하고 친절한 1타 강사입니다.
 종목: {ticker} ({raw_ticker})
 현재가: {current_p:.2f}
 최근 1개월 최고가: {high_1m:.2f} / 최저가: {low_1m:.2f}
@@ -210,10 +218,10 @@ def get_stock_data():
 MACD 추세: {macd_str} (시그널 {macd_sig_str})
 최근 거래량: 20일 평균 대비 {vol_ratio:.1f}% 수준
 
-위 기술적 지표들을 종합하여 향후 차트 전개 방향을 예측하세요. 
+위 기술적 지표들을 종합하여 향후 차트 전개 방향을 아주아주 쉽게 예측하세요. 
 반드시 아래 JSON 형식으로만 응답해야 합니다.
 {{
-  "analysis": "초보자도 이해할 수 있는 친절한 차트 분석 (4~5문장). 한자(Hanja)는 단 한 글자도 쓰지 말고 100% 자연스러운 한국어(한글)로만 작성하세요. RSI 하나만 보지 말고, 거래량 폭발 여부(수급), 볼린저밴드 위치(상하단 저항), MACD 교차 여부(추세)를 종합적으로 전부 고려해서 입체적으로 분석하세요. 관련된 지표 용어를 꺼낼 때는 반드시 초보자가 이해하기 쉽게 이게 왜 좋은 신호인지/나쁜 신호인지 뜻을 풀어서 다정하게 설명하며 작성해야 합니다.",
+  "analysis": "오늘 주식을 처음 시작한 초등학생도 고개를 끄덕일 수 있는 아주 쉽고 다정한 차트 분석 (4~5문장). 한자(Hanja)는 절대로 단 한 글자도 쓰지 말고 100% 자연스러운 한국어(한글)로 작성하세요. RSI, 볼린저밴드, MACD 등의 전문 용어를 쓸 때는 반드시 괄호를 열고, 그 숨은 뜻이 무엇인지(예: '지금 지표가 이래서 사람들이 많이 팔고 있다는 신호예요~' 등) 완벽하게 풀어서 설명해야 합니다. 절대로 전문가처럼 딱딱하게 말하지 말고, 무조건 초보자 눈높이에서 해석의 '결론'을 떠먹여 주세요.",
   "target_price": 1개월 뒤 현실적인 목표가(숫자만),
   "stop_loss": 현재 복합 지지라인 기반의 명확한 손절가(숫자만)
 }}"""
@@ -235,7 +243,9 @@ MACD 추세: {macd_str} (시그널 {macd_sig_str})
             'predictions': predictions,
             'past_predictions': past_predictions,
             'pred_days': prediction_days,
-            'ai_analysis': ai_data
+            'ai_analysis': ai_data,
+            'volume_trend': vol_trend_str,
+            'volume_ratio': vol_ratio
         })
         
     except Exception as e:
