@@ -323,6 +323,20 @@
                 <div class="stat-value" id="backtestAccuracy" style="font-size: 1.4rem; padding-top: 5px;">--</div>
                 <div class="stat-sub" id="backtestSub">1달 전 예측 vs 현재가 비교</div>
             </div>
+            <div class="stat-card" id="aiStopLossCard" style="display: none; border-color: rgba(255, 0, 85, 0.3); box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);">
+                <div class="stat-title">AI 제안 손절가 (Stop-Loss) <i class="fa-solid fa-shield-halved"></i></div>
+                <div class="stat-value" id="aiStopLossValue" style="color: #ff0055; font-size: 1.4rem; padding-top: 5px;">--</div>
+                <div class="stat-sub">주요 지지선 붕괴 방어선</div>
+            </div>
+        </div>
+
+        <div id="aiAnalysisPanel" class="stat-card" style="display: none; margin-top: -0.5rem; background: rgba(0, 240, 255, 0.03); border-color: rgba(0, 240, 255, 0.2);">
+            <div class="stat-title" style="color: var(--primary); font-size: 1.1rem; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 0.8rem; margin-bottom: 1rem;">
+                <i class="fa-solid fa-brain"></i> AI 차트 전문가 딥러닝 리포트
+            </div>
+            <div id="aiAnalysisText" style="line-height: 1.6; font-size: 1.05rem; color: #fff;">
+                <!-- AI text goes here -->
+            </div>
         </div>
 
         <div class="chart-container">
@@ -393,6 +407,8 @@
             document.getElementById('predictionChange').className = 'stat-sub';
             document.getElementById('backtestAccuracy').textContent = '--';
             document.getElementById('backtestSub').textContent = '1달 전 예측 vs 현재가 비교';
+            document.getElementById('aiAnalysisPanel').style.display = 'none';
+            document.getElementById('aiStopLossCard').style.display = 'none';
             
             if(myChart) {
                 myChart.destroy();
@@ -457,6 +473,20 @@
                     document.getElementById('backtestAccuracy').innerHTML = '<span style="color: var(--text-muted); font-size: 1.1rem;">데이터 부족</span>';
                     document.getElementById('backtestSub').textContent = '상장 기간 60일 미만';
                 }
+                
+                // AI 분석 데이터 UI 업데이트
+                if (data.ai_analysis) {
+                    document.getElementById('aiAnalysisPanel').style.display = 'block';
+                    document.getElementById('aiAnalysisText').textContent = data.ai_analysis.analysis;
+                    
+                    if (data.ai_analysis.stop_loss) {
+                        document.getElementById('aiStopLossCard').style.display = 'block';
+                        document.getElementById('aiStopLossValue').textContent = formatCurrency(data.ai_analysis.stop_loss);
+                    }
+                } else {
+                    document.getElementById('aiAnalysisPanel').style.display = 'none';
+                    document.getElementById('aiStopLossCard').style.display = 'none';
+                }
             }
         }
 
@@ -476,6 +506,21 @@
             const parsedPredsUpper = data.predictions.map(d => ({ x: d.date, y: d.upper_band }));
             const parsedPredsLower = data.predictions.map(d => ({ x: d.date, y: d.lower_band }));
             const parsedPastPreds = (data.past_predictions || []).map(d => ({ x: d.date, y: d.backtest_close }));
+
+            let aiStopLossData = [];
+            let aiTargetData = [];
+            if (data.ai_analysis && data.historical.length > 0) {
+                const allDates = [...data.historical.map(d=>d.date), ...data.predictions.map(d=>d.date)];
+                
+                if (data.ai_analysis.stop_loss) {
+                    const slVal = Number(data.ai_analysis.stop_loss);
+                    if (!isNaN(slVal)) aiStopLossData = allDates.map(date => ({ x: date, y: slVal }));
+                }
+                if (data.ai_analysis.target_price) {
+                    const tpVal = Number(data.ai_analysis.target_price);
+                    if (!isNaN(tpVal)) aiTargetData = allDates.map(date => ({ x: date, y: tpVal }));
+                }
+            }
 
             // 그래디언트 생성
             const gradientPrimary = ctx.createLinearGradient(0, 0, 0, 400);
@@ -579,6 +624,33 @@
                             pointHoverBorderColor: '#fce83a',
                             yAxisID: 'y',
                             order: 2
+                        },
+                        {
+                            label: 'AI 목표가 (1개월)',
+                            data: aiTargetData,
+                            borderColor: '#00ff88',
+                            borderWidth: 2,
+                            borderDash: [15, 5],
+                            fill: false,
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            yAxisID: 'y',
+                            order: -1
+                        },
+                        {
+                            label: 'AI 손절가 (방어선)',
+                            data: aiStopLossData,
+                            borderColor: 'rgba(255, 0, 85, 0.8)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            backgroundColor: 'rgba(255, 0, 85, 0.05)',
+                            fill: 'start', // shade below the stop loss
+                            tension: 0,
+                            pointRadius: 0,
+                            pointHoverRadius: 0,
+                            yAxisID: 'y',
+                            order: -2
                         }
                     ]
                 },

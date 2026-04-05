@@ -64,6 +64,14 @@ def get_stock_data():
         hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
         hist['SMA_50'] = hist['Close'].rolling(window=50).mean()
         
+        delta = hist['Close'].diff()
+        gain = delta.where(delta > 0, 0)
+        loss = -delta.where(delta < 0, 0)
+        avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+        avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+        rs = avg_gain / avg_loss
+        hist['RSI'] = 100 - (100 / (1 + rs))
+        
         historical_data = []
         for index, row in hist.iterrows():
             c_val = float(row['Close']) if not pd.isna(row['Close']) else None
@@ -156,6 +164,39 @@ def get_stock_data():
             predictions = []
             past_predictions = []
             
+        ai_data = None
+        if len(recent_data) > 30 and os.environ.get('GROQ_API_KEY'):
+            api_key = os.environ.get('GROQ_API_KEY')
+            current_p = recent_data['Close'].iloc[-1]
+            high_1m = recent_data['High'].tail(21).max() if 'High' in recent_data else current_p
+            low_1m = recent_data['Low'].tail(21).min() if 'Low' in recent_data else current_p
+            sma50 = hist['SMA_50'].iloc[-1]
+            rsi = hist['RSI'].iloc[-1]
+            
+            p_prompt = f"""당신은 세계 최고의 월스트리트 기술적 차트 분석가입니다.
+종목: {ticker} ({raw_ticker})
+현재가: {current_p:.2f}
+최근 1개월 최고가: {high_1m:.2f} / 최저가: {low_1m:.2f}
+50일 이동평균선: {sma50:.2f if pd.notnull(sma50) else 'N/A'}
+현재 RSI (14일): {rsi:.2f if pd.notnull(rsi) else 'N/A'}
+
+위 기술적 지표들을 종합하여 향후 차트 전개 방향을 예측하세요. 
+반드시 아래 JSON 형식으로만 응답해야 합니다.
+{{
+  "analysis": "현재 지지선, 저항선, 흐름을 바탕으로 한 기술적 분석 내용 3~4문장. 아주 전문적이고 통찰력 있어야 함.",
+  "target_price": 1개월 뒤 현실적인 목표가(숫자만),
+  "stop_loss": 현재 지지라인 기반의 명확한 손절가(숫자만)
+}}"""
+            try:
+                success, text = _call_groq(api_key, p_prompt)
+                if success:
+                    if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+                    elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
+                    import json
+                    ai_data = json.loads(text)
+            except Exception as e:
+                print(f"AI Chart Error: {e}")
+            
         return jsonify({
             'success': True,
             'ticker': ticker,
@@ -163,7 +204,8 @@ def get_stock_data():
             'historical': historical_data,
             'predictions': predictions,
             'past_predictions': past_predictions,
-            'pred_days': prediction_days
+            'pred_days': prediction_days,
+            'ai_analysis': ai_data
         })
         
     except Exception as e:
