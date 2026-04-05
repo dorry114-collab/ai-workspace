@@ -62,7 +62,18 @@ def get_stock_data():
         hist['Date'] = pd.to_datetime(hist['Date'])
         
         hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
+        hist['STD_20'] = hist['Close'].rolling(window=20).std()
+        hist['BB_Upper'] = hist['SMA_20'] + (hist['STD_20'] * 2)
+        hist['BB_Lower'] = hist['SMA_20'] - (hist['STD_20'] * 2)
+        
         hist['SMA_50'] = hist['Close'].rolling(window=50).mean()
+        
+        hist['EMA_12'] = hist['Close'].ewm(span=12, adjust=False).mean()
+        hist['EMA_26'] = hist['Close'].ewm(span=26, adjust=False).mean()
+        hist['MACD'] = hist['EMA_12'] - hist['EMA_26']
+        hist['MACD_Signal'] = hist['MACD'].ewm(span=9, adjust=False).mean()
+        
+        hist['Vol_MA_20'] = hist['Volume'].rolling(window=20).mean()
         
         delta = hist['Close'].diff()
         gain = delta.where(delta > 0, 0)
@@ -173,8 +184,21 @@ def get_stock_data():
             sma50 = hist['SMA_50'].iloc[-1]
             rsi = hist['RSI'].iloc[-1]
             
+            bb_upper = hist['BB_Upper'].iloc[-1]
+            bb_lower = hist['BB_Lower'].iloc[-1]
+            macd = hist['MACD'].iloc[-1]
+            macd_signal = hist['MACD_Signal'].iloc[-1]
+            vol_today = hist['Volume'].iloc[-1]
+            vol_ma20 = hist['Vol_MA_20'].iloc[-1]
+            
             sma50_str = f"{sma50:.2f}" if pd.notnull(sma50) else "N/A"
             rsi_str = f"{rsi:.2f}" if pd.notnull(rsi) else "N/A"
+            bb_upper_str = f"{bb_upper:.2f}" if pd.notnull(bb_upper) else "N/A"
+            bb_lower_str = f"{bb_lower:.2f}" if pd.notnull(bb_lower) else "N/A"
+            macd_str = f"{macd:.2f}" if pd.notnull(macd) else "N/A"
+            macd_sig_str = f"{macd_signal:.2f}" if pd.notnull(macd_signal) else "N/A"
+            
+            vol_ratio = (vol_today / vol_ma20 * 100) if pd.notnull(vol_ma20) and vol_ma20 > 0 else 100
             
             p_prompt = f"""당신은 세계 최고의 월스트리트 기술적 차트 분석가입니다.
 종목: {ticker} ({raw_ticker})
@@ -182,13 +206,16 @@ def get_stock_data():
 최근 1개월 최고가: {high_1m:.2f} / 최저가: {low_1m:.2f}
 50일 이동평균선: {sma50_str}
 현재 RSI (14일): {rsi_str}
+볼린저밴드 (20일): 상단 {bb_upper_str} / 하단 {bb_lower_str}
+MACD 추세: {macd_str} (시그널 {macd_sig_str})
+최근 거래량: 20일 평균 대비 {vol_ratio:.1f}% 수준
 
 위 기술적 지표들을 종합하여 향후 차트 전개 방향을 예측하세요. 
 반드시 아래 JSON 형식으로만 응답해야 합니다.
 {{
-  "analysis": "초보자도 이해할 수 있는 친절한 차트 분석 (4~5문장). 한자(Hanja)는 단 한 글자도 쓰지 말고 100% 자연스러운 한국어(한글)로만 작성하세요. RSI, 이동평균선, 지지선/저항선 등의 전문 용어를 언급할 때, 그게 무슨 뜻인지(예: 'RSI는 단기 과열을 보여주는데 현재 30이라 너무 많이 떨어져서 반등이 기대됩니다' 등)를 반드시 풀어서 친절하게 설명하며 분석결과를 알려주세요. 마치 1타 강사가 초보자에게 차트 공부를 시켜주듯 다정하게 작성해야 합니다.",
+  "analysis": "초보자도 이해할 수 있는 친절한 차트 분석 (4~5문장). 한자(Hanja)는 단 한 글자도 쓰지 말고 100% 자연스러운 한국어(한글)로만 작성하세요. RSI 하나만 보지 말고, 거래량 폭발 여부(수급), 볼린저밴드 위치(상하단 저항), MACD 교차 여부(추세)를 종합적으로 전부 고려해서 입체적으로 분석하세요. 관련된 지표 용어를 꺼낼 때는 반드시 초보자가 이해하기 쉽게 이게 왜 좋은 신호인지/나쁜 신호인지 뜻을 풀어서 다정하게 설명하며 작성해야 합니다.",
   "target_price": 1개월 뒤 현실적인 목표가(숫자만),
-  "stop_loss": 현재 지지라인 기반의 명확한 손절가(숫자만)
+  "stop_loss": 현재 복합 지지라인 기반의 명확한 손절가(숫자만)
 }}"""
             try:
                 success, text = _call_groq(api_key, p_prompt)
