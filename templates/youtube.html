@@ -46,6 +46,7 @@
             margin: 0 0 1rem 0;
             background: linear-gradient(to right, #fb7185, #c084fc, #818cf8);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 700;
             letter-spacing: -1px;
@@ -371,6 +372,26 @@
         
         .toast.show {
             transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            h1 { font-size: 2rem; }
+            p.subtitle { font-size: 0.95rem; }
+            header { padding-top: 0; margin-bottom: 1rem; }
+            
+            .input-group { flex-direction: column; padding: 1rem; }
+            input { width: 100%; box-sizing: border-box; text-align: center; }
+            button.primary-btn { width: 100%; padding: 1rem; }
+            
+            .limit-options { flex-wrap: wrap; gap: 8px; }
+            .btn-limit { flex: 1; min-width: 30%; text-align: center; font-size: 0.85rem; padding: 8px; }
+            
+            .extract-panel { padding: 1rem; }
+            .extract-header { flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; }
+            .btn-copy { justify-content: center; }
+            .text-area-result { font-size: 0.85rem; }
         }
     </style>
 </head>

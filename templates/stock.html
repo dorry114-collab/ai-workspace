@@ -273,8 +273,15 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            header { flex-direction: column; gap: 1rem; }
-            .chart-container { height: 400px; }
+            header { flex-direction: column; padding: 1rem; gap: 1rem; align-items: stretch; text-align: center; }
+            header > div:first-child { justify-content: center; margin-bottom: 0.5rem; }
+            .search-container { width: 100%; display: flex; flex-direction: column; padding: 0; border: none; background: transparent; }
+            .search-input, .search-btn { width: 100%; max-width: none; text-align: center; padding: 12px; font-size: 1.1rem; }
+            main { padding: 1rem; gap: 1rem; }
+            .dashboard { grid-template-columns: 1fr; gap: 1rem; }
+            .chart-container { height: 450px; padding: 1rem; }
+            .chart-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .chart-legend { flex-wrap: wrap; gap: 8px; font-size: 0.75rem; }
         }
         
         canvas {
