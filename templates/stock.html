@@ -318,6 +318,11 @@
                 <div class="stat-value" id="trendDirection" style="font-size: 1.4rem; padding-top: 5px;">--</div>
                 <div class="stat-sub" style="color: var(--text-muted)">최근 6개월 기반 선형회귀 분석</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-title">과거 1개월 예측 신뢰도 <i class="fa-solid fa-bullseye"></i></div>
+                <div class="stat-value" id="backtestAccuracy" style="font-size: 1.4rem; padding-top: 5px;">--</div>
+                <div class="stat-sub" id="backtestSub">1달 전 예측 vs 현재가 비교</div>
+            </div>
         </div>
 
         <div class="chart-container">
@@ -383,10 +388,11 @@
             
             // clear dashboard
             document.getElementById('currentPrice').textContent = '--';
-            document.getElementById('predictedPrice').textContent = '--';
             document.getElementById('predictionChange').textContent = '--';
             document.getElementById('trendDirection').textContent = '--';
             document.getElementById('predictionChange').className = 'stat-sub';
+            document.getElementById('backtestAccuracy').textContent = '--';
+            document.getElementById('backtestSub').textContent = '1달 전 예측 vs 현재가 비교';
             
             if(myChart) {
                 myChart.destroy();
@@ -431,6 +437,25 @@
                         changeEl.className = 'stat-sub neutral';
                         trendEl.innerHTML = '<span class="neutral">횡보 (Sideways)</span>';
                     }
+                }
+                
+                // 백테스트 예측 신뢰도 (1달 전 예측치 vs 오늘 실제)
+                if (data.past_predictions && data.past_predictions.length > 0) {
+                    const finalBacktest = data.past_predictions[data.past_predictions.length - 1].backtest_close;
+                    const errorDiff = Math.abs(finalBacktest - currentPrice);
+                    const errorPct = (errorDiff / currentPrice) * 100;
+                    
+                    let rating = '';
+                    let rColor = '';
+                    if (errorPct <= 5) { rating = '신뢰도 매우 높음'; rColor = 'positive'; }
+                    else if (errorPct <= 15) { rating = '신뢰도 보통'; rColor = 'neutral'; }
+                    else { rating = '신뢰도 낮음 (주의)'; rColor = 'negative'; }
+                    
+                    document.getElementById('backtestAccuracy').innerHTML = `<span class="${rColor}">오차율 ${errorPct.toFixed(2)}% (${rating})</span>`;
+                    document.getElementById('backtestSub').innerHTML = `예측: ${formatCurrency(finalBacktest)} / 실제: ${formatCurrency(currentPrice)}`;
+                } else {
+                    document.getElementById('backtestAccuracy').innerHTML = '<span style="color: var(--text-muted); font-size: 1.1rem;">데이터 부족</span>';
+                    document.getElementById('backtestSub').textContent = '상장 기간 60일 미만';
                 }
             }
         }
