@@ -454,10 +454,11 @@
                     <button class="btn-play" id="playBtn" onclick="togglePlay()">
                         <i class="fa-solid fa-play"></i> 프리뷰 영상 재생
                     </button>
-                    <!-- Future MP4 Button (Placeholder) -->
-                    <button class="btn-play" style="background: rgba(255,255,255,0.1); box-shadow: none; flex: 0.5;" onclick="alert('MP4 추출 기능은 파이썬 백엔드 연동 후 오픈됩니다!')">
-                        <i class="fa-solid fa-download"></i> MP4 추출
+                    <div class="btn-group" style="margin-top:20px;">
+                    <button class="btn-extract" id="extractMp4Btn" onclick="extractMP4()">
+                        <i class="fa-solid fa-download"></i> 완성된 쇼츠 MP4 다운로드
                     </button>
+                    <div id="exportStatus" style="display:none; color: var(--primary-accent); margin-top: 10px; font-weight: 500;"></div>
                 </div>
             </div>
 
@@ -750,11 +751,16 @@
 
             const textToSpeak = sentences[currentSentenceIndex];
             
-            // Change image on every 2 sentences to match pacing, or if very short, every sentence.
+            // 전체 대본 길이에 대비해 갤러리 사진을 균등하게 배분하여 할당
             if (uploadedImages.length > 0) {
-                // simple round-robin
-                currentImageIndex = currentSentenceIndex % uploadedImages.length;
-                setVisualImage(currentImageIndex);
+                const imgIdx = Math.floor((currentSentenceIndex / sentences.length) * uploadedImages.length);
+                const safeImgIdx = Math.min(imgIdx, uploadedImages.length - 1);
+                
+                // 새로운 인덱스로 변경될 때만 배경 전환 애니메이션 실행
+                if (safeImgIdx !== currentImageIndex || currentSentenceIndex === 0) {
+                    currentImageIndex = safeImgIdx;
+                    setVisualImage(currentImageIndex);
+                }
             }
 
             // Subtitle UI
@@ -834,6 +840,54 @@
             sBox.textContent = "테스트가 종료되었습니다.";
         }
         
+        async function extractMP4() {
+            const rawText = document.getElementById('scriptInput').value;
+            if (!rawText.trim() || uploadedImages.length === 0) {
+                alert("대본과 갤러리 이미지가 모두 준비되어야 다운로드할 수 있습니다.");
+                return;
+            }
+
+            const btn = document.getElementById('extractMp4Btn');
+            const statusBox = document.getElementById('exportStatus');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 파이썬 서버에서 고화질 렌더링 중 (약 30초 소요)...';
+            statusBox.style.display = 'block';
+            statusBox.innerHTML = "💡 서버의 GPU 자원을 할당받아 합성을 시작합니다. 잠시만 기다려주세요!";
+
+            try {
+                const response = await fetch('/api/shorts/export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        script: rawText,
+                        images: uploadedImages,
+                        bgm_url: bgmAudio.src || ""
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    statusBox.innerHTML = "✨ 렌더링 완료! 동영상을 다운로드합니다.";
+                    
+                    // Create invisible anchor to trigger download
+                    const a = document.createElement('a');
+                    a.href = data.url;
+                    a.download = data.url.split('/').pop();
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } else {
+                    alert('렌더링 실패: ' + data.error);
+                    statusBox.innerHTML = "❌ 렌더링 중 오류가 발생했습니다.";
+                }
+            } catch (err) {
+                alert('통신 오류: ' + err);
+                statusBox.innerHTML = "❌ 서비 통신 실패.";
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-download"></i> 완성된 쇼츠 MP4 다운로드';
+            }
+        }
     </script>
 </body>
 </html>

@@ -609,6 +609,162 @@ Input sentences (JSON array):
     except Exception as e:
         return jsonify({"success": False, "error": f"Failed to parse LLM response: {str(e)}", "raw_text": text})
 
+@app.route('/api/shorts/export', methods=['POST'])
+def export_mp4():
+    data = request.json
+    script = data.get('script', '')
+    images = data.get('images', [])
+    bgm_url = data.get('bgm_url', '')
+
+    if not script or not images:
+        return jsonify({'success': False, 'error': '대본과 이미지가 필수입니다.'})
+
+    # Prepare temp directory
+    temp_dir = tempfile.mkdtemp()
+    output_filename = f"shorts_{uuid.uuid4().hex[:8]}.mp4"
+    output_path = os.path.join(app.root_path, 'static', output_filename)
+    
+    font_path = os.path.join(app.root_path, 'static', 'NanumGothic.ttf')
+    # Use default font fallback if nanum not found
+    pil_font = None
+    try:
+        pil_font = ImageFont.truetype(font_path, 40)
+    except:
+        pil_font = ImageFont.load_default()
+
+    sentences = [s.strip() for s in re.split(r'[.?!|\n]+', script) if s.strip()]
+    if not sentences:
+        sentences = ["대본이 없습니다."]
+
+    from moviepy import ImageClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
+
+    try:
+        clips = []
+        for i, text in enumerate(sentences):
+            # 1. Generate TTS
+            audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
+            tts = gTTS(text=text, lang='ko', slow=False)
+            tts.save(audio_path)
+            
+            # Load audio to get duration
+            audio_clip = AudioFileClip(audio_path)
+            duration = audio_clip.duration
+            if duration < 1.0: duration = 1.0 # Minimum 1 sec
+
+            # 2. Get corresponding Image
+            img_idx = math.floor((i / len(sentences)) * len(images))
+            safe_img_idx = min(img_idx, len(images) - 1)
+            img_src = images[safe_img_idx]
+
+            # 3. Load & Process Image via Pillow
+            img_file_path = os.path.join(temp_dir, f"img_{i}_{safe_img_idx}.png")
+            
+            pil_img = None
+            if img_src.startswith('data:image'):
+                header, encoded = img_src.split(',', 1)
+                img_data = base64.b64decode(encoded)
+                pil_img = PILImage.open(BytesIO(img_data)).convert('RGB')
+            else:
+                req = urllib.request.Request(img_src, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    pil_img = PILImage.open(BytesIO(response.read())).convert('RGB')
+
+            # Crop and resize to 720x1280
+            target_w, target_h = 720, 1280
+            w, h = pil_img.size
+            if w/h > target_w/target_h: # Too wide
+                new_w = int(h * target_w/target_h)
+                offset = (w - new_w) // 2
+                pil_img = pil_img.crop((offset, 0, offset + new_w, h))
+            else: # Too tall
+                new_h = int(w * target_h/target_w)
+                offset = (h - new_h) // 2
+                pil_img = pil_img.crop((0, offset, w, offset + new_h))
+            
+            pil_img = pil_img.resize((target_w, target_h), PILImage.Resampling.LANCZOS)
+            
+            # Draw Text
+            draw = ImageDraw.Draw(pil_img)
+            # Simple text wrap
+            words = text.split()
+            lines = []
+            curr_line = []
+            for w in words:
+                curr_line.append(w)
+                if len(" ".join(curr_line)) > 15:
+                    lines.append(" ".join(curr_line))
+                    curr_line = []
+            if curr_line: lines.append(" ".join(curr_line))
+            
+            text_str = "\\n".join(lines)
+            
+            # Draw semi-transparent background and text
+            bbox = draw.multiline_textbbox((0, 0), text_str, font=pil_font, align="center")
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = (target_w - text_w) / 2
+            y = target_h - text_h - 150
+            
+            draw.rectangle([x-20, y-20, x+text_w+20, y+text_h+20], fill=(0,0,0,180))
+            draw.multiline_text((x, y), text_str, font=pil_font, fill=(255,255,255), align="center")
+            
+            pil_img.save(img_file_path)
+            
+            # 4. Create MoviePy Clip (v2 uses with_duration)
+            vclip = ImageClip(img_file_path).with_duration(duration)
+            vclip = vclip.with_audio(audio_clip)
+            clips.append(vclip)
+
+        # 5. Concatenate all sentences
+        final_video = concatenate_videoclips(clips, method="compose")
+
+        # 6. Add BGM if provided
+        final_audio = final_video.audio
+        if bgm_url:
+            bgm_path = os.path.join(temp_dir, "bgm.mp3")
+            if bgm_url.startswith('data:audio'):
+                header, encoded = bgm_url.split(',', 1)
+                with open(bgm_path, "wb") as f:
+                    f.write(base64.b64decode(encoded))
+            else:
+                req = urllib.request.Request(bgm_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req) as response:
+                    with open(bgm_path, "wb") as f:
+                        f.write(response.read())
+            
+            bgm_clip = AudioFileClip(bgm_path)
+            # Loop BGM to match video length
+            # In v2, volumex is just clip.with_volume_multiplier or fx.volumex(clip, 0.2)
+            # A safer way across versions is multiplying the clip instance or using volumex
+            from moviepy.audio.fx import MultiplyVolume
+            bgm_clip = bgm_clip.with_effects([MultiplyVolume(0.15)])
+            
+            # Cut BGM to final_video length (v2: with_duration or subclipped)
+            from moviepy.video.fx import Loop
+            if bgm_clip.duration < final_video.duration:
+                bgm_clip = bgm_clip.with_effects([Loop(duration=final_video.duration)])
+            else:
+                bgm_clip = bgm_clip.subclipped(0, final_video.duration)
+                
+            final_audio = CompositeAudioClip([final_audio, bgm_clip])
+            final_video = final_video.with_audio(final_audio)
+
+        # 7. Write to MP4
+        # v2 parameter is logger=None to avoid stdout spam
+        final_video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac", logger=None)
+        
+        # Cleanup clips explicitly to free resources
+        final_video.close()
+        for c in clips:
+            c.close()
+
+        return jsonify({'success': True, 'url': f"/static/{output_filename}"})
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)})
+
+
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
     # This block is for simple local testing via `python main.py`
