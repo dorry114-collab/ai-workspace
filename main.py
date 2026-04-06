@@ -23,6 +23,8 @@ from PIL import Image as PILImage, ImageDraw, ImageFont
 
 app = Flask(__name__)
 
+# Global dict for tracking AI Shorts MP4 export tasks asynchronously
+render_jobs = {}
 # --- GLOBAL SETTINGS ---
 ssl._create_default_https_context = ssl._create_unverified_context
 
