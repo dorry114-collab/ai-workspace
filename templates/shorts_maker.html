@@ -373,6 +373,22 @@
                     </div>
                 </div>
 
+                <h2><i class="fa-solid fa-music"></i> 3단계: BGM (배경음악) 추가</h2>
+                <div class="editor-section">
+                    <span class="editor-label">쇼츠에 감성을 더해줄 MP3 음악 파일을 선택해 주세요 (자동 반복 재생됩니다).</span>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <button class="btn-play" style="flex: none; padding: 10px 15px; font-size:1rem; box-shadow:none; border-radius: 8px;" onclick="document.getElementById('bgmInput').click()">
+                            <i class="fa-solid fa-folder-open"></i> BGM 열기
+                        </button>
+                        <input type="file" id="bgmInput" accept="audio/*" style="display:none;" onchange="handleBgmFile(event)">
+                        
+                        <div id="bgmFileName" style="color: var(--primary-accent); font-weight: 500; font-size: 0.95rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                            선택된 음악이 없습니다.
+                        </div>
+                    </div>
+                </div>
+
                 <div class="btn-group">
                     <button class="btn-play" id="playBtn" onclick="togglePlay()">
                         <i class="fa-solid fa-play"></i> 프리뷰 영상 재생
@@ -431,6 +447,24 @@
         let currentImageIndex = 0;
         let speechSynth = window.speechSynthesis;
         let utterance = null;
+        let bgmAudio = new Audio();
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0.2; // BGM volume lower than TTS
+
+        // BGM Handling
+        function handleBgmFile(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+            
+            const file = files[0];
+            document.getElementById('bgmFileName').innerHTML = `<i class="fa-solid fa-file-audio"></i> ${file.name} (준비 완료)`;
+            
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                bgmAudio.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
 
         // Image Handling
         function handleFiles(e) {
@@ -617,12 +651,18 @@
                 return;
             }
 
-            // Stop any ongoing speech
-            speechSynth.cancel();
-            
             isPlaying = true;
             currentSentenceIndex = 0;
             currentImageIndex = 0;
+
+            // Stop any ongoing speech
+            speechSynth.cancel();
+            
+            // Start BGM if loaded
+            if (bgmAudio.src) {
+                bgmAudio.currentTime = 0;
+                bgmAudio.play().catch(e => console.log("BGM play error:", e));
+            }
 
             const playBtn = document.getElementById('playBtn');
             playBtn.innerHTML = '<i class="fa-solid fa-stop"></i> 중지하기';
@@ -634,6 +674,10 @@
         function stopPlayback() {
             isPlaying = false;
             speechSynth.cancel();
+            
+            // Stop BGM
+            bgmAudio.pause();
+            bgmAudio.currentTime = 0;
             
             const playBtn = document.getElementById('playBtn');
             playBtn.innerHTML = '<i class="fa-solid fa-play"></i> 프리뷰 영상 재생';
