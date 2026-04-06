@@ -360,9 +360,8 @@ def extract_channel_videos(channel_input, limit=50):
                 'view_count': views
             })
             
-        # 4. Strict absolute sort by viewCount descending (only for channel fetch)
-        if not is_search_query:
-            results.sort(key=lambda x: x['view_count'], reverse=True)
+        # 4. Strict absolute sort by viewCount descending
+        results.sort(key=lambda x: x['view_count'], reverse=True)
             
         return {"success": True, "data": results[:limit], "channel": channel_input, "is_search": is_search_query}
         
