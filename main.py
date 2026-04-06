@@ -569,6 +569,45 @@ def api_lotto():
         "bottom_combinations": bottom_combs
     })
 
+@app.route('/shorts')
+def shorts_maker():
+    return render_template('shorts_maker.html')
+
+@app.route('/api/shorts/prompts', methods=['POST'])
+def generate_shorts_prompts():
+    data = request.json
+    sentences = data.get('sentences', [])
+    if not sentences:
+        return jsonify({"success": False, "error": "No sentences provided."})
+        
+    api_key = os.environ.get('GROQ_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "[필수] Groq API 키가 없습니다. Render Environment에 GROQ_API_KEY를 등록해주세요."})
+        
+    import json
+    sys_prompt = f"""You are an expert AI image prompt engineer for YouTube Shorts generation. 
+I will provide you a JSON array of Korean sentences from a video script. 
+For each sentence, translate the core meaning and visual elements into a highly descriptive, aesthetic English prompt that works perfectly for text-to-image AI (like Midjourney or Stable Diffusion). 
+The output MUST be a strict, valid JSON array of strings, where each string is the English prompt corresponding to the input sentence. 
+Every single prompt MUST include keywords like: 'vertical orientation, 9:16 aspect ratio, masterpiece, highly detailed, high quality, 8k resolution, cinematic lighting'. Do not output any markdown blocks like ```json, just the raw JSON array string. No explanations.
+
+Input sentences (JSON array):
+{json.dumps(sentences, ensure_ascii=False)}
+"""
+    success, text = _call_groq(api_key, sys_prompt)
+    if not success:
+        return jsonify({"success": False, "error": text})
+        
+    try:
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        english_prompts = json.loads(text)
+        return jsonify({"success": True, "prompts": english_prompts})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Failed to parse LLM response: {str(e)}", "raw_text": text})
 
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
