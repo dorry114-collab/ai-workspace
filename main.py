@@ -269,17 +269,17 @@ def extract_channel_videos(channel_input, limit=50):
         handle = channel_input
         if 'youtube.com/@' in handle:
             handle = '@' + handle.split('youtube.com/@')[1].split('/')[0].split('?')[0]
-        if not handle.startswith('@') and 'youtube.com/' not in handle:
-            handle = '@' + handle
             
-        channels_url = f"https://youtube.googleapis.com/youtube/v3/channels?part=id&forHandle={handle}&key={api_key}"
-        try:
-            resp = requests.get(channels_url)
-            data = resp.json()
-            if 'items' in data and len(data['items']) > 0:
-                channel_id = data['items'][0]['id']
-        except Exception as e:
-            pass
+        # 사용자가 명시적으로 '@'를 붙였거나, URL 분석 결과 '@핸들'이 추출된 경우에만 채널 고유 ID를 가져오도록 시도
+        if handle.startswith('@'):
+            channels_url = f"https://youtube.googleapis.com/youtube/v3/channels?part=id&forHandle={handle}&key={api_key}"
+            try:
+                resp = requests.get(channels_url)
+                data = resp.json()
+                if 'items' in data and len(data['items']) > 0:
+                    channel_id = data['items'][0]['id']
+            except Exception as e:
+                pass
             
     is_search_query = False
     search_query = ""
