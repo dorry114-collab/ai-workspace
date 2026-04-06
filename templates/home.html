@@ -109,12 +109,16 @@
         .card[data-type="youtube"] { --card-color: #ff0000; }
         .card[data-type="stock"] { --card-color: #00f0ff; }
         .card[data-type="prompt"] { --card-color: #b100ff; }
+        .card[data-type="lotto"] { --card-color: #10b981; }
 
         .card[data-type="youtube"] .icon-box {
             filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.3));
         }
         .card[data-type="prompt"] .icon-box {
             filter: drop-shadow(0 0 15px rgba(177, 0, 255, 0.3));
+        }
+        .card[data-type="lotto"] .icon-box {
+            filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3));
         }
 
         h2 {
@@ -164,6 +168,14 @@
                 <h2>AI 프롬프트 최적화기</h2>
                 <div class="description">
                     아이디어를 건네주면 AI가 5가지 역질문을 통해 의도를 파악하고, 구글 Gemini가 가장 기가막힌 마스터 프롬프트를 짜드립니다.
+                </div>
+            </a>
+
+            <a href="/lotto" class="card" data-type="lotto">
+                <div class="icon-box"><i class="fa-solid fa-clover"></i></div>
+                <h2>HOT & COLD 로또 교배기</h2>
+                <div class="description">
+                    역대 가장 당첨 많이/적게 된 번호 10개만 따로 추출하여, 그 안에서 기가 막힌 5게임씩 총 10게임 조합을 직관적인 UI로 찍어냅니다.
                 </div>
             </a>
         </div>

@@ -525,6 +525,36 @@ def stock():
 def prompt():
     return render_template('prompt.html')
 
+@app.route('/lotto')
+def lotto():
+    return render_template('lotto.html')
+
+@app.route('/api/lotto', methods=['GET'])
+def api_lotto():
+    import random
+    # 역대 가장 많이 나온 10개 번호 (최근까지의 누적 통계 기준)
+    top_10 = [34, 43, 12, 27, 1, 13, 17, 39, 33, 18]
+    # 역대 가장 적게 나온 10개 번호
+    bottom_10 = [9, 22, 29, 23, 28, 8, 30, 32, 42, 25]
+    
+    # 상위 10개에서 6개 뽑기 5조합
+    top_combs = []
+    for _ in range(5):
+        top_combs.append(sorted(random.sample(top_10, 6)))
+        
+    # 하위 10개에서 6개 뽑기 5조합
+    bottom_combs = []
+    for _ in range(5):
+        bottom_combs.append(sorted(random.sample(bottom_10, 6)))
+        
+    return jsonify({
+        "success": True,
+        "top_10_pool": top_10,
+        "bottom_10_pool": bottom_10,
+        "top_combinations": top_combs,
+        "bottom_combinations": bottom_combs
+    })
+
 
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 

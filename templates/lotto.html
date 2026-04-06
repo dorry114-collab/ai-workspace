@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOT & COLD 로또 교배기</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #10b981;
+            --hot-color: #ff3366;
+            --cold-color: #00f0ff;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.1), transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(135deg, #fff, #10b981);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .action-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2rem;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            margin-bottom: 3rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        button.generate-btn {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 1.2rem 3rem;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+            display: inline-flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button.generate-btn:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 35px rgba(16, 185, 129, 0.6);
+        }
+        
+        button.generate-btn:active {
+            transform: translateY(2px);
+        }
+
+        /* --- Grid for Results --- */
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            display: none; /* hidden initially */
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        .result-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card.hot { border-top: 4px solid var(--hot-color); }
+        .result-card.cold { border-top: 4px solid var(--cold-color); }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .card-header h2 {
+            margin: 0;
+            font-size: 1.8rem;
+        }
+
+        .hot h2 { color: var(--hot-color); }
+        .cold h2 { color: var(--cold-color); }
+
+        .pool-info {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            background: rgba(0,0,0,0.3);
+            padding: 10px 15px;
+            border-radius: 12px;
+        }
+
+        /* --- Lotto Balls --- */
+        .game-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            background: rgba(255,255,255,0.02);
+            padding: 15px;
+            border-radius: 16px;
+            transition: background 0.3s;
+        }
+        
+        .game-row:hover {
+            background: rgba(255,255,255,0.05);
+        }
+
+        .game-label {
+            font-weight: 700;
+            color: var(--text-muted);
+            width: 70px;
+            font-size: 1.1rem;
+        }
+
+        .balls {
+            display: flex;
+            gap: 12px;
+            flex: 1;
+        }
+
+        .ball {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3), 0 5px 10px rgba(0,0,0,0.4);
+            transition: transform 0.3s;
+        }
+
+        .ball:hover {
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        /* Korean Lotto Color Standard */
+        .ball.color-yellow { background: linear-gradient(135deg, #fbc531, #e1b12c); } /* 1-10 */
+        .ball.color-blue   { background: linear-gradient(135deg, #00a8ff, #0097e6); } /* 11-20 */
+        .ball.color-red    { background: linear-gradient(135deg, #e84118, #c23616); } /* 21-30 */
+        .ball.color-gray   { background: linear-gradient(135deg, #718093, #2f3640); } /* 31-40 */
+        .ball.color-green  { background: linear-gradient(135deg, #4cd137, #44bd32); } /* 41-45 */
+
+        .loading-overlay {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(16, 185, 129, 0.2);
+            border-bottom-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .results-grid { grid-template-columns: 1fr; }
+            h1 { font-size: 2.2rem; }
+            button.generate-btn { width: 100%; box-sizing: border-box; justify-content: center; padding: 1rem; }
+            .ball { width: 38px; height: 38px; font-size: 1rem; }
+            .balls { gap: 8px; }
+            .game-label { width: 50px; font-size: 0.9rem; }
+            .game-row { padding: 10px; }
+            .container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; gap: 1rem; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                <a href="/" style="color: var(--text-muted); font-size: 1.5rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
+            </div>
+            <h1>HOT & COLD 로또 교배기 <i class="fa-solid fa-clover"></i></h1>
+            <p class="subtitle">역대 가장 많이 당첨된 번호와 가장 안 나온 번호를 교배하여 환상적인 10게임을 추천합니다.</p>
+        </header>
+
+        <div class="action-panel">
+            <button class="generate-btn" id="generateBtn" onclick="generateLotto()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> 내 인생 역전 번호 뽑기
+            </button>
+            <div class="loading-overlay" id="loadingOverlay">
+                <span class="loader"></span>
+                <p style="color: var(--primary); font-weight: bold; margin-top: 15px;">우주의 기운을 모으는 중...</p>
+            </div>
+        </div>
+
+        <div class="results-grid" id="resultsGrid">
+            <!-- HOT Card -->
+            <div class="result-card hot">
+                <div class="card-header">
+                    <h2>🔥 HOT 조합 (5게임)</h2>
+                    <i class="fa-solid fa-fire fa-2x" style="color: var(--hot-color)"></i>
+                </div>
+                <div class="pool-info">
+                    <strong>사용된 10개 번호 풀 (역대 최고 당첨 최다 10선):</strong><br>
+                    <span id="hotPoolText">...</span>
+                </div>
+                <div id="hotGames">
+                    <!-- Games generated by JS -->
+                </div>
+            </div>
+
+            <!-- COLD Card -->
+            <div class="result-card cold">
+                <div class="card-header">
+                    <h2>❄️ COLD 조합 (5게임)</h2>
+                    <i class="fa-solid fa-snowflake fa-2x" style="color: var(--cold-color)"></i>
+                </div>
+                <div class="pool-info">
+                    <strong>사용된 10개 번호 풀 (역대 최저 당첨 가뭄 10선):</strong><br>
+                    <span id="coldPoolText">...</span>
+                </div>
+                <div id="coldGames">
+                    <!-- Games generated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function getBallColorClass(num) {
+            if (num <= 10) return 'color-yellow';
+            if (num <= 20) return 'color-blue';
+            if (num <= 30) return 'color-red';
+            if (num <= 40) return 'color-gray';
+            return 'color-green';
+        }
+
+        function createGameRow(gameData, index) {
+            const row = document.createElement('div');
+            row.className = 'game-row';
+            
+            const label = document.createElement('div');
+            label.className = 'game-label';
+            label.textContent = `${index}게임`;
+            
+            const ballsContainer = document.createElement('div');
+            ballsContainer.className = 'balls';
+            
+            gameData.forEach(num => {
+                const ball = document.createElement('div');
+                ball.className = `ball ${getBallColorClass(num)}`;
+                ball.textContent = num;
+                ballsContainer.appendChild(ball);
+            });
+            
+            row.appendChild(label);
+            row.appendChild(ballsContainer);
+            return row;
+        }
+
+        async function generateLotto() {
+            const btn = document.getElementById('generateBtn');
+            const loader = document.getElementById('loadingOverlay');
+            const grid = document.getElementById('resultsGrid');
+            
+            btn.style.display = 'none';
+            loader.style.display = 'block';
+            grid.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/lotto');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Slight delay for dramatic UX effect
+                    setTimeout(() => {
+                        document.getElementById('hotPoolText').textContent = data.top_10_pool.join(', ');
+                        document.getElementById('coldPoolText').textContent = data.bottom_10_pool.join(', ');
+                        
+                        const hotGamesDiv = document.getElementById('hotGames');
+                        const coldGamesDiv = document.getElementById('coldGames');
+                        
+                        hotGamesDiv.innerHTML = '';
+                        coldGamesDiv.innerHTML = '';
+
+                        data.top_combinations.forEach((comb, idx) => {
+                            hotGamesDiv.appendChild(createGameRow(comb, idx + 1));
+                        });
+
+                        data.bottom_combinations.forEach((comb, idx) => {
+                            coldGamesDiv.appendChild(createGameRow(comb, idx + 1));
+                        });
+
+                        loader.style.display = 'none';
+                        btn.style.display = 'inline-flex';
+                        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> 다시 뽑기';
+                        grid.style.display = 'grid';
+                    }, 800);
+                } else {
+                    alert('서버 에러가 발생했습니다.');
+                    btn.style.display = 'inline-flex';
+                    loader.style.display = 'none';
+                }
+            } catch (err) {
+                alert('네트워크 에러가 발생했습니다.');
+                btn.style.display = 'inline-flex';
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
