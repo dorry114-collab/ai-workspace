@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쇼츠(Shorts) 메이커 스튜디오</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&family=Noto+Sans+KR:wght@300;400;500;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --primary: #ff0050; /* TikTok/Shorts red vibe */
+            --primary-accent: #00f2fe; /* cyan */
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Noto Sans KR', 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 0, 80, 0.05), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(0, 242, 254, 0.05), transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .title-box h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            background: linear-gradient(135deg, #fff, #8b949e);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .title-box p {
+            margin: 5px 0 0 0;
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .badge {
+            background: rgba(0, 242, 254, 0.1);
+            color: var(--primary-accent);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            border: 1px solid rgba(0, 242, 254, 0.2);
+            font-weight: 600;
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        /* --- Layout --- */
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 3rem;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .panel h2 {
+            margin-top: 0;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: white;
+        }
+
+        /* --- Left: Editor --- */
+        .editor-section {
+            margin-bottom: 2rem;
+        }
+        
+        .editor-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 600;
+            color: #d1d5db;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 1.05rem;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+
+        textarea:focus {
+            border-color: var(--primary-accent);
+        }
+
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: rgba(0,0,0,0.2);
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary);
+            background: rgba(255,0,80,0.05);
+        }
+
+        .gallery {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .gallery-img {
+            width: 80px;
+            height: 142px; /* 9:16 thumb */
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.5); /* fallback behind loading */
+        }
+
+        /* 컨트롤 버튼들 */
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 1.5rem;
+        }
+        
+        .btn-magic {
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            color: #000;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 242, 254, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .btn-magic:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 242, 254, 0.5);
+        }
+
+        .btn-play {
+            flex: 1;
+            background: linear-gradient(135deg, var(--primary), #cc0040);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(255, 0, 80, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-play:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(255, 0, 80, 0.4);
+        }
+
+        /* --- Right: Phone Canvas --- */
+        .phone-bezel {
+            width: 360px;
+            height: 640px;
+            background: #111;
+            border: 12px solid #222;
+            border-radius: 36px;
+            position: relative;
+            margin: 0 auto;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.5), inset 0 0 0 4px #000;
+        }
+        
+        /* Notch */
+        .phone-notch {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 120px;
+            height: 25px;
+            background: #222;
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+            z-index: 100;
+        }
+
+        /* Visuals layer */
+        .video-visuals {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: #000;
+            z-index: 1;
+        }
+
+        .slide-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-size: cover;
+            background-position: center;
+            opacity: 0;
+            transition: opacity 0.8s ease-in-out, transform 4s linear;
+        }
+
+        .slide-bg.active {
+            opacity: 1;
+            transform: scale(1.05); /* very subtle pan effect */
+        }
+
+        /* Overlay shadow for text readability */
+        .overlay-gradient {
+            position: absolute;
+            bottom: 0; left: 0; right: 0; height: 50%;
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+            z-index: 2;
+        }
+
+        /* Subtitle layer */
+        .subtitle-layer {
+            position: absolute;
+            left: 15px;
+            right: 15px;
+            bottom: 60px;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .subtitle-text {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1.4rem;
+            font-weight: 800;
+            line-height: 1.4;
+            color: #fff;
+            text-shadow: 2px 2px 0px #000, -1px -1px 0px #000;
+            display: inline-block;
+            word-break: keep-all;
+            /* Animation applied in JS */
+            transition: all 0.2s;
+            transform: translateY(10px);
+            opacity: 0;
+        }
+        
+        .subtitle-text.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Fake UI Elements */
+        .fake-sidebar {
+            position: absolute;
+            right: 10px;
+            bottom: 50px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            z-index: 20;
+            align-items: center;
+        }
+
+        .fake-icon { width: 35px; height: 35px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; justify-content: center; align-items: center; font-size: 0.9rem; color: white; margin-bottom: 5px; }
+        .fake-icon-text { font-size: 0.7rem; text-align: center; color: white; font-weight: 600; text-shadow: 1px 1px 2px black;}
+
+        @media (max-width: 1024px) {
+            .grid-layout { grid-template-columns: 1fr; }
+            .phone-bezel { margin-top: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title-box">
+                <h1>시크릿 쇼츠 스튜디오 ✨</h1>
+                <p>로컬 브라우저 기반의 초경량 유튜브 쇼츠(Shorts) 사전 기획/프리뷰 도구입니다.</p>
+                <div class="badge"><i class="fa-solid fa-bolt"></i> 오프라인 전용 미리보기 (인터넷/서버 불필요)</div>
+            </div>
+        </header>
+
+        <div class="grid-layout">
+            
+            <!-- Left: Inputs -->
+            <div class="panel">
+                <h2><i class="fa-solid fa-pen-nib"></i> 1단계: 대본 작성</h2>
+                <div class="editor-section">
+                    <span class="editor-label">음성으로 흘러나올 나레이션을 적어주세요. (마침표로 문장이 구분됩니다)</span>
+                    <textarea id="scriptInput" placeholder="예: 안녕하세요! 오늘은 엄청난 꿀팁을 하나 알려드릴게요. 꼭 끝까지 시청해 주세요."></textarea>
+                </div>
+
+                <h2><i class="fa-solid fa-images"></i> 2단계: 배경 이미지 세팅</h2>
+                <div class="editor-section">
+                    <span class="editor-label">쇼츠 배경으로 쓰일 사진들을 업로드하거나 AI로 생성하세요.</span>
+                    
+                    <!-- NEW MAGIC BUTTON -->
+                    <button class="btn-magic" onclick="generateAIImages()">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 대본 내용으로 배경 자동 생성 (무료 API)
+                    </button>
+
+                    <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                        <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2.5rem; color: var(--text-muted); margin-bottom: 10px;"></i>
+                        <div><b style="color: var(--primary-accent);">클릭</b>하여 직접 이미지 파일 추가하기</div>
+                    </div>
+                    <input type="file" id="fileInput" multiple accept="image/*" style="display:none;" onchange="handleFiles(event)">
+                    
+                    <div id="loadingAiStatus" style="display: none; margin-top:10px; color: #00f2fe; text-align: center; font-weight: 600; font-size: 0.9rem;">
+                        <i class="fa-solid fa-circle-notch fa-spin"></i> 대본을 분석하여 AI가 10초 만에 배경을 그리는 중입니다...
+                    </div>
+
+                    <div class="gallery" id="galleryContainer">
+                        <!-- Thumbnails inject here -->
+                    </div>
+                </div>
+
+                <h2><i class="fa-solid fa-music"></i> 3단계: BGM (배경음악) 추가</h2>
+                <div class="editor-section">
+                    <span class="editor-label">쇼츠에 감성을 더해줄 MP3 음악 파일을 선택해 주세요 (자동 반복 재생됩니다).</span>
+                    
+                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <button class="btn-play" style="flex: none; padding: 10px 15px; font-size:1rem; box-shadow:none; border-radius: 8px;" onclick="document.getElementById('bgmInput').click()">
+                            <i class="fa-solid fa-folder-open"></i> BGM 열기
+                        </button>
+                        <input type="file" id="bgmInput" accept="audio/*" style="display:none;" onchange="handleBgmFile(event)">
+                        
+                        <div id="bgmFileName" style="color: var(--primary-accent); font-weight: 500; font-size: 0.95rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                            선택된 음악이 없습니다.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="btn-play" id="playBtn" onclick="togglePlay()">
+                        <i class="fa-solid fa-play"></i> 프리뷰 영상 재생
+                    </button>
+                    <!-- Future MP4 Button (Placeholder) -->
+                    <button class="btn-play" style="background: rgba(255,255,255,0.1); box-shadow: none; flex: 0.5;" onclick="alert('MP4 추출 기능은 파이썬 백엔드 연동 후 오픈됩니다!')">
+                        <i class="fa-solid fa-download"></i> MP4 추출
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right: Canvas Preview -->
+            <div style="position: sticky; top: 2rem;">
+                <div class="phone-bezel">
+                    <div class="phone-notch"></div>
+                    
+                    <!-- Background Visuals -->
+                    <div class="video-visuals" id="visualsContainer">
+                        <!-- Default placeholder -->
+                        <div class="slide-bg active" style="background-image: linear-gradient(45deg, #1f2937, #111827);"></div>
+                    </div>
+                    
+                    <div class="overlay-gradient"></div>
+
+                    <!-- Fake Tiktok/Shorts UI -->
+                    <div class="fake-sidebar">
+                        <div>
+                            <div class="fake-icon"><i class="fa-solid fa-heart"></i></div>
+                            <div class="fake-icon-text">1.2만</div>
+                        </div>
+                        <div>
+                            <div class="fake-icon"><i class="fa-solid fa-comment-dots"></i></div>
+                            <div class="fake-icon-text">543</div>
+                        </div>
+                        <div>
+                            <div class="fake-icon"><i class="fa-solid fa-share"></i></div>
+                            <div class="fake-icon-text">공유</div>
+                        </div>
+                    </div>
+
+                    <!-- Subtitles -->
+                    <div class="subtitle-layer">
+                        <span class="subtitle-text" id="subtitleBox">대본을 적고 재생버튼을 누르세요</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let uploadedImages = [];
+        let isPlaying = false;
+        let sentences = [];
+        let currentSentenceIndex = 0;
+        let currentImageIndex = 0;
+        let speechSynth = window.speechSynthesis;
+        let utterance = null;
+        let bgmAudio = new Audio();
+        bgmAudio.loop = true;
+        bgmAudio.volume = 0.2; // BGM volume lower than TTS
+
+        // BGM Handling
+        function handleBgmFile(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+            
+            const file = files[0];
+            document.getElementById('bgmFileName').innerHTML = `<i class="fa-solid fa-file-audio"></i> ${file.name} (준비 완료)`;
+            
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                bgmAudio.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Image Handling
+        function handleFiles(e) {
+            const files = e.target.files;
+            if (!files.length) return;
+            
+            const gallery = document.getElementById('galleryContainer');
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    uploadedImages.push(ev.target.result);
+                    // Add thumb
+                    const img = document.createElement('img');
+                    img.src = ev.target.result;
+                    img.className = 'gallery-img';
+                    gallery.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function generateAIImages() {
+            const rawText = document.getElementById('scriptInput').value;
+            const sents = parseScript(rawText);
+            if (sents.length === 0) {
+                alert("먼저 위쪽에 대본을 1문장 이상 적어주세요!");
+                return;
+            }
+
+            const status = document.getElementById('loadingAiStatus');
+            status.innerHTML = '<i class="fa-solid fa-microchip fa-spin"></i> LLaMA AI가 대본을 분석하여 영문 프롬프트로 번역 중입니다...';
+            status.style.display = 'block';
+            
+            const gallery = document.getElementById('galleryContainer');
+            gallery.innerHTML = '';
+            uploadedImages = [];
+            
+            // Limit to max 5 sentences to not overwhelm API
+            const targetSents = sents.slice(0, 5); 
+            
+            try {
+                // 1. Get English Prompts from Backend LLaMA
+                const response = await fetch('/api/shorts/prompts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sentences: targetSents })
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    alert("프롬프트 번역 실패: " + data.error);
+                    status.style.display = 'none';
+                    return;
+                }
+                
+                const engPrompts = data.prompts;
+                status.innerHTML = '<i class="fa-solid fa-paintbrush fa-spin"></i> 완벽한 프롬프트 완성! 이제 화가 AI가 그림을 그리는 중입니다...';
+
+                // 2. Fetch Pollinations using English Prompts
+                let loadedCount = 0;
+                engPrompts.forEach((engPrompt, idx) => {
+                    const safePrompt = encodeURIComponent(engPrompt);
+                    const seed = Math.floor(Math.random() * 1000000); 
+                    const aiUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=720&height=1280&nologo=true&seed=${seed}`;
+                    
+                    uploadedImages.push(aiUrl);
+                    
+                    const img = document.createElement('img');
+                    img.className = 'gallery-img';
+                    img.src = aiUrl;
+                    img.alt = `AI Generated Frame ${idx + 1}`;
+                    
+                    img.onload = () => {
+                        loadedCount++;
+                        if(loadedCount >= engPrompts.length) {
+                            status.innerHTML = `<i class="fa-solid fa-check"></i> 성공! 총 ${loadedCount}장의 초고퀄리티 AI 사진이 완성되었습니다.`;
+                            setTimeout(() => { status.style.display = 'none'; }, 4000);
+                        }
+                    };
+                    img.onerror = () => {
+                        loadedCount++; 
+                    };
+
+                    gallery.appendChild(img);
+                });
+            } catch (err) {
+                alert("통신 오류가 발생했습니다.");
+                status.style.display = 'none';
+            }
+        }
+
+        // Logic
+        function parseScript(rawText) {
+            // Split by punctuation: '.', '!', '?', or newline.
+            return rawText.split(/[.?!|\n]+/).map(s => s.trim()).filter(s => s.length > 0);
+        }
+
+        function setVisualImage(index) {
+            const container = document.getElementById('visualsContainer');
+            if (uploadedImages.length === 0) return;
+            
+            // clear active
+            const slides = container.querySelectorAll('.slide-bg');
+            slides.forEach(s => s.classList.remove('active'));
+
+            // Create new slide
+            const newSlide = document.createElement('div');
+            newSlide.className = 'slide-bg';
+            newSlide.style.backgroundImage = `url(${uploadedImages[index]})`;
+            container.appendChild(newSlide);
+            
+            // Trigger reflow & animate
+            setTimeout(() => { newSlide.classList.add('active'); }, 50);
+
+            // Cleanup old slides (keep max 3 for performance)
+            if (container.children.length > 3) {
+                container.removeChild(container.firstChild);
+            }
+        }
+
+        function showSubtitle(text) {
+            const sBox = document.getElementById('subtitleBox');
+            sBox.classList.remove('show');
+            setTimeout(() => {
+                sBox.textContent = text;
+                sBox.classList.add('show');
+            }, 100);
+        }
+
+        function playNextSentence() {
+            if (currentSentenceIndex >= sentences.length || !isPlaying) {
+                stopPlayback();
+                return;
+            }
+
+            const textToSpeak = sentences[currentSentenceIndex];
+            
+            // Change image on every 2 sentences to match pacing, or if very short, every sentence.
+            if (uploadedImages.length > 0) {
+                // simple round-robin
+                currentImageIndex = currentSentenceIndex % uploadedImages.length;
+                setVisualImage(currentImageIndex);
+            }
+
+            // Subtitle UI
+            showSubtitle(textToSpeak + ".");
+
+            // Voice
+            utterance = new SpeechSynthesisUtterance(textToSpeak);
+            utterance.lang = 'ko-KR';
+            utterance.rate = 1.1; // Shorts are usually fast-paced
+            utterance.pitch = 1.1;
+
+            utterance.onend = () => {
+                if (isPlaying) {
+                    currentSentenceIndex++;
+                    playNextSentence();
+                }
+            };
+            
+            utterance.onerror = () => {
+                console.error("Speech API Error");
+                stopPlayback();
+            }
+
+            speechSynth.speak(utterance);
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                stopPlayback();
+            } else {
+                startPlayback();
+            }
+        }
+
+        function startPlayback() {
+            const rawText = document.getElementById('scriptInput').value;
+            sentences = parseScript(rawText);
+            
+            if (sentences.length === 0) {
+                alert("먼저 대본(스크립트)을 1문장 이상 입력해주세요!");
+                return;
+            }
+
+            isPlaying = true;
+            currentSentenceIndex = 0;
+            currentImageIndex = 0;
+
+            // Stop any ongoing speech
+            speechSynth.cancel();
+            
+            // Start BGM if loaded
+            if (bgmAudio.src) {
+                bgmAudio.currentTime = 0;
+                bgmAudio.play().catch(e => console.log("BGM play error:", e));
+            }
+
+            const playBtn = document.getElementById('playBtn');
+            playBtn.innerHTML = '<i class="fa-solid fa-stop"></i> 중지하기';
+            playBtn.style.background = 'linear-gradient(135deg, #1f2937, #111827)';
+
+            playNextSentence();
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            speechSynth.cancel();
+            
+            // Stop BGM
+            bgmAudio.pause();
+            bgmAudio.currentTime = 0;
+            
+            const playBtn = document.getElementById('playBtn');
+            playBtn.innerHTML = '<i class="fa-solid fa-play"></i> 프리뷰 영상 재생';
+            playBtn.style.background = 'linear-gradient(135deg, var(--primary), #cc0040)';
+            
+            const sBox = document.getElementById('subtitleBox');
+            sBox.textContent = "테스트가 종료되었습니다.";
+        }
+        
+    </script>
+</body>
+</html>
