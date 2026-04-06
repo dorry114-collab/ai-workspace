@@ -402,13 +402,13 @@
                 <a href="/" style="color: #8b949e; font-size: 1.2rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
                 <h1><i class="fa-brands fa-youtube" style="color: #ff0000; margin-right: 10px;"></i> YouTube 인기 동영상 추출기</h1>
             </div>
-            <p class="subtitle">개인 유튜브 보관함 및 NotebookLM용 채널 데이터 일괄 추출기</p>
+            <p class="subtitle">채널 URL/핸들을 입력하여 인기 영상을 뽑거나, <b>특정 검색어</b>(예: 파이썬 기초)를 입력해 관련 영상 URL을 한 번에 추출합니다.</p>
         </header>
 
         <!-- Channel Extractor -->
         <div id="tab-extract" class="tab-content active">
             <form id="extractForm" class="input-group">
-                <input type="text" id="channelInput" placeholder="추출할 채널명이나 URL을 입력하세요 (예: @침착맨, 슈카월드)" autocomplete="off">
+                <input type="text" id="channelInput" placeholder="채널 URL, @핸들, 또는 검색어 (예: 파이썬 기초)" autocomplete="off">
                 <button type="submit" class="primary-btn" id="extractBtn">추출 시작</button>
             </form>
             
@@ -476,9 +476,12 @@
         document.getElementById('extractForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const channelInput = document.getElementById('channelInput');
-            const channelName = channelInput.value.trim();
-            if (!channelName) return;
-
+            const value = document.getElementById('channelInput').value.trim();
+            if (!value) {
+                showToast("채널명이나 검색어를 입력해주세요.");
+                document.getElementById('channelInput').focus();
+                return;
+            }
             const extractBtn = document.getElementById('extractBtn');
             const loadingState = document.getElementById('loadingState');
             const extractPanel = document.getElementById('extractPanel');
@@ -495,13 +498,17 @@
                 const response = await fetch('/api/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ channel_id: channelName, limit: currentLimit })
+                    body: JSON.stringify({ channel_id: value, limit: currentLimit })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    let displayText = "";
+                    const resultTitle = data.is_search 
+                        ? `=== 수집된 검색어: ${data.channel} 상위 영상 (NotebookLM용) ===`
+                        : `=== 수집된 채널: ${data.channel} 인기 영상 (NotebookLM용) ===`;
+                    
+                    let displayText = resultTitle + "\n\n";
                     currentUrlOnlyText = "";
                     data.data.forEach((video, index) => {
                         let views = Number(video.view_count).toLocaleString();
@@ -509,7 +516,7 @@
                         currentUrlOnlyText += `${video.url}\n`;
                     });
 
-                    document.getElementById('extractTitle').textContent = `'${channelName}' 링크 전용 추출 완료!`;
+                    document.getElementById('extractTitle').textContent = `'${value}' 추출 완료!`;
                     resultText.value = displayText.trim();
                     extractPanel.classList.add('show');
                     showToast('추출이 완료되었습니다!');

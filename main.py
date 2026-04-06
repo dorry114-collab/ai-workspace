@@ -281,10 +281,14 @@ def extract_channel_videos(channel_input, limit=50):
         except Exception as e:
             pass
             
+    is_search_query = False
+    search_query = ""
     if not channel_id:
-        return {"success": False, "error": f"채널({channel_input})을 찾을 수 없습니다. 정확한 @핸들 형식이나 채널 프로필 URL을 기입해주세요."}
+        # If it doesn't look like a channel, treat as a generic search query
+        is_search_query = True
+        search_query = channel_input
         
-    # 2. Fetch Top X by exact viewCount via Pagination
+    # 2. Fetch Videos
     import html
     video_ids = []
     video_titles = {}
@@ -293,7 +297,14 @@ def extract_channel_videos(channel_input, limit=50):
     try:
         while len(video_ids) < limit:
             q_limit = min(50, limit - len(video_ids))
-            search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults={q_limit}&order=viewCount&type=video&key={api_key}"
+            if is_search_query:
+                import urllib.parse
+                sq = urllib.parse.quote(search_query)
+                # For generic search, order by relevance is usually better, but viewCount works if they want 'popular' videos of that keyword
+                search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={sq}&maxResults={q_limit}&order=relevance&type=video&key={api_key}"
+            else:
+                search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults={q_limit}&order=viewCount&type=video&key={api_key}"
+                
             if next_page_token:
                 search_url += f"&pageToken={next_page_token}"
                 
@@ -323,7 +334,10 @@ def extract_channel_videos(channel_input, limit=50):
                 break
                 
         if not video_ids:
-            return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
+            if is_search_query:
+                return {"success": False, "error": f"검색어 '{search_query}'에 대한 동영상을 찾을 수 없습니다."}
+            else:
+                return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
             
         # 3. Get exact statistics for sorting (Batch API accepts max 50 per request)
         stats_data_items = []
@@ -346,10 +360,11 @@ def extract_channel_videos(channel_input, limit=50):
                 'view_count': views
             })
             
-        # 4. Strict absolute sort by viewCount descending
-        results.sort(key=lambda x: x['view_count'], reverse=True)
+        # 4. Strict absolute sort by viewCount descending (only for channel fetch)
+        if not is_search_query:
+            results.sort(key=lambda x: x['view_count'], reverse=True)
             
-        return {"success": True, "data": results[:limit], "channel": channel_input}
+        return {"success": True, "data": results[:limit], "channel": channel_input, "is_search": is_search_query}
         
     except Exception as e:
         return {"success": False, "error": f"유튜브 통신 중 서버 오류가 발생했습니다: {str(e)}"}
