@@ -375,16 +375,31 @@
 
                 <h2><i class="fa-solid fa-music"></i> 3단계: BGM (배경음악) 추가</h2>
                 <div class="editor-section">
-                    <span class="editor-label">쇼츠에 감성을 더해줄 MP3 음악 파일을 선택해 주세요 (자동 반복 재생됩니다).</span>
+                    <span class="editor-label">쇼츠에 감성을 더해줄 음악을 선택하시거나 직접 올려주세요.</span>
                     
-                    <div style="display: flex; gap: 10px; align-items: center; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                        <button class="btn-play" style="flex: none; padding: 10px 15px; font-size:1rem; box-shadow:none; border-radius: 8px;" onclick="document.getElementById('bgmInput').click()">
-                            <i class="fa-solid fa-folder-open"></i> BGM 열기
-                        </button>
-                        <input type="file" id="bgmInput" accept="audio/*" style="display:none;" onchange="handleBgmFile(event)">
+                    <div style="display: flex; flex-direction: column; gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                         
-                        <div id="bgmFileName" style="color: var(--primary-accent); font-weight: 500; font-size: 0.95rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
-                            선택된 음악이 없습니다.
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-play" style="flex: 1; padding: 8px 12px; font-size:0.9rem; background: #2f3640;" onclick="selectPresetBgm('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', '잔잔한 감성 (피아노)')">
+                                <i class="fa-solid fa-headphones"></i> 잔잔한 감성
+                            </button>
+                            <button class="btn-play" style="flex: 1; padding: 8px 12px; font-size:0.9rem; background: #2f3640;" onclick="selectPresetBgm('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3', '신나는 비트 (일렉)')">
+                                <i class="fa-solid fa-bolt"></i> 신나는 비트
+                            </button>
+                            <button class="btn-play" style="flex: 1; padding: 8px 12px; font-size:0.9rem; background: #2f3640;" onclick="selectPresetBgm('https://www.soundhelix.com/examples/mp3/SoundHelix-Song-16.mp3', '웅장한 분위기 (오케스트라)')">
+                                <i class="fa-solid fa-crown"></i> 웅장한 분위기
+                            </button>
+                        </div>
+                        
+                        <div style="display: flex; gap: 10px; align-items: center; margin-top: 5px;">
+                            <button class="btn-play" style="flex: none; padding: 10px 15px; font-size:0.9rem; background: linear-gradient(135deg, #ff0050, #cc0040);" onclick="document.getElementById('bgmInput').click()">
+                                <i class="fa-solid fa-folder-open"></i> 내 MP3 열기
+                            </button>
+                            <input type="file" id="bgmInput" accept="audio/*" style="display:none;" onchange="handleBgmFile(event)">
+                            
+                            <div id="bgmFileName" style="color: var(--primary-accent); font-weight: 500; font-size: 0.95rem; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+                                선택된 음악이 없습니다.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -452,6 +467,11 @@
         bgmAudio.volume = 0.2; // BGM volume lower than TTS
 
         // BGM Handling
+        function selectPresetBgm(url, title) {
+            bgmAudio.src = url;
+            document.getElementById('bgmFileName').innerHTML = `<i class="fa-solid fa-compact-disc"></i> [기본] ${title} (준비 완료)`;
+        }
+
         function handleBgmFile(e) {
             const files = e.target.files;
             if (!files.length) return;
@@ -524,9 +544,13 @@
                 const engPrompts = data.prompts;
                 status.innerHTML = '<i class="fa-solid fa-paintbrush fa-spin"></i> 완벽한 프롬프트 완성! 이제 화가 AI가 그림을 그리는 중입니다...';
 
-                // 2. Fetch Pollinations using English Prompts
+                // 2. Fetch Pollinations using English Prompts sequentially to avoid rate-limiting
                 let loadedCount = 0;
-                engPrompts.forEach((engPrompt, idx) => {
+                
+                for (let idx = 0; idx < engPrompts.length; idx++) {
+                    const engPrompt = engPrompts[idx];
+                    status.innerHTML = `<i class="fa-solid fa-paintbrush fa-spin"></i> 화가 AI가 그림을 그리는 중입니다... (${idx + 1}/${engPrompts.length})`;
+                    
                     const safePrompt = encodeURIComponent(engPrompt);
                     const seed = Math.floor(Math.random() * 1000000); 
                     const aiUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=720&height=1280&nologo=true&seed=${seed}`;
@@ -535,22 +559,29 @@
                     
                     const img = document.createElement('img');
                     img.className = 'gallery-img';
-                    img.src = aiUrl;
                     img.alt = `AI Generated Frame ${idx + 1}`;
-                    
-                    img.onload = () => {
-                        loadedCount++;
-                        if(loadedCount >= engPrompts.length) {
-                            status.innerHTML = `<i class="fa-solid fa-check"></i> 성공! 총 ${loadedCount}장의 초고퀄리티 AI 사진이 완성되었습니다.`;
-                            setTimeout(() => { status.style.display = 'none'; }, 4000);
-                        }
-                    };
-                    img.onerror = () => {
-                        loadedCount++; 
-                    };
-
                     gallery.appendChild(img);
-                });
+                    
+                    // Wait for it to load before requesting next one
+                    await new Promise((resolve) => {
+                        img.onload = () => {
+                            loadedCount++;
+                            resolve();
+                        };
+                        img.onerror = () => {
+                            loadedCount++; // Avoid getting stuck
+                            resolve();
+                        };
+                        img.src = aiUrl;
+                    });
+                    
+                    // Add a tiny breather for the free API
+                    await new Promise(r => setTimeout(r, 500));
+                }
+                
+                status.innerHTML = `<i class="fa-solid fa-check"></i> 성공! 총 ${loadedCount}장의 초고퀄리티 AI 사진이 완성되었습니다.`;
+                setTimeout(() => { status.style.display = 'none'; }, 4000);
+                
             } catch (err) {
                 alert("통신 오류가 발생했습니다.");
                 status.style.display = 'none';
