@@ -152,8 +152,29 @@
         .gallery {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 15px;
             margin-top: 15px;
+        }
+        
+        .gallery-item {
+            position: relative;
+            cursor: grab;
+            transition: transform 0.2s;
+        }
+        
+        .gallery-item:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+        
+        .gallery-item.dragging {
+            opacity: 0.4;
+        }
+        
+        .gallery-item.drag-over {
+            border: 2px dashed var(--primary-accent);
+            border-radius: 8px;
+            transform: scale(1.05);
         }
 
         .gallery-img {
@@ -163,6 +184,31 @@
             border-radius: 8px;
             border: 2px solid rgba(255,255,255,0.1);
             background: rgba(0,0,0,0.5); /* fallback behind loading */
+            display: block;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .delete-btn:hover {
+            background: #cc0040;
+            transform: scale(1.1);
         }
 
         /* 컨트롤 버튼들 */
@@ -486,25 +532,100 @@
             reader.readAsDataURL(file);
         }
 
+        // Gallery State Manager
+        let dragStartIndex = -1;
+
+        function renderGallery() {
+            const gallery = document.getElementById('galleryContainer');
+            gallery.innerHTML = '';
+            
+            uploadedImages.forEach((url, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'gallery-item';
+                itemDiv.draggable = true;
+                itemDiv.dataset.index = index;
+                
+                // Drag Events
+                itemDiv.addEventListener('dragstart', handleDragStart);
+                itemDiv.addEventListener('dragover', handleDragOver);
+                itemDiv.addEventListener('dragleave', handleDragLeave);
+                itemDiv.addEventListener('drop', handleDrop);
+                itemDiv.addEventListener('dragend', handleDragEnd);
+
+                const img = document.createElement('img');
+                img.src = url;
+                img.className = 'gallery-img';
+                
+                const delBtn = document.createElement('button');
+                delBtn.className = 'delete-btn';
+                delBtn.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                delBtn.onclick = () => deleteImage(index);
+                
+                itemDiv.appendChild(img);
+                itemDiv.appendChild(delBtn);
+                gallery.appendChild(itemDiv);
+            });
+        }
+        
+        function deleteImage(index) {
+            uploadedImages.splice(index, 1);
+            renderGallery();
+        }
+
+        // Drag handlers
+        function handleDragStart(e) {
+            dragStartIndex = parseInt(e.currentTarget.dataset.index);
+            e.currentTarget.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault(); // necessary to allow dropping
+            e.currentTarget.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('drag-over');
+        }
+        
+        function handleDrop(e) {
+            e.stopPropagation();
+            const dragEndIndex = parseInt(e.currentTarget.dataset.index);
+            e.currentTarget.classList.remove('drag-over');
+            
+            if (dragStartIndex !== dragEndIndex) {
+                // Swap array elements
+                const temp = uploadedImages[dragStartIndex];
+                uploadedImages[dragStartIndex] = uploadedImages[dragEndIndex];
+                uploadedImages[dragEndIndex] = temp;
+                renderGallery();
+            }
+            return false;
+        }
+        
+        function handleDragEnd(e) {
+            e.currentTarget.classList.remove('dragging');
+            document.querySelectorAll('.gallery-item').forEach(item => {
+                item.classList.remove('drag-over');
+            });
+        }
+
         // Image Handling
         function handleFiles(e) {
             const files = e.target.files;
             if (!files.length) return;
             
-            const gallery = document.getElementById('galleryContainer');
-            
             Array.from(files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = (ev) => {
                     uploadedImages.push(ev.target.result);
-                    // Add thumb
-                    const img = document.createElement('img');
-                    img.src = ev.target.result;
-                    img.className = 'gallery-img';
-                    gallery.appendChild(img);
+                    renderGallery();
                 };
                 reader.readAsDataURL(file);
             });
+            e.target.value = ''; // reset input
         }
 
         async function generateAIImages() {
@@ -519,9 +640,8 @@
             status.innerHTML = '<i class="fa-solid fa-microchip fa-spin"></i> LLaMA AI가 대본을 분석하여 영문 프롬프트로 번역 중입니다...';
             status.style.display = 'block';
             
-            const gallery = document.getElementById('galleryContainer');
-            gallery.innerHTML = '';
             uploadedImages = [];
+            renderGallery();
             
             // Limit to max 5 sentences to not overwhelm API
             const targetSents = sents.slice(0, 5); 
@@ -555,27 +675,23 @@
                     const seed = Math.floor(Math.random() * 1000000); 
                     const aiUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=720&height=1280&nologo=true&seed=${seed}`;
                     
-                    uploadedImages.push(aiUrl);
-                    
-                    const img = document.createElement('img');
-                    img.className = 'gallery-img';
-                    img.alt = `AI Generated Frame ${idx + 1}`;
-                    gallery.appendChild(img);
+                    const tempImg = new Image();
                     
                     // Wait for it to load before requesting next one
                     await new Promise((resolve) => {
-                        img.onload = () => {
+                        tempImg.onload = () => {
                             loadedCount++;
+                            uploadedImages.push(aiUrl);
+                            renderGallery();
                             resolve();
                         };
-                        img.onerror = () => {
-                            loadedCount++; // Avoid getting stuck
+                        tempImg.onerror = () => {
+                            loadedCount++; 
                             resolve();
                         };
-                        img.src = aiUrl;
+                        tempImg.src = aiUrl;
                     });
                     
-                    // Add a tiny breather for the free API
                     await new Promise(r => setTimeout(r, 500));
                 }
                 
