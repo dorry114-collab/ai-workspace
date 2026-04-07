@@ -20,6 +20,7 @@ import base64
 from io import BytesIO
 import traceback
 from PIL import Image as PILImage, ImageDraw, ImageFont
+from gtts import gTTS
 
 app = Flask(__name__)
 
