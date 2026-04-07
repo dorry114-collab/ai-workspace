@@ -448,6 +448,14 @@
                             </div>
                         </div>
                     </div>
+
+                    <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <label style="display:block; font-weight:600; color:#fff; font-size:1.1rem; margin-bottom:10px;"><i class="fa-solid fa-microphone"></i> 나레이션(성우) 목소리 설정</label>
+                        <select id="voiceGender" style="width:100%; padding: 12px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.5); color:white; font-family:'Pretendard', sans-serif; outline: none; cursor: pointer;">
+                            <option value="male">👦 전문적이고 차분한 남성 성우</option>
+                            <option value="female" selected>👩 밝고 부드러운 여성 성우</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="btn-group">
@@ -772,11 +780,19 @@
             // Subtitle UI
             showSubtitle(textToSpeak + ".");
 
+            const voiceGender = document.getElementById('voiceGender').value;
+
             // Voice
             utterance = new SpeechSynthesisUtterance(textToSpeak);
             utterance.lang = 'ko-KR';
-            utterance.rate = 1.1; // Shorts are usually fast-paced
-            utterance.pitch = 1.1;
+            
+            if (voiceGender === 'female') {
+                utterance.rate = 1.15;
+                utterance.pitch = 1.2;
+            } else {
+                utterance.rate = 1.1;
+                utterance.pitch = 0.8; 
+            }
 
             utterance.onend = () => {
                 if (isPlaying) {
@@ -867,7 +883,8 @@
                     body: JSON.stringify({
                         script: rawText,
                         images: uploadedImages,
-                        bgm_url: bgmAudio.src || ""
+                        bgm_url: bgmAudio.src || "",
+                        gender: document.getElementById('voiceGender').value
                     })
                 });
 
