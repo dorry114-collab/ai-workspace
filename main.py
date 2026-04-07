@@ -650,10 +650,20 @@ def export_status(job_id):
 def process_export_task(job_id, script, images, bgm_url):
     try:
         temp_dir = tempfile.mkdtemp()
-        output_filename = f"shorts_{job_id[:8]}.mp4"
-        output_path = os.path.join(app.root_path, 'static', output_filename)
+        static_dir = os.path.join(app.root_path, 'static')
+        os.makedirs(static_dir, exist_ok=True)
         
-        font_path = os.path.join(app.root_path, 'static', 'NanumGothic.ttf')
+        output_filename = f"shorts_{job_id[:8]}.mp4"
+        output_path = os.path.join(static_dir, output_filename)
+        
+        font_path = os.path.join(static_dir, 'NanumGothic.ttf')
+        if not os.path.exists(font_path):
+            try:
+                # Bypass SSL for font download just in case
+                urllib.request.urlretrieve("https://github.com/google/fonts/raw/main/ofl/nanumgothic/NanumGothic-Regular.ttf", font_path)
+            except Exception as e:
+                print(f"Font download failed: {e}")
+                
         pil_font = None
         try:
             pil_font = ImageFont.truetype(font_path, 40)
