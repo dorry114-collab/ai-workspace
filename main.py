@@ -19,13 +19,12 @@ import math
 import base64
 from io import BytesIO
 import traceback
+import json
+import asyncio
+import edge_tts
 from PIL import Image as PILImage, ImageDraw, ImageFont
-from gtts import gTTS
 
 app = Flask(__name__)
-
-# Global dict for tracking AI Shorts MP4 export tasks asynchronously
-render_jobs = {}
 # --- GLOBAL SETTINGS ---
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -626,15 +625,20 @@ def export_mp4():
     script = data.get('script', '')
     images = data.get('images', [])
     bgm_url = data.get('bgm_url', '')
+    gender = data.get('gender', 'male')
 
     if not script or not images:
         return jsonify({'success': False, 'error': '대본과 이미지가 필수입니다.'})
 
     job_id = uuid.uuid4().hex
-    render_jobs[job_id] = {'status': 'processing', 'url': None, 'error': None}
+    
+    # Store initial job state as a file so all Gunicorn workers can access it
+    job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
+    with open(job_file_path, "w") as f:
+        json.dump({'status': 'processing', 'url': None, 'error': None}, f)
     
     # Run heavy processing in background thread to avoid Gunicorn 30s timeout
-    thread = threading.Thread(target=process_export_task, args=(job_id, script, images, bgm_url))
+    thread = threading.Thread(target=process_export_task, args=(job_id, script, images, bgm_url, gender))
     thread.daemon = True
     thread.start()
 
@@ -642,12 +646,18 @@ def export_mp4():
 
 @app.route('/api/shorts/status/<job_id>', methods=['GET'])
 def export_status(job_id):
-    job = render_jobs.get(job_id)
-    if not job:
+    job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
+    if not os.path.exists(job_file_path):
         return jsonify({'status': 'error', 'error': '작업을 찾을 수 없습니다.'})
-    return jsonify(job)
+    
+    try:
+        with open(job_file_path, "r") as f:
+            job = json.load(f)
+        return jsonify(job)
+    except:
+        return jsonify({'status': 'processing'})
 
-def process_export_task(job_id, script, images, bgm_url):
+def process_export_task(job_id, script, images, bgm_url, gender):
     try:
         temp_dir = tempfile.mkdtemp()
         static_dir = os.path.join(app.root_path, 'static')
@@ -682,10 +692,23 @@ def process_export_task(job_id, script, images, bgm_url):
         ssl_ctx.verify_mode = ssl.CERT_NONE
 
         clips = []
+        
+        async def generate_edge_audio(text, voice_name, path):
+            communicate = edge_tts.Communicate(text, voice_name)
+            await communicate.save(path)
+            
+        voice_model = 'ko-KR-SunHiNeural' if gender == 'female' else 'ko-KR-InJoonNeural'
+
         for i, text in enumerate(sentences):
             audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
-            tts = gTTS(text=text, lang='ko', slow=False)
-            tts.save(audio_path)
+            
+            # 1. Generate TTS using Edge-TTS asynchronously inside thread loop
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+            loop.run_until_complete(generate_edge_audio(text, voice_model, audio_path))
             
             audio_clip = AudioFileClip(audio_path)
             duration = audio_clip.duration
@@ -780,13 +803,15 @@ def process_export_task(job_id, script, images, bgm_url):
         for c in clips:
             c.close()
 
-        render_jobs[job_id]['status'] = 'completed'
-        render_jobs[job_id]['url'] = f"/static/{output_filename}"
+        job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
+        with open(job_file_path, "w") as f:
+            json.dump({'status': 'completed', 'url': f"/static/{output_filename}", 'error': None}, f)
 
     except Exception as e:
         traceback.print_exc()
-        render_jobs[job_id]['status'] = 'error'
-        render_jobs[job_id]['error'] = str(e)
+        job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
+        with open(job_file_path, "w") as f:
+            json.dump({'status': 'error', 'url': None, 'error': str(e)}, f)
 
 
 if __name__ == '__main__':
