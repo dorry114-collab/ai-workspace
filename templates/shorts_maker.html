@@ -676,24 +676,30 @@
                     const seed = Math.floor(Math.random() * 1000000); 
                     const aiUrl = `https://image.pollinations.ai/prompt/${safePrompt}?width=720&height=1280&nologo=true&seed=${seed}`;
                     
-                    const tempImg = new Image();
+                    // 브라우저가 DOM을 리렌더링할 때 이미지를 재요청하여 Rate-Limit 500에러가 뜨는 것을 방지하기 위해 
+                    // 즉시 Blob으로 다운로드 후 Base64 데이터로 영구 보존합니다.
+                    try {
+                        const res = await fetch(aiUrl);
+                        if (!res.ok) throw new Error("API Limit");
+                        const blob = await res.blob();
+                        
+                        await new Promise((resolve) => {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                uploadedImages.push(reader.result);
+                                loadedCount++;
+                                renderGallery();
+                                resolve();
+                            };
+                            reader.onerror = resolve;
+                            reader.readAsDataURL(blob);
+                        });
+                    } catch (err) {
+                        console.error("Image gen failed:", err);
+                    }
                     
-                    // Wait for it to load before requesting next one
-                    await new Promise((resolve) => {
-                        tempImg.onload = () => {
-                            loadedCount++;
-                            uploadedImages.push(aiUrl);
-                            renderGallery();
-                            resolve();
-                        };
-                        tempImg.onerror = () => {
-                            loadedCount++; 
-                            resolve();
-                        };
-                        tempImg.src = aiUrl;
-                    });
-                    
-                    await new Promise(r => setTimeout(r, 500));
+                    // Delay between sequential Generation calls
+                    await new Promise(r => setTimeout(r, 1000));
                 }
                 
                 status.innerHTML = `<i class="fa-solid fa-check"></i> 성공! 총 ${loadedCount}장의 초고퀄리티 AI 사진이 완성되었습니다.`;
