@@ -797,7 +797,15 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             final_audio = CompositeAudioClip([final_audio, bgm_clip])
             final_video = final_video.with_audio(final_audio)
 
-        final_video.write_videofile(output_path, fps=24, codec="libx264", audio_codec="aac", logger=None)
+        final_video.write_videofile(
+            output_path, 
+            fps=15, 
+            codec="libx264", 
+            audio_codec="aac", 
+            preset="ultrafast", 
+            threads=1, 
+            logger=None
+        )
         
         final_video.close()
         for c in clips:
