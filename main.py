@@ -698,15 +698,14 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             await communicate.save(path)
 
         async def generate_all_tts(sentences, voice_model, temp_dir):
-            tasks = []
+            # MS Edge TTS는 과도한 동시 요청 시 차단(No audio received)되므로 순차적으로 생성합니다.
             for i, text in enumerate(sentences):
                 audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
-                tasks.append(generate_edge_audio(text, voice_model, audio_path))
-            await asyncio.gather(*tasks)
+                await generate_edge_audio(text, voice_model, audio_path)
             
         voice_model = 'ko-KR-SunHiNeural' if gender == 'female' else 'ko-KR-InJoonNeural'
 
-        # 1. 병렬로 모든 TTS 생성
+        # 1. 순차적으로 모든 TTS 생성 (이미지는 아래에서 병렬 다운로드 유지)
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
