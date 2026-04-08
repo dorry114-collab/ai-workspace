@@ -698,10 +698,19 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             await communicate.save(path)
 
         async def generate_all_tts(sentences, voice_model, temp_dir):
-            # MS Edge TTS는 과도한 동시 요청 시 차단(No audio received)되므로 순차적으로 생성합니다.
+            # MS Edge TTS는 과도한 동시 요청 시 차단(No audio received)되거나 일시적 오류가 발생할 수 있으므로
+            # 순차 생성과 함께 약간의 대기 시간(sleep) 및 재시도(Retry) 로직을 추가합니다.
             for i, text in enumerate(sentences):
                 audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
-                await generate_edge_audio(text, voice_model, audio_path)
+                for attempt in range(3):
+                    try:
+                        await generate_edge_audio(text, voice_model, audio_path)
+                        break
+                    except Exception as e:
+                        if attempt == 2: # 3번째 실패시 에러 발생
+                            raise Exception(f"성우 음성 생성 실패 (마이크로소프트 서버 오류): {str(e)}")
+                        await asyncio.sleep(1.0)
+                await asyncio.sleep(0.3)
             
         voice_model = 'ko-KR-SunHiNeural' if gender == 'female' else 'ko-KR-InJoonNeural'
 
