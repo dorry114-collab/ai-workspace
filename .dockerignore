@@ -1,0 +1,9 @@
+venv/
+__pycache__/
+.git/
+.env
+.DS_Store
+*.mp4
+*.mp3
+*.png
+*.jpg
