@@ -696,20 +696,44 @@ def process_export_task(job_id, script, images, bgm_url, gender):
         async def generate_edge_audio(text, voice_name, path):
             communicate = edge_tts.Communicate(text, voice_name)
             await communicate.save(path)
+
+        async def generate_all_tts(sentences, voice_model, temp_dir):
+            tasks = []
+            for i, text in enumerate(sentences):
+                audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
+                tasks.append(generate_edge_audio(text, voice_model, audio_path))
+            await asyncio.gather(*tasks)
             
         voice_model = 'ko-KR-SunHiNeural' if gender == 'female' else 'ko-KR-InJoonNeural'
 
+        # 1. 병렬로 모든 TTS 생성
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        loop.run_until_complete(generate_all_tts(sentences, voice_model, temp_dir))
+
+        # 2. 병렬로 모든 고해상도 이미지 다운로드
+        def fetch_image(img_src):
+            if img_src.startswith('data:image'):
+                header, encoded = img_src.split(',', 1)
+                return base64.b64decode(encoded)
+            else:
+                req = urllib.request.Request(img_src, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, context=ssl_ctx) as response:
+                    return response.read()
+
+        import concurrent.futures
+        unique_images_data = {}
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            future_to_src = {executor.submit(fetch_image, src): src for src in set(images)}
+            for future in concurrent.futures.as_completed(future_to_src):
+                src = future_to_src[future]
+                unique_images_data[src] = future.result()
+
         for i, text in enumerate(sentences):
             audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
-            
-            # 1. Generate TTS using Edge-TTS asynchronously inside thread loop
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            loop.run_until_complete(generate_edge_audio(text, voice_model, audio_path))
-            
             audio_clip = AudioFileClip(audio_path)
             duration = audio_clip.duration
             if duration < 1.0: duration = 1.0 
@@ -720,15 +744,8 @@ def process_export_task(job_id, script, images, bgm_url, gender):
 
             img_file_path = os.path.join(temp_dir, f"img_{i}_{safe_img_idx}.png")
             
-            pil_img = None
-            if img_src.startswith('data:image'):
-                header, encoded = img_src.split(',', 1)
-                img_data = base64.b64decode(encoded)
-                pil_img = PILImage.open(BytesIO(img_data)).convert('RGB')
-            else:
-                req = urllib.request.Request(img_src, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, context=ssl_ctx) as response:
-                    pil_img = PILImage.open(BytesIO(response.read())).convert('RGB')
+            img_data = unique_images_data.get(img_src)
+            pil_img = PILImage.open(BytesIO(img_data)).convert('RGB')
 
             target_w, target_h = 720, 1280
             w, h = pil_img.size
@@ -741,7 +758,8 @@ def process_export_task(job_id, script, images, bgm_url, gender):
                 offset = (h - new_h) // 2
                 pil_img = pil_img.crop((0, offset, w, offset + new_h))
             
-            pil_img = pil_img.resize((target_w, target_h), PILImage.Resampling.LANCZOS)
+            # 랜초스 필터 대신 가볍고 빠른 바이리니어 필터 적용
+            pil_img = pil_img.resize((target_w, target_h), PILImage.Resampling.BILINEAR)
             
             draw = ImageDraw.Draw(pil_img)
             words = text.split()
@@ -803,7 +821,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             codec="libx264", 
             audio_codec="aac", 
             preset="ultrafast", 
-            threads=1, 
+            threads=4, 
             logger=None
         )
         
