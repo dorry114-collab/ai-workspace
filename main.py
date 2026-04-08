@@ -790,7 +790,9 @@ def process_export_task(job_id, script, images, bgm_url, gender):
                     curr_line = []
             if curr_line: lines.append(" ".join(curr_line))
             
-            text_str = "\\n".join(lines)
+            # 여기서 문자열로 된 '\\n'이 아니라 실제 개행 문자 '\n'을 사용해야 줄바꿈이 됩니다.
+            text_str = "\n".join(lines)
+            
             bbox = draw.multiline_textbbox((0, 0), text_str, font=pil_font, align="center")
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
