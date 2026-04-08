@@ -824,9 +824,9 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             bgm_clip = AudioFileClip(bgm_path)
             from moviepy.audio.fx import MultiplyVolume
             bgm_clip = bgm_clip.with_effects([MultiplyVolume(0.15)])
-            from moviepy.video.fx import Loop
+            from moviepy.audio.fx import AudioLoop
             if bgm_clip.duration < final_video.duration:
-                bgm_clip = bgm_clip.with_effects([Loop(duration=final_video.duration)])
+                bgm_clip = bgm_clip.with_effects([AudioLoop(duration=final_video.duration)])
             else:
                 bgm_clip = bgm_clip.subclipped(0, final_video.duration)
                 
