@@ -806,7 +806,8 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             vclip = vclip.with_audio(audio_clip)
             clips.append(vclip)
 
-        final_video = concatenate_videoclips(clips, method="compose")
+        # method="chain"으로 변경하여 CompositeVideoClip 빌드 시 발생하는 막대한 메모리(RAM) 피크 및 OOM 킬 방지
+        final_video = concatenate_videoclips(clips, method="chain")
 
         final_audio = final_video.audio
         if bgm_url:
@@ -824,11 +825,15 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             bgm_clip = AudioFileClip(bgm_path)
             from moviepy.audio.fx import MultiplyVolume
             bgm_clip = bgm_clip.with_effects([MultiplyVolume(0.15)])
-            from moviepy.audio.fx import AudioLoop
-            if bgm_clip.duration < final_video.duration:
-                bgm_clip = bgm_clip.with_effects([AudioLoop(duration=final_video.duration)])
+            # MP3 파일 헤더 문제로 duration이 너무 짧게 인식(예: 0.01초)되어 AudioLoop이 수백만 개의 클립을 생성해 메모리가 다운되는 것을 방지합니다.
+            if getattr(bgm_clip, 'duration', 0) is None or bgm_clip.duration < 1.0:
+                bgm_clip = bgm_clip.with_duration(final_video.duration)
             else:
-                bgm_clip = bgm_clip.subclipped(0, final_video.duration)
+                from moviepy.audio.fx import AudioLoop
+                if bgm_clip.duration < final_video.duration:
+                    bgm_clip = bgm_clip.with_effects([AudioLoop(duration=final_video.duration)])
+                else:
+                    bgm_clip = bgm_clip.subclipped(0, final_video.duration)
                 
             final_audio = CompositeAudioClip([final_audio, bgm_clip])
             final_video = final_video.with_audio(final_audio)
