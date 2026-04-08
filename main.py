@@ -715,7 +715,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
                     # 마이크로소프트 서버가 3번 다 튕기면 구글 기본 성우(gTTS)로 자동 우회
                     try:
                         from gtts import gTTS
-                        tts = gTTS(text=text, lang='ko')
+                        tts = gTTS(text=text, lang='ko', timeout=5.0)
                         tts.save(audio_path)
                     except Exception as e2:
                         raise Exception(f"성우 서버 최종 접속 실패. MS({last_err}), 구글({str(e2)})")
@@ -739,7 +739,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
                 return base64.b64decode(encoded)
             else:
                 req = urllib.request.Request(img_src, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, context=ssl_ctx) as response:
+                with urllib.request.urlopen(req, context=ssl_ctx, timeout=15.0) as response:
                     return response.read()
 
         import concurrent.futures
@@ -817,7 +817,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
                     f.write(base64.b64decode(encoded))
             else:
                 req = urllib.request.Request(bgm_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, context=ssl_ctx) as response:
+                with urllib.request.urlopen(req, context=ssl_ctx, timeout=15.0) as response:
                     with open(bgm_path, "wb") as f:
                         f.write(response.read())
             
@@ -839,7 +839,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             codec="libx264", 
             audio_codec="aac", 
             preset="ultrafast", 
-            threads=4, 
+            threads=1, 
             logger=None
         )
         
