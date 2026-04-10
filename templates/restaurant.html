@@ -155,13 +155,36 @@
             box-shadow: 0 6px 20px rgba(255, 170, 0, 0.4);
         }
 
-        /* Filter Tabs */
+        /* Filter Tabs & Sort Area */
+        .controls-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
         .filter-tabs {
             display: flex;
             gap: 0.5rem;
-            justify-content: center;
-            margin-bottom: 2rem;
             flex-wrap: wrap;
+        }
+
+        .sort-select {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .sort-select:focus {
+            border-color: var(--primary);
         }
 
         .tab {
@@ -384,6 +407,52 @@
             color: rgba(255, 255, 255, 0.1);
         }
 
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            p.subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .input-group {
+                max-width: 100%;
+                width: 100%;
+                flex: 100%;
+            }
+            
+            select {
+                flex: 1;
+            }
+            
+            button.search-btn {
+                flex: 1;
+            }
+            
+            .controls-area {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-tabs {
+                justify-content: center;
+            }
+            
+            .sort-select {
+                width: 100%;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -412,15 +481,22 @@
 
         <div id="errorBox" class="error-msg"></div>
 
-        <div class="filter-tabs" id="filterTabs" style="display: none;">
-            <div class="tab active" data-cat="all">전체</div>
-            <div class="tab" data-cat="한식">한식</div>
-            <div class="tab" data-cat="중식">중식</div>
-            <div class="tab" data-cat="양식">양식</div>
-            <div class="tab" data-cat="일식">일식</div>
-            <div class="tab" data-cat="분식">분식</div>
-            <div class="tab" data-cat="카페">카페</div>
-            <div class="tab" data-cat="기타">기타</div>
+        <div class="controls-area" id="controlsArea" style="display: none;">
+            <div class="filter-tabs" id="filterTabs">
+                <div class="tab active" data-cat="all">전체</div>
+                <div class="tab" data-cat="한식">한식</div>
+                <div class="tab" data-cat="중식">중식</div>
+                <div class="tab" data-cat="양식">양식</div>
+                <div class="tab" data-cat="일식">일식</div>
+                <div class="tab" data-cat="분식">분식</div>
+                <div class="tab" data-cat="카페">카페</div>
+                <div class="tab" data-cat="기타">기타</div>
+            </div>
+            
+            <select id="sortSelect" class="sort-select" onchange="renderCards(currentCategory)">
+                <option value="distance">가까운 순</option>
+                <option value="rating">별점 높은 순</option>
+            </select>
         </div>
 
         <div class="loader" id="loader">
@@ -458,7 +534,7 @@
             hideError();
             showLoader();
             document.getElementById('resultsGrid').innerHTML = '';
-            document.getElementById('filterTabs').style.display = 'none';
+            document.getElementById('controlsArea').style.display = 'none';
             document.getElementById('emptyState').style.display = 'none';
 
             try {
@@ -493,11 +569,12 @@
         }
 
         function renderCards(category) {
+            currentCategory = category;
             const grid = document.getElementById('resultsGrid');
             grid.innerHTML = '';
             
-            const filtered = category === 'all' 
-                ? allRestaurants 
+            let filtered = category === 'all' 
+                ? [...allRestaurants] 
                 : allRestaurants.filter(r => r.category === category);
 
             if (filtered.length === 0) {
@@ -506,6 +583,20 @@
             }
 
             document.getElementById('emptyState').style.display = 'none';
+
+            // 정렬 로직 적용
+            const sortMode = document.getElementById('sortSelect').value;
+            if (sortMode === 'distance') {
+                filtered.sort((a, b) => a.distance - b.distance);
+            } else if (sortMode === 'rating') {
+                filtered.sort((a, b) => {
+                    const getVal = ratingStr => {
+                        if (ratingStr === 'N/A' || ratingStr === '평가 부족' || !ratingStr) return -1;
+                        return parseFloat(ratingStr) || -1;
+                    };
+                    return getVal(b.rating) - getVal(a.rating);
+                });
+            }
 
             filtered.forEach(r => {
                 const card = document.createElement('div');
