@@ -255,6 +255,22 @@
             border-radius: 8px;
         }
 
+        .rating-badge.google-rating {
+            background: rgba(66, 133, 244, 0.15);
+            color: #4285F4;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+        }
+        
+        .rating-badge.google-rating i {
+            color: #DB4437; /* Google Red */
+        }
+        
+        .rating-badge.muted {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
         .rating-badge i {
             font-size: 0.8rem;
         }
@@ -271,8 +287,19 @@
         .menu-list {
             margin-top: 1rem;
             padding-top: 1rem;
-            border-top: 1px solid var(--border-color);
+            border-top: 1px dashed rgba(255, 255, 255, 0.15);
             flex-grow: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .menu-title-label {
+            font-size: 0.75rem;
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
         }
 
         .menu-item {
@@ -485,13 +512,15 @@
                 card.className = 'card';
                 
                 let ratingHtml = '';
-                if (r.rating !== 'N/A') {
-                    ratingHtml = `<div class="rating-badge"><i class="fa-solid fa-star"></i> ${r.rating}</div>`;
+                if (r.rating !== 'N/A' && r.rating !== '평가 부족') {
+                    ratingHtml = `<div class="rating-badge google-rating" title="구글 리뷰 기반 별점"><i class="fa-brands fa-google"></i> ${r.rating}</div>`;
+                } else if (r.rating === '평가 부족') {
+                    ratingHtml = `<div class="rating-badge muted" title="리뷰 수가 부족합니다"><i class="fa-brands fa-google"></i> 평가 부족</div>`;
                 }
 
                 let menusHtml = '';
                 if (r.menu && r.menu.length > 0) {
-                    menusHtml = '<div class="menu-list">';
+                    menusHtml = '<div class="menu-list"><div class="menu-title-label">👑 카카오 인기 메뉴 TOP</div>';
                     r.menu.forEach(m => {
                         menusHtml += `
                             <div class="menu-item">
@@ -502,7 +531,7 @@
                     });
                     menusHtml += '</div>';
                 } else {
-                    menusHtml = '<div class="menu-list"><div style="color:var(--text-muted);font-size:0.85rem;">[상세 메뉴는 링크 참조]</div></div>';
+                    menusHtml = '<div class="menu-list"><div style="color:var(--text-muted);font-size:0.85rem;">[대표 메뉴 정보 없음]</div></div>';
                 }
 
                 const distStr = r.distance >= 1000 ? (r.distance/1000).toFixed(1) + 'km' : r.distance + 'm';

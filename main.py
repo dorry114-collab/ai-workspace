@@ -5,6 +5,7 @@ import numpy as np
 import datetime
 from sklearn.linear_model import LinearRegression
 import urllib.request
+import urllib.parse
 import ssl
 import requests
 import FinanceDataReader as fdr
@@ -950,24 +951,15 @@ def restaurant_search():
                 'menu': []
             }
             
-            # 카카오맵 모바일 페이지를 가볍게 로드하여 기본 스크래핑 시도
+            # 1. 카카오맵 크롤링으로 대표 메뉴 가져오기
             try:
                 from bs4 import BeautifulSoup
                 m_url = f"https://place.map.kakao.com/m/{pid}"
                 req_h = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"}
                 m_resp = requests.get(m_url, headers=req_h, timeout=2.0)
                 if m_resp.status_code == 200:
-                    soup = BeautifulSoup(m_resp.text, 'html.parser')
-                    # 별점 파싱 (카카오맵의 특정 클래스나 og태그, 구조화데이터 확인 - 변동성 높음)
-                    # 안정성을 위해 정규식 패턴으로 추출 시도 (예: "star_rate":"4.5")
-                    rate_match = re.search(r'"score":([0-9.]+)', m_resp.text)
-                    if rate_match:
-                        item['rating'] = rate_match.group(1)
-                    
-                    # 메뉴 파싱 (리스트 형태 추출 시도)
                     menu_match = re.search(r'"menuList":\[(.*?)\]', m_resp.text)
                     if menu_match:
-                        # 메뉴 리스트만 추출. 간단하게 정규식으로 잘라냄
                         inner_text = menu_match.group(1)
                         menus_raw = re.findall(r'"menu":"(.*?)".*?"price":(".*?"|[0-9]+)', inner_text)
                         parsed_menus = []
@@ -978,8 +970,29 @@ def restaurant_search():
                             parsed_menus.append({"name": mr[0], "price": price_str})
                         item['menu'] = parsed_menus
             except Exception:
-                pass # 크롤링 실패 시 무시하고 기본 데이터 유지
+                pass # 크롤링 실패 시 메뉴 빈칸
                 
+            # 2. 구글 Places API 연동하여 별점 가져오기 (키가 있을 경우에만)
+            google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+            if google_api_key:
+                try:
+                    search_query = f"{p_name} {item['address'].split()[0]}" # 예: "스타벅스 대구" (너무 길면 못찾을 수 있으므로 시도 이름만 첨부)
+                    g_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={urllib.parse.quote(search_query)}&inputtype=textquery&fields=rating,user_ratings_total&locationbias=point:{p.get('y')},{p.get('x')}&key={google_api_key}"
+                    g_resp = requests.get(g_url, timeout=2.0).json()
+                    
+                    if g_resp.get('status') == 'OK' and g_resp.get('candidates'):
+                        cand = g_resp['candidates'][0]
+                        rating = cand.get('rating')
+                        total_ratings = cand.get('user_ratings_total', 0)
+                        
+                        # 리뷰가 10개 이상일 때만 유효한 별점으로 인정
+                        if rating and total_ratings >= 10:
+                            item['rating'] = str(rating)
+                        else:
+                            item['rating'] = "평가 부족"
+                except Exception as e:
+                    pass
+            
             return item
 
         # 병렬 스크래핑 처리
