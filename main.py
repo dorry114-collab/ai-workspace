@@ -893,10 +893,12 @@ def restaurant_search():
         if not geo_data.get('documents'):
             kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
             kw_resp = requests.get(kw_url, headers=headers)
-            geo_data = kw_resp.json()
+            kw_data = kw_resp.json()
+            if kw_data.get('documents'):
+                geo_data = kw_data
             
         if not geo_data.get('documents'):
-            return jsonify({"success": False, "error": "검색된 주소나 장소가 없습니다. 검색어를 조금 더 구체적으로 입력해주세요."})
+            return jsonify({"success": False, "error": f"검색된 주소나 장소가 없습니다. (Kakao API 응답: {geo_data})"})
             
         x = geo_data['documents'][0]['x']
         y = geo_data['documents'][0]['y']
