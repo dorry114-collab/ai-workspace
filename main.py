@@ -973,6 +973,7 @@ def restaurant_search():
                 pass # 크롤링 실패 시 메뉴 빈칸
                 
             # 2. 구글 Places API 연동하여 별점 가져오기 (키가 있을 경우에만)
+            item['total_ratings'] = 0
             google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
             if google_api_key:
                 try:
@@ -984,6 +985,8 @@ def restaurant_search():
                         cand = g_resp['candidates'][0]
                         rating = cand.get('rating')
                         total_ratings = cand.get('user_ratings_total', 0)
+                        
+                        item['total_ratings'] = total_ratings
                         
                         # 리뷰가 10개 이상일 때만 유효한 별점으로 인정
                         if rating and total_ratings >= 10:

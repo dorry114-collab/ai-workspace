@@ -297,6 +297,13 @@
         .rating-badge i {
             font-size: 0.8rem;
         }
+        
+        .review-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: 0.3rem;
+            font-weight: 500;
+        }
 
         .address, .phone {
             font-size: 0.9rem;
@@ -442,7 +449,24 @@
             }
             
             .filter-tabs {
-                justify-content: center;
+                justify-content: flex-start;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 0.5rem;
+                width: 100%;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .filter-tabs::-webkit-scrollbar {
+                height: 4px;
+            }
+            .filter-tabs::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+            }
+            
+            .tab {
+                white-space: nowrap;
             }
             
             .sort-select {
@@ -558,7 +582,7 @@
                 if (allRestaurants.length === 0) {
                     document.getElementById('emptyState').style.display = 'block';
                 } else {
-                    document.getElementById('filterTabs').style.display = 'flex';
+                    document.getElementById('controlsArea').style.display = 'flex';
                     renderCards('all');
                 }
 
@@ -604,7 +628,8 @@
                 
                 let ratingHtml = '';
                 if (r.rating !== 'N/A' && r.rating !== '평가 부족') {
-                    ratingHtml = `<div class="rating-badge google-rating" title="구글 리뷰 기반 별점"><i class="fa-brands fa-google"></i> ${r.rating}</div>`;
+                    let reviewCountHtml = r.total_ratings ? `<span class="review-count">(${r.total_ratings})</span>` : '';
+                    ratingHtml = `<div class="rating-badge google-rating" title="구글 리뷰 기반 별점"><i class="fa-brands fa-google"></i> ${r.rating} ${reviewCountHtml}</div>`;
                 } else if (r.rating === '평가 부족') {
                     ratingHtml = `<div class="rating-badge muted" title="리뷰 수가 부족합니다"><i class="fa-brands fa-google"></i> 평가 부족</div>`;
                 }
