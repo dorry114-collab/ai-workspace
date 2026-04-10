@@ -888,8 +888,15 @@ def restaurant_search():
     try:
         geo_resp = requests.get(geo_url, headers=headers)
         geo_data = geo_resp.json()
+        
+        # 주소 검색 실패시 키워드 장소 검색으로 fallback (예: "대명로 256", "스타벅스 강남점" 등)
         if not geo_data.get('documents'):
-            return jsonify({"success": False, "error": "검색된 주소가 없습니다. 정확한 동, 번지를 입력해주세요."})
+            kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+            kw_resp = requests.get(kw_url, headers=headers)
+            geo_data = kw_resp.json()
+            
+        if not geo_data.get('documents'):
+            return jsonify({"success": False, "error": "검색된 주소나 장소가 없습니다. 검색어를 조금 더 구체적으로 입력해주세요."})
             
         x = geo_data['documents'][0]['x']
         y = geo_data['documents'][0]['y']
