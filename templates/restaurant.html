@@ -221,7 +221,6 @@
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 1.5rem;
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
@@ -234,6 +233,36 @@
             border-color: rgba(255, 255, 255, 0.15);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
+
+        .card-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-bottom: 1px solid var(--border-color);
+            background: #1e1e1e;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .status-open { background: rgba(46, 204, 113, 0.85); color: white; }
+        .status-closed { background: rgba(231, 76, 60, 0.85); color: white; }
 
         .card-header {
             display: flex;
@@ -342,22 +371,66 @@
         .menu-name { color: var(--text-main); }
         .menu-price { color: var(--primary); font-weight: 600; }
 
-        .btn-link {
-            display: block;
-            text-align: center;
-            margin-top: 1.5rem;
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
             padding: 0.8rem;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
             color: var(--text-main);
             text-decoration: none;
             font-size: 0.9rem;
+            font-weight: 600;
             transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
 
-        .btn-link:hover {
+        .btn-action:hover {
             background: rgba(255, 255, 255, 0.1);
-            color: var(--primary);
+        }
+
+        .btn-kakao:hover { color: #FEE500; border-color: rgba(254, 229, 0, 0.3); }
+        .btn-tmap:hover { color: #00A170; border-color: rgba(0, 161, 112, 0.3); }
+
+        .ai-summary-btn {
+            width: 100%;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, rgba(66, 133, 244, 0.15), rgba(219, 68, 55, 0.15));
+            border: 1px dashed rgba(66, 133, 244, 0.5);
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .ai-summary-btn:hover {
+            background: linear-gradient(135deg, rgba(66, 133, 244, 0.3), rgba(219, 68, 55, 0.3));
+            border-style: solid;
+        }
+
+        .ai-summary-box {
+            background: rgba(0,0,0,0.3);
+            border-left: 3px solid #4285F4;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #e8eaed;
+            display: none; /* hidden by default */
         }
 
         /* Loading Spinner */
@@ -635,18 +708,53 @@
                 }
 
                 const distStr = r.distance >= 1000 ? (r.distance/1000).toFixed(1) + 'km' : r.distance + 'm';
+                
+                // Thumbnail logic
+                let thumbHtml = '';
+                if (r.photo_url) {
+                    thumbHtml = `<img src="${r.photo_url}" class="card-thumbnail" alt="${r.name} 대표사진" loading="lazy">`;
+                }
+                
+                // Status badge
+                let statusHtml = '';
+                if (r.is_open === True || r.is_open === true) {
+                    statusHtml = `<div class="status-badge status-open">🟢 영업중</div>`;
+                } else if (r.is_open === False || r.is_open === false) {
+                    statusHtml = `<div class="status-badge status-closed">🔴 영업종료</div>`;
+                }
+                
+                // TMAP Nav Intent
+                const tmapUrl = `tmap://route?goalname=${encodeURIComponent(r.name)}&goalx=${r.x}&goaly=${r.y}`;
 
                 card.innerHTML = `
-                    <div class="card-header">
-                        <span class="category-badge">${r.category}</span>
-                        <span class="distance-badge"><i class="fa-solid fa-person-walking"></i> ${distStr}</span>
+                    ${thumbHtml}
+                    ${statusHtml}
+                    <div class="card-content">
+                        <div class="card-header">
+                            <span class="category-badge">${r.category}</span>
+                            <span class="distance-badge"><i class="fa-solid fa-person-walking"></i> ${distStr}</span>
+                        </div>
+                        <h3>${r.name}</h3>
+                        ${ratingHtml}
+                        <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
+                        ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
+                        
+                        ${r.place_id ? `
+                        <button class="ai-summary-btn" id="btn-summary-${r.place_id}" onclick="loadAISummary('${r.place_id}')">
+                            <i class="fa-solid fa-robot"></i> AI 리뷰 요약 보기
+                        </button>
+                        <div class="ai-summary-box" id="summary-box-${r.place_id}"></div>
+                        ` : ''}
+                        
+                        <div class="button-group">
+                            <a href="https://map.kakao.com/link/to/${r.name},${r.y},${r.x}" target="_blank" class="btn-action btn-kakao">
+                                <i class="fa-solid fa-diamond-turn-right"></i> 카카오
+                            </a>
+                            <a href="${tmapUrl}" target="_blank" class="btn-action btn-tmap">
+                                <i class="fa-solid fa-car-side"></i> 티맵
+                            </a>
+                        </div>
                     </div>
-                    <h3>${r.name}</h3>
-                    ${ratingHtml}
-                    <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
-                    ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
-                    
-                    <a href="${r.url}" target="_blank" class="btn-link" style="margin-top: 1rem;">카카오맵에서 위치 보기</a>
                 `;
                 
                 grid.appendChild(card);
@@ -670,6 +778,35 @@
             box.style.display = 'block';
         }
         function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+        
+        async function loadAISummary(placeId) {
+            const btn = document.getElementById(`btn-summary-${placeId}`);
+            const box = document.getElementById(`summary-box-${placeId}`);
+            
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> 요약 중...`;
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/restaurant/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ place_id: placeId })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    btn.style.display = 'none';
+                    box.style.display = 'block';
+                    box.innerHTML = `<strong>🤖 AI 한줄평:</strong><br>${data.summary.replace(/\\n/g, '<br>')}`;
+                } else {
+                    btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 요약 실패`;
+                    btn.disabled = false;
+                }
+            } catch(e) {
+                btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> 오류 발생`;
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>

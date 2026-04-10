@@ -946,9 +946,14 @@ def restaurant_search():
                 'distance': dist,
                 'address': p.get('road_address_name') or p.get('address_name'),
                 'phone': p.get('phone', ''),
+                'x': p.get('x'),
+                'y': p.get('y'),
                 'url': p_url,
                 'rating': "N/A",
-                'menu': []
+                'total_ratings': 0,
+                'place_id': None,
+                'photo_url': None,
+                'is_open': None
             }
             
             # 1. (제거됨) 카카오맵 로컬 스크래핑은 카카오 측의 트래픽 차단으로 인해 제거됨.
@@ -959,7 +964,7 @@ def restaurant_search():
             if google_api_key:
                 try:
                     search_query = f"{p_name} {item['address'].split()[0]}" # 예: "스타벅스 대구" (너무 길면 못찾을 수 있으므로 시도 이름만 첨부)
-                    g_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={urllib.parse.quote(search_query)}&inputtype=textquery&fields=rating,user_ratings_total&locationbias=point:{p.get('y')},{p.get('x')}&key={google_api_key}"
+                    g_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={urllib.parse.quote(search_query)}&inputtype=textquery&fields=place_id,rating,user_ratings_total,photos,opening_hours&locationbias=point:{p.get('y')},{p.get('x')}&key={google_api_key}"
                     g_resp = requests.get(g_url, timeout=2.0).json()
                     
                     if g_resp.get('status') == 'OK' and g_resp.get('candidates'):
@@ -968,6 +973,14 @@ def restaurant_search():
                         total_ratings = cand.get('user_ratings_total', 0)
                         
                         item['total_ratings'] = total_ratings
+                        item['place_id'] = cand.get('place_id')
+                        
+                        if 'opening_hours' in cand:
+                            item['is_open'] = cand['opening_hours'].get('open_now')
+                            
+                        if 'photos' in cand and cand['photos']:
+                            photo_ref = cand['photos'][0].get('photo_reference')
+                            item['photo_url'] = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference={photo_ref}&key={google_api_key}"
                         
                         # 리뷰가 10개 이상일 때만 유효한 별점으로 인정
                         if rating and total_ratings >= 10:
@@ -995,8 +1008,49 @@ def restaurant_search():
         traceback.print_exc()
         return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
 
+@app.route('/api/restaurant/summary', methods=['POST'])
+def restaurant_summary():
+    data = request.json
+    place_id = data.get('place_id')
+    google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+    
+    if not place_id or not google_api_key:
+        return jsonify({"success": False, "error": "요청 정보가 올바르지 않거나 구글 API 키가 세팅되지 않았습니다."})
+        
+    try:
+        det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
+        resp = requests.get(det_url).json()
+        reviews = resp.get('result', {}).get('reviews', [])
+        
+        if not reviews:
+            return jsonify({"success": True, "summary": "아직 리뷰가 충분하지 않아 요약할 수 없습니다."})
+            
+        review_texts = [r.get('text') for r in reviews if r.get('text')]
+        combined_text = "\n".join(review_texts[:5])
+        
+        if not combined_text.strip():
+            return jsonify({"success": True, "summary": "아직 텍스트 리뷰가 없어 요약할 수 없습니다."})
+            
+        import google.generativeai as genai
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if not gemini_api_key:
+            return jsonify({"success": False, "error": "Gemini API 키가 세팅되지 않았습니다."})
+            
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        prompt = f"""다음은 특정 맛집의 실제 리뷰 5개입니다.
+이 리뷰들을 종합해서 가장 핵심적이고 유용한 점(맛, 분위기, 주차, 서비스 등)을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 조언(요약)을 봇처럼 작성해주세요. 
 
-
+[리뷰 데이터]:
+{combined_text}
+"""
+        response = model.generate_content(prompt)
+        return jsonify({"success": True, "summary": response.text.strip()})
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)})
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
     # This block is for simple local testing via `python main.py`
