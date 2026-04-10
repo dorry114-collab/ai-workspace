@@ -717,9 +717,9 @@
                 
                 // Status badge
                 let statusHtml = '';
-                if (r.is_open === True || r.is_open === true) {
+                if (r.is_open === true) {
                     statusHtml = `<div class="status-badge status-open">🟢 영업중</div>`;
-                } else if (r.is_open === False || r.is_open === false) {
+                } else if (r.is_open === false) {
                     statusHtml = `<div class="status-badge status-closed">🔴 영업종료</div>`;
                 }
                 
