@@ -951,27 +951,8 @@ def restaurant_search():
                 'menu': []
             }
             
-            # 1. 카카오맵 크롤링으로 대표 메뉴 가져오기
-            try:
-                from bs4 import BeautifulSoup
-                m_url = f"https://place.map.kakao.com/m/{pid}"
-                req_h = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"}
-                m_resp = requests.get(m_url, headers=req_h, timeout=2.0)
-                if m_resp.status_code == 200:
-                    menu_match = re.search(r'"menuList":\[(.*?)\]', m_resp.text)
-                    if menu_match:
-                        inner_text = menu_match.group(1)
-                        menus_raw = re.findall(r'"menu":"(.*?)".*?"price":(".*?"|[0-9]+)', inner_text)
-                        parsed_menus = []
-                        for mr in menus_raw[:3]:
-                            price_str = str(mr[1]).replace('"', '')
-                            if price_str.isdigit():
-                                price_str = f"{int(price_str):,}원"
-                            parsed_menus.append({"name": mr[0], "price": price_str})
-                        item['menu'] = parsed_menus
-            except Exception:
-                pass # 크롤링 실패 시 메뉴 빈칸
-                
+            # 1. (제거됨) 카카오맵 로컬 스크래핑은 카카오 측의 트래픽 차단으로 인해 제거됨.
+            
             # 2. 구글 Places API 연동하여 별점 가져오기 (키가 있을 경우에만)
             item['total_ratings'] = 0
             google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')

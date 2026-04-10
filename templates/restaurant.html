@@ -634,22 +634,6 @@
                     ratingHtml = `<div class="rating-badge muted" title="리뷰 수가 부족합니다"><i class="fa-brands fa-google"></i> 평가 부족</div>`;
                 }
 
-                let menusHtml = '';
-                if (r.menu && r.menu.length > 0) {
-                    menusHtml = '<div class="menu-list"><div class="menu-title-label">👑 카카오 인기 메뉴 TOP</div>';
-                    r.menu.forEach(m => {
-                        menusHtml += `
-                            <div class="menu-item">
-                                <span class="menu-name">${m.name}</span>
-                                <span class="menu-price">${m.price}</span>
-                            </div>
-                        `;
-                    });
-                    menusHtml += '</div>';
-                } else {
-                    menusHtml = '<div class="menu-list"><div style="color:var(--text-muted);font-size:0.85rem;">[대표 메뉴 정보 없음]</div></div>';
-                }
-
                 const distStr = r.distance >= 1000 ? (r.distance/1000).toFixed(1) + 'km' : r.distance + 'm';
 
                 card.innerHTML = `
@@ -662,9 +646,7 @@
                     <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
                     ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
                     
-                    ${menusHtml}
-                    
-                    <a href="${r.url}" target="_blank" class="btn-link">카카오맵에서 열기</a>
+                    <a href="${r.url}" target="_blank" class="btn-link" style="margin-top: 1rem;">카카오맵에서 위치 보기</a>
                 `;
                 
                 grid.appendChild(card);
