@@ -906,7 +906,7 @@ def restaurant_search():
         
         # 2. 좌표 기준 음식점(FD6) 검색
         places = []
-        for page in range(1, 4):  # 최대 3페이지(45개) 검색
+        for page in range(1, 5):  # 최대 4페이지(60개)로 확장
             cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x={x}&y={y}&radius={radius}&page={page}"
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
@@ -993,8 +993,8 @@ def restaurant_search():
             return item
 
         # 병렬 스크래핑 처리
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            scraped_places = list(executor.map(scrape_place, places[:30])) # 최대 30개만
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:50])) # 최대 30개에서 50개로 확장
             
         results = sorted(scraped_places, key=lambda x: x['distance'])
         
