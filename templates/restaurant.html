@@ -595,6 +595,8 @@
             <select id="sortSelect" class="sort-select" onchange="renderCards(currentCategory)">
                 <option value="distance">가까운 순</option>
                 <option value="rating">별점 높은 순</option>
+                <option value="reviews">리뷰 많은 순</option>
+                <option value="trust">🔥 파워점수 순</option>
             </select>
         </div>
 
@@ -695,6 +697,10 @@
                     };
                     return getVal(b.rating) - getVal(a.rating);
                 });
+            } else if (sortMode === 'reviews') {
+                filtered.sort((a, b) => (b.total_ratings || 0) - (a.total_ratings || 0));
+            } else if (sortMode === 'trust') {
+                filtered.sort((a, b) => (b.trust_score || 0) - (a.trust_score || 0));
             }
 
             filtered.forEach(r => {
@@ -725,6 +731,12 @@
                     statusHtml = `<div class="status-badge status-closed">🔴 영업종료</div>`;
                 }
                 
+                // Trust Score badge
+                let trustScoreHtml = '';
+                if (r.trust_score && r.trust_score > 0) {
+                    trustScoreHtml = `<div class="rating-badge" style="background: linear-gradient(135deg, rgba(255,170,0,0.1), rgba(255,85,0,0.2)); border: 1px solid rgba(255,170,0,0.3); color: #ffaa00; margin-left: 0.5rem;" title="파워점수 = 별점 x 리뷰수">🔥 파워 점수: <strong>${r.trust_score.toLocaleString()}</strong>점</div>`;
+                }
+                
                 // TMAP Nav Intent
                 const tmapUrl = `tmap://route?goalname=${encodeURIComponent(r.name)}&goalx=${r.x}&goaly=${r.y}`;
 
@@ -737,7 +749,10 @@
                             <span class="distance-badge" title="검색 위치로부터의 직선거리"><i class="fa-solid fa-ruler-horizontal"></i> ${distStr}</span>
                         </div>
                         <h3>${r.name}</h3>
-                        ${ratingHtml}
+                        <div>
+                            ${ratingHtml}
+                            ${trustScoreHtml}
+                        </div>
                         <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
                         ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
                         

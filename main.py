@@ -985,8 +985,10 @@ def restaurant_search():
                         # 리뷰가 10개 이상일 때만 유효한 별점으로 인정
                         if rating and total_ratings >= 10:
                             item['rating'] = str(rating)
+                            item['trust_score'] = int(float(rating) * total_ratings)
                         else:
                             item['rating'] = "평가 부족"
+                            item['trust_score'] = 0
                 except Exception as e:
                     pass
             
