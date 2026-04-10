@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 주변 맛집 스캐너</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Pretendard:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #ffaa00;
+            --secondary: #ff5500;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(255, 170, 0, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 85, 0, 0.05), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 14, 20, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover {
+            color: var(--text-main);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #fff, #ffaa00);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+        }
+
+        /* Search Bar */
+        .search-area {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .input-group i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1rem 1rem 2.8rem;
+            font-size: 1rem;
+            color: var(--text-main);
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(255, 170, 0, 0.2);
+        }
+
+        select {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        button.search-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 170, 0, 0.3);
+        }
+
+        button.search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 170, 0, 0.4);
+        }
+
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.6rem 1.2rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .tab.active {
+            background: rgba(255, 170, 0, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Cards Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .category-badge {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .distance-badge {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.3rem;
+            color: var(--text-main);
+        }
+
+        .rating-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #ffaa00;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 170, 0, 0.1);
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+        }
+
+        .rating-badge i {
+            font-size: 0.8rem;
+        }
+
+        .address, .phone {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .menu-list {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-color);
+            flex-grow: 1;
+        }
+
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .menu-name { color: var(--text-main); }
+        .menu-price { color: var(--primary); font-weight: 600; }
+
+        .btn-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .btn-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--primary);
+        }
+
+        /* Loading Spinner */
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 170, 0, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 1rem auto;
+        }
+
+        .loader p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+
+        .error-msg {
+            text-align: center;
+            color: var(--secondary);
+            background: rgba(255, 85, 0, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-muted);
+            display: none;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.1);
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 돌아가기</a>
+    </nav>
+
+    <div class="container">
+        <h1>AI 주변 맛집 스캐너</h1>
+        <p class="subtitle">입력하신 위치 주변의 최고의 맛집과 메뉴를 긁어옵니다.</p>
+
+        <div class="search-area">
+            <div class="input-group">
+                <i class="fa-solid fa-location-dot"></i>
+                <input type="text" id="addressInput" placeholder="동 단위 주소 입력 (예: 강남구 역삼동)" onkeypress="handleKeyPress(event)">
+            </div>
+            <select id="radiusSelect">
+                <option value="5000">5km 이내</option>
+                <option value="10000">10km 이내</option>
+            </select>
+            <button class="search-btn" onclick="performSearch()">
+                <i class="fa-solid fa-magnifying-glass"></i> 검색
+            </button>
+        </div>
+
+        <div id="errorBox" class="error-msg"></div>
+
+        <div class="filter-tabs" id="filterTabs" style="display: none;">
+            <div class="tab active" data-cat="all">전체</div>
+            <div class="tab" data-cat="한식">한식</div>
+            <div class="tab" data-cat="중식">중식</div>
+            <div class="tab" data-cat="양식">양식</div>
+            <div class="tab" data-cat="일식">일식</div>
+            <div class="tab" data-cat="분식">분식</div>
+            <div class="tab" data-cat="카페">카페</div>
+            <div class="tab" data-cat="기타">기타</div>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>맛집 정보를 분석하고 카카오 실시간 데이터를 병렬로 긁어오는 중입니다...<br>(최대 5~7초 정도 소요될 수 있습니다)</p>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <i class="fa-solid fa-bowl-food"></i>
+            <h3>검색된 결과가 없습니다.</h3>
+            <p>검색어나 필터 조건을 변경해보세요.</p>
+        </div>
+
+        <div class="results-grid" id="resultsGrid"></div>
+    </div>
+
+    <script>
+        let allRestaurants = [];
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        async function performSearch() {
+            const address = document.getElementById('addressInput').value.trim();
+            const radius = document.getElementById('radiusSelect').value;
+            
+            if (!address) {
+                showError("주소를 입력해주세요.");
+                return;
+            }
+
+            hideError();
+            showLoader();
+            document.getElementById('resultsGrid').innerHTML = '';
+            document.getElementById('filterTabs').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/restaurant/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address, radius })
+                });
+
+                const data = await response.json();
+                
+                if (!data.success) {
+                    showError(data.error);
+                    hideLoader();
+                    return;
+                }
+
+                allRestaurants = data.data;
+                hideLoader();
+
+                if (allRestaurants.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                } else {
+                    document.getElementById('filterTabs').style.display = 'flex';
+                    renderCards('all');
+                }
+
+            } catch (err) {
+                hideLoader();
+                showError("서버와의 통신 중 오류가 발생했습니다.");
+            }
+        }
+
+        function renderCards(category) {
+            const grid = document.getElementById('resultsGrid');
+            grid.innerHTML = '';
+            
+            const filtered = category === 'all' 
+                ? allRestaurants 
+                : allRestaurants.filter(r => r.category === category);
+
+            if (filtered.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+
+            filtered.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                
+                let ratingHtml = '';
+                if (r.rating !== 'N/A') {
+                    ratingHtml = `<div class="rating-badge"><i class="fa-solid fa-star"></i> ${r.rating}</div>`;
+                }
+
+                let menusHtml = '';
+                if (r.menu && r.menu.length > 0) {
+                    menusHtml = '<div class="menu-list">';
+                    r.menu.forEach(m => {
+                        menusHtml += `
+                            <div class="menu-item">
+                                <span class="menu-name">${m.name}</span>
+                                <span class="menu-price">${m.price}</span>
+                            </div>
+                        `;
+                    });
+                    menusHtml += '</div>';
+                } else {
+                    menusHtml = '<div class="menu-list"><div style="color:var(--text-muted);font-size:0.85rem;">[상세 메뉴는 링크 참조]</div></div>';
+                }
+
+                const distStr = r.distance >= 1000 ? (r.distance/1000).toFixed(1) + 'km' : r.distance + 'm';
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="category-badge">${r.category}</span>
+                        <span class="distance-badge"><i class="fa-solid fa-person-walking"></i> ${distStr}</span>
+                    </div>
+                    <h3>${r.name}</h3>
+                    ${ratingHtml}
+                    <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
+                    ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
+                    
+                    ${menusHtml}
+                    
+                    <a href="${r.url}" target="_blank" class="btn-link">카카오맵에서 열기</a>
+                `;
+                
+                grid.appendChild(card);
+            });
+        }
+
+        // Tab Filter Logic
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                renderCards(e.target.dataset.cat);
+            });
+        });
+
+        function showLoader() { document.getElementById('loader').classList.add('active'); }
+        function hideLoader() { document.getElementById('loader').classList.remove('active'); }
+        function showError(msg) { 
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+        function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+    </script>
+</body>
+</html>

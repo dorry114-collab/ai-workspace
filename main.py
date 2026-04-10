@@ -537,6 +537,10 @@ def prompt_generate():
 def home():
     return render_template('home.html')
 
+@app.route('/restaurant')
+def restaurant():
+    return render_template('restaurant.html')
+
 @app.route('/youtube')
 def youtube():
     return render_template('youtube.html')
@@ -863,6 +867,128 @@ def process_export_task(job_id, script, images, bgm_url, gender):
         job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
         with open(job_file_path, "w") as f:
             json.dump({'status': 'error', 'url': None, 'error': str(e)}, f)
+
+@app.route('/api/restaurant/search', methods=['POST'])
+def restaurant_search():
+    data = request.json
+    address = data.get('address', '').strip()
+    radius = int(data.get('radius', 5000))
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
+        
+    if not address:
+        return jsonify({"success": False, "error": "주소를 입력해주세요."})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    
+    # 1. 주소 -> 위경도 변환
+    geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+    try:
+        geo_resp = requests.get(geo_url, headers=headers)
+        geo_data = geo_resp.json()
+        if not geo_data.get('documents'):
+            return jsonify({"success": False, "error": "검색된 주소가 없습니다. 정확한 동, 번지를 입력해주세요."})
+            
+        x = geo_data['documents'][0]['x']
+        y = geo_data['documents'][0]['y']
+        
+        # 2. 좌표 기준 음식점(FD6) 검색
+        places = []
+        for page in range(1, 4):  # 최대 3페이지(45개) 검색
+            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x={x}&y={y}&radius={radius}&page={page}"
+            cat_resp = requests.get(cat_url, headers=headers)
+            cat_data = cat_resp.json()
+            docs = cat_data.get('documents', [])
+            places.extend(docs)
+            if cat_data.get('meta', {}).get('is_end', True):
+                break
+                
+        if not places:
+            return jsonify({"success": False, "error": "해당 반경 내에 검색된 음식점이 없습니다."})
+            
+        # 3. 카테고리 단순화 및 정리
+        results = []
+        import concurrent.futures
+        
+        def scrape_place(p):
+            pid = p.get('id')
+            p_name = p.get('place_name')
+            p_url = p.get('place_url')
+            full_cat = p.get('category_name', '')
+            dist = int(p.get('distance', 0))
+            
+            # 카테고리 매핑 (한식, 중식, 일식, 양식, 카페, 기타)
+            cat_simplified = "기타"
+            if "한식" in full_cat: cat_simplified = "한식"
+            elif "중식" in full_cat: cat_simplified = "중식"
+            elif "일식" in full_cat: cat_simplified = "일식"
+            elif "양식" in full_cat: cat_simplified = "양식"
+            elif "카페" in full_cat or "커피" in full_cat: cat_simplified = "카페"
+            elif "분식" in full_cat: cat_simplified = "분식"
+            
+            item = {
+                'id': pid,
+                'name': p_name,
+                'category': cat_simplified,
+                'full_category': full_cat,
+                'distance': dist,
+                'address': p.get('road_address_name') or p.get('address_name'),
+                'phone': p.get('phone', ''),
+                'url': p_url,
+                'rating': "N/A",
+                'menu': []
+            }
+            
+            # 카카오맵 모바일 페이지를 가볍게 로드하여 기본 스크래핑 시도
+            try:
+                from bs4 import BeautifulSoup
+                m_url = f"https://place.map.kakao.com/m/{pid}"
+                req_h = {"User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X)"}
+                m_resp = requests.get(m_url, headers=req_h, timeout=2.0)
+                if m_resp.status_code == 200:
+                    soup = BeautifulSoup(m_resp.text, 'html.parser')
+                    # 별점 파싱 (카카오맵의 특정 클래스나 og태그, 구조화데이터 확인 - 변동성 높음)
+                    # 안정성을 위해 정규식 패턴으로 추출 시도 (예: "star_rate":"4.5")
+                    rate_match = re.search(r'"score":([0-9.]+)', m_resp.text)
+                    if rate_match:
+                        item['rating'] = rate_match.group(1)
+                    
+                    # 메뉴 파싱 (리스트 형태 추출 시도)
+                    menu_match = re.search(r'"menuList":\[(.*?)\]', m_resp.text)
+                    if menu_match:
+                        # 메뉴 리스트만 추출. 간단하게 정규식으로 잘라냄
+                        inner_text = menu_match.group(1)
+                        menus_raw = re.findall(r'"menu":"(.*?)".*?"price":(".*?"|[0-9]+)', inner_text)
+                        parsed_menus = []
+                        for mr in menus_raw[:3]:
+                            price_str = str(mr[1]).replace('"', '')
+                            if price_str.isdigit():
+                                price_str = f"{int(price_str):,}원"
+                            parsed_menus.append({"name": mr[0], "price": price_str})
+                        item['menu'] = parsed_menus
+            except Exception:
+                pass # 크롤링 실패 시 무시하고 기본 데이터 유지
+                
+            return item
+
+        # 병렬 스크래핑 처리
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:30])) # 최대 30개만
+            
+        results = sorted(scraped_places, key=lambda x: x['distance'])
+        
+        return jsonify({
+            "success": True, 
+            "data": results, 
+            "center": {"x": x, "y": y}
+        })
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
+
 
 
 if __name__ == '__main__':
