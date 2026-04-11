@@ -1010,51 +1010,209 @@ def restaurant_search():
         traceback.print_exc()
         return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
 
-@app.route('/api/restaurant/summary', methods=['POST'])
+@app.route("/api/restaurant/summary", methods=["POST"])
 def restaurant_summary():
     data = request.json
-    place_id = data.get('place_id')
-    google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+    place_id = data.get("place_id")
+    place_type = data.get("place_type", "맛집")
+    google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
     
     if not place_id or not google_api_key:
         return jsonify({"success": False, "error": "요청 정보가 올바르지 않거나 구글 API 키가 세팅되지 않았습니다."})
         
     try:
         det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
+        import requests
         resp = requests.get(det_url).json()
-        reviews = resp.get('result', {}).get('reviews', [])
+        reviews = resp.get("result", {}).get("reviews", [])
         
         if not reviews:
             return jsonify({"success": True, "summary": "아직 리뷰가 충분하지 않아 요약할 수 없습니다."})
             
-        review_texts = [r.get('text') for r in reviews if r.get('text')]
+        review_texts = [r.get("text") for r in reviews if r.get("text")]
         combined_text = "\n".join(review_texts[:5])
         
         if not combined_text.strip():
             return jsonify({"success": True, "summary": "아직 텍스트 리뷰가 없어 요약할 수 없습니다."})
             
         import google.generativeai as genai
+        import os
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
         if not gemini_api_key:
             return jsonify({"success": False, "error": "Gemini API 키가 세팅되지 않았습니다."})
             
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel('gemini-2.5-flash')
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
-        prompt = f"""다음은 특정 맛집의 실제 리뷰 5개입니다.
+        if place_type == "빵집":
+            prompt = f"""다음은 특정 빵집/베이커리의 실제 리뷰 5개입니다.
+이 리뷰들을 종합해서 빵의 종류와 맛, 커피, 분위기, 주차 등 가장 핵심적이고 유용한 점을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 구매 조언(요약)을 봇처럼 작성해주세요. 
+
+[리뷰 데이터]:
+{combined_text}
+"""
+        else:
+            prompt = f"""다음은 특정 맛집의 실제 리뷰 5개입니다.
 이 리뷰들을 종합해서 가장 핵심적이고 유용한 점(맛, 분위기, 주차, 서비스 등)을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 조언(요약)을 봇처럼 작성해주세요. 
 
 [리뷰 데이터]:
 {combined_text}
 """
+        
         response = model.generate_content(prompt)
         return jsonify({"success": True, "summary": response.text.strip()})
         
     except Exception as e:
+        import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)})
+
+@app.route('/bakery')
+def bakery():
+    return render_template('bakery.html')
+
+@app.route('/api/bakery/search', methods=['POST'])
+def bakery_search():
+    data = request.json
+    address = data.get('address', '').strip()
+    radius = int(data.get('radius', 5000))
+    import os, urllib.parse, requests
+    from flask import jsonify
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
+        
+    if not address:
+        return jsonify({"success": False, "error": "주소를 입력해주세요."})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    
+    # 1. 주소 -> 위경도 변환
+    geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+    try:
+        geo_resp = requests.get(geo_url, headers=headers)
+        geo_data = geo_resp.json()
+        
+        if not geo_data.get('documents'):
+            kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+            kw_resp = requests.get(kw_url, headers=headers)
+            kw_data = kw_resp.json()
+            if kw_data.get('documents'):
+                geo_data = kw_data
+            
+        if not geo_data.get('documents'):
+            return jsonify({"success": False, "error": f"검색된 주소나 장소가 없습니다. (Kakao API 응답: {geo_data})"})
+            
+        x = geo_data['documents'][0]['x']
+        y = geo_data['documents'][0]['y']
+        
+        # 2. 좌표 기준 "빵집" 키워드 검색
+        places = []
+        for page in range(1, 5): 
+            # 검색어를 '빵집'으로 하드코딩
+            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote('빵집')}&x={x}&y={y}&radius={radius}&page={page}"
+            cat_resp = requests.get(cat_url, headers=headers)
+            cat_data = cat_resp.json()
+            docs = cat_data.get('documents', [])
+            places.extend(docs)
+            if cat_data.get('meta', {}).get('is_end', True):
+                break
+                
+        if not places:
+            return jsonify({"success": False, "error": "해당 반경 내에 검색된 빵집이 없습니다."})
+            
+        results = []
+        import concurrent.futures
+        
+        def scrape_place(p):
+            pid = p.get('id')
+            p_name = p.get('place_name')
+            p_url = p.get('place_url')
+            full_cat = p.get('category_name', '')
+            dist = int(p.get('distance', 0))
+            
+            # 제과,베이커리 분류 단순화
+            cat_simplified = "기타"
+            if "식빵" in p_name or "식빵" in full_cat: cat_simplified = "식빵"
+            elif "케이크" in p_name or "케익" in p_name: cat_simplified = "디저트/케이크"
+            elif "도넛" in p_name or "도너츠" in p_name: cat_simplified = "도넛/마카롱"
+            elif "베이커리" in p_name or "제과점" in full_cat: cat_simplified = "베이커리"
+            elif "디저트" in full_cat: cat_simplified = "디저트/케이크"
+            else: cat_simplified = "동네빵집"
+            
+            item = {
+                'id': pid,
+                'name': p_name,
+                'category': cat_simplified,
+                'full_category': full_cat,
+                'distance': dist,
+                'address': p.get('road_address_name') or p.get('address_name'),
+                'phone': p.get('phone', ''),
+                'x': p.get('x'),
+                'y': p.get('y'),
+                'url': p_url,
+                'rating': "N/A",
+                'total_ratings': 0,
+                'place_id': None,
+                'photo_url': None,
+                'is_open': None,
+                'trust_score': 0
+            }
+            
+            google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+            if google_api_key:
+                try:
+                    search_query = f"{p_name} {item['address'].split()[0]}" 
+                    g_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={urllib.parse.quote(search_query)}&inputtype=textquery&fields=place_id,rating,user_ratings_total,photos,opening_hours&locationbias=point:{p.get('y')},{p.get('x')}&key={google_api_key}"
+                    import requests
+                    g_resp = requests.get(g_url, timeout=2.0).json()
+                    
+                    if g_resp.get('status') == 'OK' and g_resp.get('candidates'):
+                        cand = g_resp['candidates'][0]
+                        rating = cand.get('rating')
+                        total_ratings = cand.get('user_ratings_total', 0)
+                        
+                        item['total_ratings'] = total_ratings
+                        item['place_id'] = cand.get('place_id')
+                        
+                        if 'opening_hours' in cand:
+                            item['is_open'] = cand['opening_hours'].get('open_now')
+                            
+                        if 'photos' in cand and cand['photos']:
+                            photo_ref = cand['photos'][0].get('photo_reference')
+                            item['photo_url'] = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference={photo_ref}&key={google_api_key}"
+                        
+                        if rating and total_ratings >= 10:
+                            item['rating'] = str(rating)
+                            item['trust_score'] = int(float(rating) * total_ratings)
+                        else:
+                            item['rating'] = "평가 부족"
+                            item['trust_score'] = 0
+                except Exception as e:
+                    pass
+            
+            return item
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:50]))
+            
+        results = sorted(scraped_places, key=lambda x: x['distance'])
+        
+        return jsonify({
+            "success": True, 
+            "data": results, 
+            "center": {"x": x, "y": y}
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
+
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
     # This block is for simple local testing via `python main.py`
+    import os
     port = int(os.environ.get('PORT', 5002))
     app.run(host='0.0.0.0', port=port, debug=False)
