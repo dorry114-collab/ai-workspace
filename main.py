@@ -1075,7 +1075,6 @@ def bakery():
 def bakery_search():
     data = request.json
     address = data.get('address', '').strip()
-    radius = int(data.get('radius', 5000))
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -1084,34 +1083,15 @@ def bakery_search():
         return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
         
     if not address:
-        return jsonify({"success": False, "error": "주소를 입력해주세요."})
+        return jsonify({"success": False, "error": "지역명을 입력해주세요."})
         
     headers = {"Authorization": f"KakaoAK {api_key}"}
     
-    # 1. 주소 -> 위경도 변환
-    geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
     try:
-        geo_resp = requests.get(geo_url, headers=headers)
-        geo_data = geo_resp.json()
-        
-        if not geo_data.get('documents'):
-            kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
-            kw_resp = requests.get(kw_url, headers=headers)
-            kw_data = kw_resp.json()
-            if kw_data.get('documents'):
-                geo_data = kw_data
-            
-        if not geo_data.get('documents'):
-            return jsonify({"success": False, "error": f"검색된 주소나 장소가 없습니다. (Kakao API 응답: {geo_data})"})
-            
-        x = geo_data['documents'][0]['x']
-        y = geo_data['documents'][0]['y']
-        
-        # 2. 좌표 기준 "빵집" 키워드 검색
+        search_query = f"{address} 빵집"
         places = []
-        for page in range(1, 5): 
-            # 검색어를 '빵집'으로 하드코딩
-            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote('빵집')}&x={x}&y={y}&radius={radius}&page={page}"
+        for page in range(1, 4):  # 카카오 키워드 검색 최대 3페이지(45개)
+            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(search_query)}&page={page}"
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
             docs = cat_data.get('documents', [])
@@ -1120,7 +1100,7 @@ def bakery_search():
                 break
                 
         if not places:
-            return jsonify({"success": False, "error": "해당 반경 내에 검색된 빵집이 없습니다."})
+            return jsonify({"success": False, "error": f"'{search_query}'(으)로 검색된 결과가 없습니다."})
             
         results = []
         import concurrent.futures
@@ -1130,7 +1110,8 @@ def bakery_search():
             p_name = p.get('place_name')
             p_url = p.get('place_url')
             full_cat = p.get('category_name', '')
-            dist = int(p.get('distance', 0))
+            dist_str = p.get('distance', '0')
+            dist = int(dist_str) if dist_str else 0
             
             # 제과,베이커리 분류 단순화
             cat_simplified = "기타"
@@ -1197,12 +1178,12 @@ def bakery_search():
         with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
             scraped_places = list(executor.map(scrape_place, places[:50]))
             
-        results = sorted(scraped_places, key=lambda x: x['distance'])
+        results = sorted(scraped_places, key=lambda k: k.get('trust_score', 0), reverse=True)
         
         return jsonify({
             "success": True, 
             "data": results, 
-            "center": {"x": x, "y": y}
+            "center": None
         })
         
     except Exception as e:
