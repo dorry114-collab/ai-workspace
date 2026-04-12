@@ -1010,6 +1010,30 @@ def restaurant_search():
         traceback.print_exc()
         return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
 
+@app.route("/api/geocode", methods=["POST"])
+def geocode():
+    data = request.json
+    lat = data.get("lat")
+    lng = data.get("lng")
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key or not lat or not lng:
+        return jsonify({"success": False, "error": "API 키 또는 좌표 정보 누락"})
+    
+    url = f"https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x={lng}&y={lat}"
+    try:
+        import requests
+        resp = requests.get(url, headers={"Authorization": f"KakaoAK {api_key}"}).json()
+        docs = resp.get("documents", [])
+        if docs:
+            # 법정동 혹은 행정동 기준 주소 리턴
+            for d in docs:
+                if d.get("region_type") == "B":  # 법정동
+                    return jsonify({"success": True, "address": d.get("address_name")})
+            return jsonify({"success": True, "address": docs[0].get("address_name")})
+        return jsonify({"success": False, "error": "위치 변환 결과가 없습니다."})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route("/api/restaurant/summary", methods=["POST"])
 def restaurant_summary():
     data = request.json
@@ -1046,7 +1070,9 @@ def restaurant_summary():
         
         if place_type == "빵집":
             prompt = f"""다음은 특정 빵집/베이커리의 실제 리뷰 5개입니다.
-이 리뷰들을 종합해서 빵의 종류와 맛, 커피, 분위기, 주차 등 가장 핵심적이고 유용한 점을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 구매 조언(요약)을 봇처럼 작성해주세요. 
+이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
+1. 🤖 핵심 요약 (2줄 이내): 빵의 맛, 분위기, 주차 여부 등 가장 핵심적이고 유용한 점.
+2. 👑 꼭 사야하는 빵: 리뷰어들이 가장 많이 극찬하는 시그니처 빵 이름. (없으면 '알 수 없음' 이라고 표기)
 
 [리뷰 데이터]:
 {combined_text}
@@ -1064,8 +1090,10 @@ def restaurant_summary():
         
     except Exception as e:
         import traceback
-        traceback.print_exc()
-        return jsonify({"success": False, "error": str(e)})
+        err_msg = traceback.format_exc()
+        print("===== [AI SUMMARY ERROR] =====")
+        print(err_msg)
+        return jsonify({"success": False, "error": f"AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. ({str(e)})"})
 
 @app.route('/bakery')
 def bakery():
@@ -1095,7 +1123,14 @@ def bakery_search():
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
             docs = cat_data.get('documents', [])
-            places.extend(docs)
+            
+            # 파리바게뜨, 뚜레쥬르 등의 대형 프랜차이즈 제외
+            ignore_keywords = ['파리바게', '뚜레쥬', '뚜레주', '파리크라상', '던킨', '배스킨', '베스킨', '크리스피크림']
+            for d in docs:
+                p_name = d.get('place_name', '')
+                if not any(k in p_name for k in ignore_keywords):
+                    places.append(d)
+                    
             if cat_data.get('meta', {}).get('is_end', True):
                 break
                 
