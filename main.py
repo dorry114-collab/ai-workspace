@@ -1036,15 +1036,16 @@ def geocode():
 
 @app.route("/api/restaurant/summary", methods=["POST"])
 def restaurant_summary():
-    data = request.json
-    place_id = data.get("place_id")
-    place_type = data.get("place_type", "맛집")
-    google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
-    
-    if not place_id or not google_api_key:
-        return jsonify({"success": False, "error": "요청 정보가 올바르지 않거나 구글 API 키가 세팅되지 않았습니다."})
-        
     try:
+        data = request.json or {}
+        place_id = data.get("place_id")
+        place_type = data.get("place_type", "맛집")
+        import os
+        google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+        
+        if not place_id or not google_api_key:
+            return jsonify({"success": False, "error": "요청 정보가 올바르지 않거나 구글 API 키가 세팅되지 않았습니다."})
+            
         det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
         import requests
         resp = requests.get(det_url).json()
