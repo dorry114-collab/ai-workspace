@@ -1094,7 +1094,10 @@ def restaurant_summary():
         err_msg = traceback.format_exc()
         print("===== [AI SUMMARY ERROR] =====")
         print(err_msg)
-        return jsonify({"success": False, "error": f"AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. ({str(e)})"})
+        error_str = str(e)
+        if "429" in error_str or "quota" in error_str.lower() or "exceeded" in error_str.lower():
+            return jsonify({"success": False, "error": "AI 호출 한도 초과: 구글 제미나이 무료 제공량(1분 15회)이 초과되었습니다. 약 1분 뒤에 다시 시도해주세요."})
+        return jsonify({"success": False, "error": f"AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. ({error_str})"})
 
 @app.route("/api/restaurant/chat", methods=["POST"])
 def restaurant_chat():
@@ -1145,7 +1148,10 @@ def restaurant_chat():
         err_msg = traceback.format_exc()
         print("===== [AI CHAT ERROR] =====")
         print(err_msg)
-        return jsonify({"success": False, "error": f"AI 답변 중 오류가 발생했습니다. ({str(e)})"})
+        error_str = str(e)
+        if "429" in error_str or "quota" in error_str.lower() or "exceeded" in error_str.lower():
+            return jsonify({"success": False, "error": "AI 호출 한도 초과: 약 1분 뒤에 다시 시도해주세요. (단기간 사용량 초과)"})
+        return jsonify({"success": False, "error": f"AI 답변 중 오류가 발생했습니다. ({error_str})"})
 
 @app.route('/bakery')
 def bakery():

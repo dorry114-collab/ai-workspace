@@ -516,6 +516,23 @@
         }
 
         /* Mobile Optimization */
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.35rem 0.7rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--primary);
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -844,8 +861,15 @@
                         <div class="ai-summary-box" id="summary-box-${r.place_id}"></div>
                         <div class="ai-chat-box" id="chat-box-${r.place_id}" style="display: none; margin-top: 0.5rem;">
                             <div id="chat-history-${r.place_id}" style="margin-bottom: 0.5rem; font-size: 0.85rem; color: #ccc;"></div>
+                            
+                            <div class="preset-questions" style="margin-bottom: 0.5rem; display: flex; gap: 0.4rem; flex-wrap: wrap;" id="preset-${r.place_id}">
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='주차장 있나요?'; submitChat('${r.place_id}');" class="preset-btn">🚗 주차여부</button>
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='평소 웨이팅이 심한가요?'; submitChat('${r.place_id}');" class="preset-btn">⏳ 웨이팅</button>
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='이 식당의 추천 메뉴는 뭔가요?'; submitChat('${r.place_id}');" class="preset-btn">🍽️ 추천메뉴</button>
+                            </div>
+
                             <div style="display: flex; gap: 0.5rem;">
-                                <input type="text" id="chat-input-${r.place_id}" placeholder="예: 주차장 있나요?" style="flex: 1; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.5); color: #fff; padding: 0.5rem;" onkeypress="if(event.key === 'Enter') submitChat('${r.place_id}')">
+                                <input type="text" id="chat-input-${r.place_id}" placeholder="직접 질문 입력..." style="flex: 1; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.5); color: #fff; padding: 0.5rem;" onkeypress="if(event.key === 'Enter') submitChat('${r.place_id}')">
                                 <button onclick="submitChat('${r.place_id}')" id="btn-chat-${r.place_id}" style="background: var(--primary); color: #000; border: none; border-radius: 8px; padding: 0 0.8rem; cursor: pointer; font-weight: 600;"><i class="fa-solid fa-paper-plane"></i></button>
                             </div>
                         </div>
