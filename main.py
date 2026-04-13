@@ -1096,6 +1096,57 @@ def restaurant_summary():
         print(err_msg)
         return jsonify({"success": False, "error": f"AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. ({str(e)})"})
 
+@app.route("/api/restaurant/chat", methods=["POST"])
+def restaurant_chat():
+    try:
+        data = request.json or {}
+        place_id = data.get("place_id")
+        question = data.get("question")
+        import os
+        google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+        
+        if not place_id or not google_api_key or not question:
+            return jsonify({"success": False, "error": "요청 정보가 올바르지 않거나 질문이 없습니다."})
+            
+        det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
+        import requests
+        resp = requests.get(det_url).json()
+        reviews = resp.get("result", {}).get("reviews", [])
+        
+        if not reviews:
+            return jsonify({"success": True, "answer": "아직 리뷰가 등록되지 않아 답변할 수 없습니다."})
+            
+        review_texts = [r.get("text") for r in reviews if r.get("text")]
+        combined_text = "\n".join(review_texts[:5])
+        
+        if not combined_text.strip():
+            return jsonify({"success": True, "answer": "텍스트 리뷰가 없어 구체적인 답변을 드릴 수 없습니다."})
+            
+        import google.generativeai as genai
+        gemini_api_key = os.environ.get("GEMINI_API_KEY")
+        if not gemini_api_key:
+            return jsonify({"success": False, "error": "Gemini API 키가 세팅되지 않았습니다."})
+            
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
+        prompt = f"""다음은 이 가게의 최근 방문자 리뷰입니다:
+{combined_text}
+
+사용자의 질문: {question}
+
+위 리뷰 내용을 바탕으로 사용자의 질문에 친절하게 답변해주세요. 리뷰에 관련된 정보가 아예 없다면 '리뷰 내용에서는 해당 정보를 찾을 수 없습니다.' 라고 답변해 주세요. (2~3줄 이내로 간결하게 답변)"""
+        
+        response = model.generate_content(prompt)
+        return jsonify({"success": True, "answer": response.text.strip()})
+        
+    except Exception as e:
+        import traceback
+        err_msg = traceback.format_exc()
+        print("===== [AI CHAT ERROR] =====")
+        print(err_msg)
+        return jsonify({"success": False, "error": f"AI 답변 중 오류가 발생했습니다. ({str(e)})"})
+
 @app.route('/bakery')
 def bakery():
     return render_template('bakery.html')
