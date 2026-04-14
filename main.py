@@ -1655,6 +1655,10 @@ def clinic_search():
         traceback.print_exc()
         return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
 
+@app.route('/game_office')
+def game_office():
+    return render_template('game_office.html')
+
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
     # This block is for simple local testing via `python main.py`

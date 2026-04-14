@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>회사원 키우기</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-main: #f5f5f5;
+            --text-muted: #a0a0a0;
+            --primary: #8b5cf6; /* 보라색 테마 */
+            --primary-hover: #7c3aed;
+            --accent: #10b981; /* 잔고 표시 등 */
+            --danger: #ef4444;
+            --border-color: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', sans-serif;
+            user-select: none; /* 드래그 방지 */
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Top Navbar */
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(30, 30, 30, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar a.back-btn {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 1rem;
+            transition: color 0.3s ease;
+        }
+        .navbar a.back-btn:hover { color: var(--text-main); }
+        .navbar .title { font-weight: 700; font-size: 1.1rem; color: var(--primary); }
+        
+        .reset-btn {
+            background: none; border: 1px solid var(--danger); color: var(--danger);
+            padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+        }
+
+        /* Status Header */
+        .status-header {
+            padding: 1.5rem 1rem;
+            text-align: center;
+            background: var(--panel-bg);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .age-badge {
+            display: inline-block;
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--primary);
+            padding: 0.4rem 1rem;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(139, 92, 246, 0.4);
+        }
+
+        .money-display {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin: 0.5rem 0;
+            letter-spacing: -1px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-around;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-top: 0.8rem;
+        }
+
+        .stats-item strong { color: var(--text-main); }
+
+        /* Main Clicker Area */
+        .clicker-area {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            position: relative;
+            background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%);
+        }
+
+        .character-btn {
+            font-size: 5rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.05s ease;
+            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .character-btn:active {
+            transform: scale(0.9);
+        }
+
+        .job-title {
+            margin-top: 1rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-main);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        .click-effect {
+            position: absolute;
+            font-weight: 700;
+            font-size: 1.2rem;
+            color: var(--accent);
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 0 1px 2px #000;
+            z-index: 50;
+        }
+
+        @keyframes floatUp {
+            0% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-50px); }
+        }
+
+        /* Upgrades Store */
+        .store-panel {
+            background: var(--panel-bg);
+            border-top: 2px solid var(--border-color);
+            border-radius: 20px 20px 0 0;
+            padding: 1.5rem 1rem;
+            height: 45vh;
+            overflow-y: auto;
+        }
+
+        .store-header {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: justify;
+        }
+
+        .upgrade-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .upgrade-card {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .upgrade-card:hover:not(.locked) {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+
+        .upgrade-card.locked {
+            opacity: 0.5;
+            filter: grayscale(1);
+        }
+
+        .up-info { display: flex; align-items: center; gap: 1rem; }
+        .up-icon { font-size: 2rem; width: 40px; text-align: center; }
+        .up-desc h4 { font-size: 1rem; margin-bottom: 0.2rem; }
+        .up-desc p { font-size: 0.8rem; color: var(--text-muted); }
+        .up-level { font-size: 0.8rem; color: var(--primary); font-weight: 700; margin-top: 0.2rem;}
+
+        .up-buy-btn {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .up-buy-btn:hover { background: var(--primary-hover); }
+        .up-buy-btn:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
+
+        /* Ending Modal */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
+            display: none; justify-content: center; align-items: center; z-index: 1000;
+        }
+
+        .modal-box {
+            background: var(--panel-bg); border: 1px solid var(--primary);
+            padding: 2.5rem; border-radius: 20px; text-align: center; width: 90%; max-width: 400px;
+            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+        }
+
+        .modal-box h2 { font-size: 2rem; color: var(--primary); margin-bottom: 1rem; }
+        .modal-box p { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main); }
+        .modal-box .final-money { font-size: 2rem; color: var(--accent); font-weight: 700; margin: 1rem 0 2rem 0; }
+        
+        .restart-btn {
+            background: var(--primary); color: #fff; border: none; padding: 1rem 2rem;
+            border-radius: 12px; font-weight: 700; font-size: 1.1rem; cursor: pointer; width: 100%;
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i> 나가기</a>
+        <div class="title">💼 회사원 키우기</div>
+        <button class="reset-btn" onclick="resetGame()"><i class="fa-solid fa-rotate-right"></i> 초기화</button>
+    </nav>
+
+    <div class="status-header">
+        <div class="age-badge" id="ageDisplay">내 나이: 26세</div>
+        <div class="money-display" id="moneyDisplay">0원</div>
+        <div class="stats-row">
+            <div class="stats-item">초당 수익: <strong id="cpsDisplay">0원</strong></div>
+            <div class="stats-item">클릭 수익: <strong id="cpcDisplay">10,000원</strong></div>
+        </div>
+        <!-- Progress bar for aging -->
+        <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); margin-top: 1rem; border-radius: 2px; overflow: hidden;">
+            <div id="ageProgressBars" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;"></div>
+        </div>
+    </div>
+
+    <div class="clicker-area" id="clickArea" onclick="work(event)">
+        <button class="character-btn" id="characterIcon">👔</button>
+        <div class="job-title" id="jobTitleDisplay">신입사원</div>
+    </div>
+
+    <div class="store-panel">
+        <div class="store-header"><i class="fa-solid fa-shop"></i> 자기계발 & 투자</div>
+        <div class="upgrade-list" id="upgradeList">
+            <!-- Injected by JS -->
+        </div>
+    </div>
+
+    <!-- Ending Modal -->
+    <div class="modal-overlay" id="endingModal">
+        <div class="modal-box">
+            <h2>🎉 은퇴 축하합니다! 🎉</h2>
+            <p>100세가 되어 치열했던 직장 생활과 투자 여정을 마무리합니다.</p>
+            <p>당신의 최종 직급: <strong id="endTitle" style="color:var(--primary);"></strong></p>
+            <p>최종 모은 자산</p>
+            <div class="final-money" id="endMoney">0원</div>
+            <button class="restart-btn" onclick="resetGame()">다시 태어나기</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Game Setup & State ---
+        const GAME_SPEED_MS = 1000; // 1틱 = 1초
+        const SECONDS_PER_YEAR = 5; // 5초에 1살 증가
+        const END_AGE = 100;
+
+        let state = {
+            age: 26,
+            ageTicks: 0,
+            money: 0,
+            jobLevel: 0,
+            cpcLevel: 0,
+            cpsLevel1: 0, // 예적금
+            cpsLevel2: 0, // 펀드
+            cpsLevel3: 0, // 부동산
+            lastSaved: Date.now()
+        };
+
+        // --- Data Definitions ---
+        const JOBS = [
+            { title: "신입사원", icon: "👔", mult: 1, cost: 0 },
+            { title: "대리",     icon: "💼", mult: 3, cost: 500000 },
+            { title: "과장",     icon: "📊", mult: 10, cost: 3000000 },
+            { title: "차장",     icon: "📈", mult: 25, cost: 15000000 },
+            { title: "부장",     icon: "🤝", mult: 80, cost: 80000000 },
+            { title: "임원(이사)", icon: "🏌️", mult: 300, cost: 500000000 },
+            { title: "사장",     icon: "👑", mult: 1000, cost: 3000000000 }
+        ];
+
+        const UPGRADES = [
+            {
+                id: 'cpc', name: "업무능력 향상", desc: "클릭 당 수익이 기본금만큼 증가합니다.", icon: "💪",
+                baseCost: 20000, costMult: 1.5,
+                effectInfo: "+클릭수익",
+                getLevel: () => state.cpcLevel,
+                buy: () => { state.cpcLevel++; }
+            },
+            {
+                id: 'cps1', name: "정기 예적금", desc: "초당 수익을 소량 확보합니다.", icon: "🏦",
+                baseCost: 50000, costMult: 1.15,
+                effectInfo: "+2,000원 / 초",
+                getLevel: () => state.cpsLevel1,
+                buy: () => { state.cpsLevel1++; }
+            },
+            {
+                id: 'cps2', name: "우량주 주식투자", desc: "자본주의의 꽃. 초당 수익이 꽤 오릅니다.", icon: "📈",
+                baseCost: 500000, costMult: 1.25,
+                effectInfo: "+25,000원 / 초",
+                getLevel: () => state.cpsLevel2,
+                buy: () => { state.cpsLevel2++; }
+            },
+            {
+                id: 'cps3', name: "꼬마빌딩 갭투자", desc: "조물주 위에 건물주. 초당 수익이 대폭 상승합니다.", icon: "🏢",
+                baseCost: 5000000, costMult: 1.4,
+                effectInfo: "+300,000원 / 초",
+                getLevel: () => state.cpsLevel3,
+                buy: () => { state.cpsLevel3++; }
+            },
+            {
+                id: 'job', name: "승진 심사", desc: "다음 직급으로 승진하여 모든 수익에 배수가 붙습니다.", icon: "🎖️",
+                baseCost: 0, costMult: 1, // dynamically calculated
+                effectInfo: "수익 배수 대폭 상승",
+                getLevel: () => state.jobLevel,
+                buy: () => { state.jobLevel++; }
+            }
+        ];
+
+        // --- Core Calculus ---
+        function getClickPower() {
+            let base = 10000 + (state.cpcLevel * 10000);
+            return base * JOBS[state.jobLevel].mult;
+        }
+
+        function getPassiveIncome() {
+            let base = (state.cpsLevel1 * 2000) + (state.cpsLevel2 * 25000) + (state.cpsLevel3 * 300000);
+            return base * JOBS[state.jobLevel].mult;
+        }
+
+        function formatMoney(num) {
+            // 한글 금액 포맷팅 (조, 억, 만, 원)
+            if (num < 10000) return Math.floor(num).toLocaleString() + "원";
+            
+            let res = "";
+            let jo = Math.floor(num / 1000000000000);
+            let uk = Math.floor((num % 1000000000000) / 100000000);
+            let man = Math.floor((num % 100000000) / 10000);
+            
+            if (jo > 0) res += jo + "조 ";
+            if (uk > 0) res += uk + "억 ";
+            if (man > 0) res += man + "만 ";
+            // 원 단위까지 쓰면 너무 기니까 만 단위 이하 절사 (선택사항)
+            // if (rem > 0 && jo === 0) res += rem + "원"; 
+            
+            return res.trim() + "원";
+        }
+
+        function getCost(upgrade) {
+            if (upgrade.id === 'job') {
+                if (state.jobLevel + 1 < JOBS.length) {
+                    return JOBS[state.jobLevel + 1].cost;
+                }
+                return Infinity; // 만렙
+            }
+            return Math.floor(upgrade.baseCost * Math.pow(upgrade.costMult, upgrade.getLevel()));
+        }
+
+        // --- Save / Load ---
+        function saveGame() {
+            if (state.age >= END_AGE) return; // 엔딩 이후 저장 안함
+            state.lastSaved = Date.now();
+            localStorage.setItem('officeClientSave', JSON.stringify(state));
+        }
+
+        function loadGame() {
+            let save = localStorage.getItem('officeClientSave');
+            if (save) {
+                try {
+                    let parsed = JSON.parse(save);
+                    Object.assign(state, parsed);
+                    
+                    // 오프라인 보상 계산 (최대 24시간치만)
+                    let now = Date.now();
+                    let diffMs = now - (state.lastSaved || now);
+                    if (diffMs > 1000 * 60) { // 1분 이상 지났으면
+                        let offlineSecs = Math.min(diffMs / 1000, 86400); 
+                        let earned = offlineSecs * getPassiveIncome();
+                        if (earned > 0 && state.age < END_AGE) {
+                            state.money += earned;
+                            // 오프라인 중에 나이도 먹게 만들려면... 일단 게임오버 방지를 위해 나이는 오프라인으로 1년까지만 늙게 제한
+                            let ageGained = Math.floor(offlineSecs / SECONDS_PER_YEAR);
+                            state.age += Math.min(ageGained, 1);
+                            
+                            alert(`부재중 오프라인 수익으로 ${formatMoney(earned)}을 벌었습니다!`);
+                        }
+                    }
+                } catch(e) { console.error("Save load failed"); }
+            }
+        }
+
+        function resetGame() {
+            if(confirm("모든 데이터가 초기화되고 26세로 돌아갑니다. 진행하시겠습니까?")) {
+                localStorage.removeItem('officeClientSave');
+                location.reload();
+            }
+        }
+
+        // --- UI Updates ---
+        function updateUI() {
+            if (state.age >= END_AGE) return;
+
+            document.getElementById('moneyDisplay').innerText = formatMoney(state.money);
+            document.getElementById('cpsDisplay').innerText = formatMoney(getPassiveIncome());
+            document.getElementById('cpcDisplay').innerText = formatMoney(getClickPower());
+            
+            document.getElementById('ageDisplay').innerText = `내 나이: ${state.age}세`;
+            let job = JOBS[state.jobLevel];
+            document.getElementById('jobTitleDisplay').innerText = job.title;
+            document.getElementById('characterIcon').innerText = job.icon;
+
+            // Age Progress Bar
+            let progressPct = (state.ageTicks / SECONDS_PER_YEAR) * 100;
+            document.getElementById('ageProgressBars').style.width = progressPct + '%';
+
+            // Store Buttons
+            UPGRADES.forEach(up => {
+                let btn = document.getElementById(`buyBtn_${up.id}`);
+                let card = document.getElementById(`card_${up.id}`);
+                let lvlTxt = document.getElementById(`lvl_${up.id}`);
+                
+                if(!btn) return;
+
+                let cost = getCost(up);
+                btn.innerText = cost === Infinity ? "MAX" : formatMoney(cost);
+                
+                if (up.id === 'job') {
+                    lvlTxt.innerText = state.jobLevel + 1 >= JOBS.length ? "최고 직급" : `다음 직급: ${JOBS[state.jobLevel+1].title}`;
+                } else {
+                    lvlTxt.innerText = `Lv. ${up.getLevel()}`;
+                }
+
+                if (cost === Infinity || state.money < cost) {
+                    btn.disabled = true;
+                    if(cost > state.money) card.classList.add('locked');
+                } else {
+                    btn.disabled = false;
+                    card.classList.remove('locked');
+                }
+            });
+        }
+
+        function buildStore() {
+            let html = "";
+            UPGRADES.forEach(up => {
+                html += `
+                <div class="upgrade-card locked" id="card_${up.id}">
+                    <div class="up-info">
+                        <div class="up-icon">${up.icon}</div>
+                        <div class="up-desc">
+                            <h4>${up.name}</h4>
+                            <p>${up.desc}</p>
+                            <div class="up-level" id="lvl_${up.id}">Lv. 0</div>
+                        </div>
+                    </div>
+                    <button class="up-buy-btn" id="buyBtn_${up.id}" onclick="buyUpgrade('${up.id}')">비용</button>
+                </div>
+                `;
+            });
+            document.getElementById('upgradeList').innerHTML = html;
+        }
+
+        // --- Actions ---
+        function work(e) {
+            if (state.age >= END_AGE) return;
+
+            let earned = getClickPower();
+            state.money += earned;
+            
+            // Show click effect
+            let t = document.createElement('div');
+            t.className = 'click-effect';
+            t.innerText = `+${formatMoney(earned)}`;
+            
+            // Randomize position slightly around mouse/touch
+            let x, y;
+            if (e.touches && e.touches.length > 0) {
+                x = e.touches[0].clientX; y = e.touches[0].clientY;
+            } else {
+                x = e.clientX; y = e.clientY;
+            }
+            if(!x || !y) { x = window.innerWidth/2; y = window.innerHeight/2; } // fallback
+            
+            x += (Math.random() - 0.5) * 40;
+            y += (Math.random() - 0.5) * 40;
+
+            t.style.left = x + 'px';
+            t.style.top = y + 'px';
+            document.body.appendChild(t);
+            setTimeout(() => document.body.removeChild(t), 1000);
+
+            updateUI();
+        }
+
+        function buyUpgrade(upId) {
+            let up = UPGRADES.find(u => u.id === upId);
+            let cost = getCost(up);
+            if (cost !== Infinity && state.money >= cost) {
+                state.money -= cost;
+                up.buy();
+                updateUI();
+                saveGame();
+            }
+        }
+
+        function triggerEnding() {
+            document.getElementById('endingModal').style.display = 'flex';
+            document.getElementById('endTitle').innerText = JOBS[state.jobLevel].title;
+            document.getElementById('endMoney').innerText = formatMoney(state.money);
+            localStorage.removeItem('officeClientSave'); // 엔딩봤으니 삭제
+        }
+
+        // --- Game Loop ---
+        setInterval(() => {
+            if (state.age >= END_AGE) return;
+
+            // Passive Income
+            let earned = getPassiveIncome();
+            state.money += (earned / (1000/200)); // 루프를 0.2초마다 돌리므로
+
+            updateUI();
+        }, 200); // 0.2초마다 UI 부드럽게 업데이트
+
+        setInterval(() => {
+            if (state.age >= END_AGE) return;
+
+            state.ageTicks++;
+            if (state.ageTicks >= SECONDS_PER_YEAR) {
+                state.age++;
+                state.ageTicks = 0;
+                
+                if (state.age >= END_AGE) {
+                    updateUI();
+                    triggerEnding();
+                    return;
+                }
+            }
+            saveGame();
+        }, 1000); // 1초마다 나이 타이머 증가 및 저장
+
+        // --- Init ---
+        loadGame();
+        buildStore();
+        updateUI();
+
+        // Check if already ended
+        if(state.age >= END_AGE) {
+            triggerEnding();
+        }
+
+    </script>
+</body>
+</html>
