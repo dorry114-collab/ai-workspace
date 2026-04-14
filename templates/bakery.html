@@ -724,7 +724,7 @@
 
         async function performSearch() {
             const address = document.getElementById('addressInput').value.trim();
-            const radius = document.getElementById(\'radiusSelect\').value;
+            const radius = document.getElementById('radiusSelect').value;
             
             if (!address) {
                 showError("지역명을 정확히 입력해주세요.");
@@ -786,9 +786,9 @@
 
             // 정렬 로직 적용
             const sortMode = document.getElementById('sortSelect').value;
-            if (sortMode === \'distance\') {
+            if (sortMode === 'distance') {
                 filtered.sort((a, b) => a.distance - b.distance);
-            } else if (sortMode === \'rating\') {
+            } else if (sortMode === 'rating') {
                 filtered.sort((a, b) => {
                     const getVal = ratingStr => {
                         if (ratingStr === 'N/A' || ratingStr === '평가 부족' || !ratingStr) return -1;
