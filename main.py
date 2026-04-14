@@ -422,7 +422,7 @@ def get_best_groq_model(api_key):
     # Ultimate hardcoded fallback
     return "llama-3.3-70b-versatile"
 
-def _call_groq(api_key, sys_prompt):
+def _call_groq(api_key, sys_prompt, system_role="당신은 세계 최고의 프롬프트 엔지니어입니다."):
     import requests
     model_name = get_best_groq_model(api_key)
     
@@ -434,7 +434,7 @@ def _call_groq(api_key, sys_prompt):
     payload = {
         "model": model_name,
         "messages": [
-            {"role": "system", "content": "당신은 세계 최고의 프롬프트 엔지니어입니다."},
+            {"role": "system", "content": system_role},
             {"role": "user", "content": sys_prompt}
         ],
         "temperature": 0.7
@@ -1060,15 +1060,13 @@ def restaurant_summary():
         if not combined_text.strip():
             return jsonify({"success": True, "summary": "아직 텍스트 리뷰가 없어 요약할 수 없습니다."})
             
-        import google.generativeai as genai
         import os
+        groq_api_key = os.environ.get("GROQ_API_KEY")
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
-        if not gemini_api_key:
-            return jsonify({"success": False, "error": "Gemini API 키가 세팅되지 않았습니다."})
-            
-        genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
         
+        if not groq_api_key and not gemini_api_key:
+            return jsonify({"success": False, "error": "AI API 키(Groq 또는 Gemini)가 세팅되지 않았습니다."})
+            
         if place_type == "빵집":
             prompt = f"""다음은 특정 빵집/베이커리의 실제 리뷰 5개입니다.
 이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
@@ -1086,6 +1084,20 @@ def restaurant_summary():
 {combined_text}
 """
         
+        # 1. 빠른 Groq API 우선 시도
+        if groq_api_key:
+            success, text = _call_groq(groq_api_key, prompt, system_role="당신은 식당과 빵집 리뷰를 전문적으로 요약해주는 친절한 AI 점원입니다.")
+            if success:
+                return jsonify({"success": True, "summary": text})
+            else:
+                if not gemini_api_key:
+                    return jsonify({"success": False, "error": f"Groq 통신 실패: {text}"})
+
+        # 2. Gemini fallback (Groq 키가 없거나 실패한 경우)
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        
         response = model.generate_content(prompt)
         return jsonify({"success": True, "summary": response.text.strip()})
         
@@ -1096,8 +1108,8 @@ def restaurant_summary():
         print(err_msg)
         error_str = str(e)
         if "429" in error_str or "quota" in error_str.lower() or "exceeded" in error_str.lower():
-            return jsonify({"success": False, "error": "AI 호출 한도 초과: 구글 제미나이 무료 제공량(1분 15회)이 초과되었습니다. 약 1분 뒤에 다시 시도해주세요."})
-        return jsonify({"success": False, "error": f"AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. ({error_str})"})
+            return jsonify({"success": False, "error": "AI 호출 한도 초과: 구글 제미나이 무료 제공량(1분 15회)이 초과되었습니다. 잠시 후 다시 시도해주세요."})
+        return jsonify({"success": False, "error": f"AI 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요. ({error_str})" })
 
 @app.route("/api/restaurant/chat", methods=["POST"])
 def restaurant_chat():
@@ -1125,20 +1137,33 @@ def restaurant_chat():
         if not combined_text.strip():
             return jsonify({"success": True, "answer": "텍스트 리뷰가 없어 구체적인 답변을 드릴 수 없습니다."})
             
-        import google.generativeai as genai
+        import os
+        groq_api_key = os.environ.get("GROQ_API_KEY")
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
-        if not gemini_api_key:
-            return jsonify({"success": False, "error": "Gemini API 키가 세팅되지 않았습니다."})
-            
-        genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
         
+        if not groq_api_key and not gemini_api_key:
+            return jsonify({"success": False, "error": "AI API 키(Groq 또는 Gemini)가 세팅되지 않았습니다."})
+            
         prompt = f"""다음은 이 가게의 최근 방문자 리뷰입니다:
 {combined_text}
 
 사용자의 질문: {question}
 
 위 리뷰 내용을 바탕으로 사용자의 질문에 친절하게 답변해주세요. 리뷰에 관련된 정보가 아예 없다면 '리뷰 내용에서는 해당 정보를 찾을 수 없습니다.' 라고 답변해 주세요. (2~3줄 이내로 간결하게 답변)"""
+
+        # 1. 빠른 Groq API 우선 시도
+        if groq_api_key:
+            success, text = _call_groq(groq_api_key, prompt, system_role="당신은 리뷰 바탕으로 질문에 대답해주는 친절한 가이드입니다.")
+            if success:
+                return jsonify({"success": True, "answer": text})
+            else:
+                if not gemini_api_key:
+                    return jsonify({"success": False, "error": f"Groq 통신 실패: {text}"})
+
+        # 2. Gemini fallback
+        import google.generativeai as genai
+        genai.configure(api_key=gemini_api_key)
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         response = model.generate_content(prompt)
         return jsonify({"success": True, "answer": response.text.strip()})
