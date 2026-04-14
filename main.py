@@ -1492,22 +1492,43 @@ def clinic_search():
         x = geo_resp['documents'][0]['x']
         y = geo_resp['documents'][0]['y']
         
-        # 2. HP8(병원) 카테고리 반경 검색
+        # 2. HP8(병원) 카테고리 반경 검색 + '한의원' 키워드 병행 검색
         places = []
-        for page in range(1, 4):  # 최대 3페이지(45개)
+        seen_ids = set()
+        
+        # (1) HP8 카테고리 검색
+        for page in range(1, 3):  # 최대 2페이지(30개)로 줄임 (시간 단축)
             cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=HP8&x={x}&y={y}&radius={radius}&page={page}"
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
             docs = cat_data.get('documents', [])
             
-            # 요양병원 및 대학병원, 대형 의료원 제외
             ignore_keywords = ["요양", "동물", "수의", "대학병원", "대학교병원", "의료원", "보건소"]
             for d in docs:
                 p_name = d.get('place_name', '')
-                if not any(k in p_name for k in ignore_keywords):
+                pid = d.get('id')
+                if pid not in seen_ids and not any(k in p_name for k in ignore_keywords):
                     places.append(d)
+                    seen_ids.add(pid)
                     
             if cat_data.get('meta', {}).get('is_end', True):
+                break
+        
+        # (2) 한의원 키워드 검색 (HP8에 안 잡히는 경우가 많음)
+        for page in range(1, 3):  # 최대 2페이지(30개)
+            kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote('한의원')}&x={x}&y={y}&radius={radius}&page={page}"
+            kw_resp = requests.get(kw_url, headers=headers)
+            kw_data = kw_resp.json()
+            docs = kw_data.get('documents', [])
+            
+            for d in docs:
+                p_name = d.get('place_name', '')
+                pid = d.get('id')
+                if pid not in seen_ids and "한의원" in p_name:
+                    places.append(d)
+                    seen_ids.add(pid)
+                    
+            if kw_data.get('meta', {}).get('is_end', True):
                 break
                 
         if not places:
