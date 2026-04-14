@@ -1204,6 +1204,7 @@ def bakery():
 def bakery_search():
     data = request.json
     address = data.get('address', '').strip()
+    radius = data.get('radius', '3000')
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -1217,10 +1218,24 @@ def bakery_search():
     headers = {"Authorization": f"KakaoAK {api_key}"}
     
     try:
+        # 1. 주소 -> 위경도 변환
+        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+        geo_resp = requests.get(geo_url, headers=headers).json()
+        
+        if not geo_resp.get('documents'):
+            geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+            geo_resp = requests.get(geo_url, headers=headers).json()
+            
+        if not geo_resp.get('documents'):
+            return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+            
+        x = geo_resp['documents'][0]['x']
+        y = geo_resp['documents'][0]['y']
+
         search_query = f"{address} 빵집"
         places = []
         for page in range(1, 4):  # 카카오 키워드 검색 최대 3페이지(45개)
-            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(search_query)}&page={page}"
+            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote('빵집')}&x={x}&y={y}&radius={radius}&page={page}"
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
             docs = cat_data.get('documents', [])
@@ -1335,6 +1350,7 @@ def cafe():
 def cafe_search():
     data = request.json
     address = data.get('address', '').strip()
+    radius = data.get('radius', '3000')
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -1348,10 +1364,24 @@ def cafe_search():
     headers = {"Authorization": f"KakaoAK {api_key}"}
     
     try:
-        search_query = f"{address} 카페"
+        # 1. 주소 -> 위경도 변환
+        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+        geo_resp = requests.get(geo_url, headers=headers).json()
+        
+        if not geo_resp.get('documents'):
+            geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+            geo_resp = requests.get(geo_url, headers=headers).json()
+            
+        if not geo_resp.get('documents'):
+            return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+            
+        x = geo_resp['documents'][0]['x']
+        y = geo_resp['documents'][0]['y']
+
+        # CE7(카페) 카테고리 검색
         places = []
         for page in range(1, 4):  # 카카오 키워드 검색 최대 3페이지(45개)
-            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(search_query)}&page={page}"
+            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=CE7&x={x}&y={y}&radius={radius}&page={page}"
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
             docs = cat_data.get('documents', [])
