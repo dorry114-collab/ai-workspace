@@ -1528,6 +1528,7 @@ def clinic_search():
             if "치과" in p_name or "치과" in full_cat: cat_simplified = "치과"
             elif "피부과" in p_name or "성형외과" in p_name: cat_simplified = "피부과/성형"
             elif "내과" in p_name or "이비인후과" in p_name: cat_simplified = "내과/이비인후과"
+            elif "소아과" in p_name or "소아" in full_cat: cat_simplified = "소아과"
             elif "안과" in p_name or "정형외과" in p_name or "통증" in p_name or "재활" in p_name: cat_simplified = "안과/정형외과"
             elif "한의원" in p_name or "한방" in p_name or "한의" in full_cat: cat_simplified = "한의원"
             else: cat_simplified = "기타 병의원"

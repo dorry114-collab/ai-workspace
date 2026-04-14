@@ -634,6 +634,7 @@
                 <div class="tab" data-cat="피부과/성형">피부과/성형</div>
                 <div class="tab" data-cat="치과">치과</div>
                 <div class="tab" data-cat="내과/이비인후과">내과/이비인후과</div>
+                <div class="tab" data-cat="소아과">소아과</div>
                 <div class="tab" data-cat="안과/정형외과">안과/정형외과</div>
                 <div class="tab" data-cat="한의원">한의원</div>
                 <div class="tab" data-cat="기타 병의원">기타</div>
@@ -862,6 +863,7 @@
                             <div id="chat-history-${r.place_id}" style="margin-bottom: 0.5rem; font-size: 0.85rem; color: #ccc;"></div>
                             
                             <div class="preset-questions" style="margin-bottom: 0.5rem; display: flex; gap: 0.4rem; flex-wrap: wrap;" id="preset-${r.place_id}">
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='리뷰에서 가장 많이 추천하는 의사 선생님은 누구인가요?'; submitChat('${r.place_id}');" class="preset-btn">👨‍🔬 추천의사</button>
                                 <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='과잉진료를 하나요?'; submitChat('${r.place_id}');" class="preset-btn">❌ 과잉진료</button>
                                 <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='원장님이 친절하시고 설명을 잘 해주시나요?'; submitChat('${r.place_id}');" class="preset-btn">👨‍⚕️ 원장님 친절</button>
                                 <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='사람이 많아서 대기시간이 긴 편인가요?'; submitChat('${r.place_id}');" class="preset-btn">⏱️ 대기시간</button>
