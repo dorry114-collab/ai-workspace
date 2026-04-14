@@ -1104,7 +1104,8 @@ def restaurant_summary():
         
         # 1. 빠른 Groq API 우선 시도
         if groq_api_key:
-            success, text = _call_groq(groq_api_key, prompt, system_role="당신은 식당과 빵집 리뷰를 전문적으로 요약해주는 친절한 AI 점원입니다.")
+            sys_role = "당신은 리뷰를 전문적으로 요약해주는 친절한 한국인 AI 점원입니다. 반드시 자연스러운 한국어 문장으로만 대답하세요. 외계어나 한자, 베트남어, 러시아어 등 이상한 글자가 섞이면 절대 안 됩니다."
+            success, text = _call_groq(groq_api_key, prompt, system_role=sys_role)
             if success:
                 return jsonify({"success": True, "summary": text})
             else:
@@ -1171,7 +1172,8 @@ def restaurant_chat():
 
         # 1. 빠른 Groq API 우선 시도
         if groq_api_key:
-            success, text = _call_groq(groq_api_key, prompt, system_role="당신은 리뷰 바탕으로 질문에 대답해주는 친절한 가이드입니다.")
+            sys_role = "당신은 리뷰 바탕으로 질문에 대답해주는 친절한 한국인 가이드입니다. 반드시 자연스러운 한국어 문장으로만 대답하세요. 외계어나 한자, 베트남어, 이상한 글자가 섞이면 안 됩니다."
+            success, text = _call_groq(groq_api_key, prompt, system_role=sys_role)
             if success:
                 return jsonify({"success": True, "answer": text})
             else:
