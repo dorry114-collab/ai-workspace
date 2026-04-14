@@ -1085,6 +1085,15 @@ def restaurant_summary():
 [리뷰 데이터]:
 {combined_text}
 """
+        elif place_type == "병원":
+            prompt = f"""다음은 특정 병원/클리닉의 실제 리뷰 5개입니다.
+이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
+1. 🤖 핵심 요약 (2줄 이내): 의사 선생님의 친절도, 진료 퀄리티, 대기 시간 길이 등 가장 핵심적인 내용.
+2. 🏥 상세 정보: 과잉 진료 여부나 리뷰어들이 유독 강조하는 장단점 피드백. (알 수 없으면 '알 수 없음' 표기)
+
+[리뷰 데이터]:
+{combined_text}
+"""
         else:
             prompt = f"""다음은 특정 맛집의 실제 리뷰 5개입니다.
 이 리뷰들을 종합해서 가장 핵심적이고 유용한 점(맛, 분위기, 주차, 서비스 등)을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 조언(요약)을 봇처럼 작성해주세요. 
@@ -1427,6 +1436,148 @@ def cafe_search():
                             item['rating'] = "평가 부족"
                             item['trust_score'] = 0
                 except Exception as e:
+                    pass
+            
+            return item
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:50]))
+            
+        results = sorted(scraped_places, key=lambda k: k.get('trust_score', 0), reverse=True)
+        
+        return jsonify({
+            "success": True, 
+            "data": results, 
+            "center": None
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
+
+@app.route('/clinic')
+def clinic():
+    return render_template('clinic.html')
+
+@app.route('/api/clinic/search', methods=['POST'])
+def clinic_search():
+    data = request.json
+    address = data.get('address', '').strip()
+    import os, urllib.parse, requests
+    from flask import jsonify
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
+        
+    if not address:
+        return jsonify({"success": False, "error": "지역명 또는 주소를 입력해주세요."})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    
+    try:
+        # 1. 주소 -> 위경도 변환
+        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+        geo_resp = requests.get(geo_url, headers=headers).json()
+        
+        if not geo_resp.get('documents'):
+            geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+            geo_resp = requests.get(geo_url, headers=headers).json()
+            
+        if not geo_resp.get('documents'):
+            return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+            
+        x = geo_resp['documents'][0]['x']
+        y = geo_resp['documents'][0]['y']
+        
+        # 2. HP8(병원) 카테고리 반경 검색 (3km 반경)
+        places = []
+        for page in range(1, 4):  # 최대 3페이지(45개)
+            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=HP8&x={x}&y={y}&radius=3000&page={page}"
+            cat_resp = requests.get(cat_url, headers=headers)
+            cat_data = cat_resp.json()
+            docs = cat_data.get('documents', [])
+            
+            # 요양병원 등 제외
+            for d in docs:
+                p_name = d.get('place_name', '')
+                if "요양" not in p_name and "동물" not in p_name and "수의" not in p_name:
+                    places.append(d)
+                    
+            if cat_data.get('meta', {}).get('is_end', True):
+                break
+                
+        if not places:
+            return jsonify({"success": False, "error": "해당 지역 근처에 검색된 병원/클리닉이 없습니다."})
+            
+        import concurrent.futures
+        
+        def scrape_place(p):
+            pid = p.get('id')
+            p_name = p.get('place_name')
+            p_url = p.get('place_url')
+            full_cat = p.get('category_name', '')
+            dist_str = p.get('distance', '0')
+            dist = int(dist_str) if dist_str else 0
+            
+            # 카테고리 단순화
+            cat_simplified = "기타"
+            if "치과" in p_name or "치과" in full_cat: cat_simplified = "치과"
+            elif "피부과" in p_name or "성형외과" in p_name: cat_simplified = "피부과/성형"
+            elif "내과" in p_name or "이비인후과" in p_name: cat_simplified = "내과/이비인후과"
+            elif "안과" in p_name or "정형외과" in p_name or "통증" in p_name: cat_simplified = "안과/정형외과"
+            else: cat_simplified = "기타 병의원"
+            
+            item = {
+                'id': pid,
+                'name': p_name,
+                'category': cat_simplified,
+                'full_category': full_cat,
+                'distance': dist,
+                'address': p.get('road_address_name') or p.get('address_name'),
+                'phone': p.get('phone', ''),
+                'x': p.get('x'),
+                'y': p.get('y'),
+                'url': p_url,
+                'rating': "N/A",
+                'total_ratings': 0,
+                'place_id': None,
+                'photo_url': None,
+                'is_open': None,
+                'trust_score': 0
+            }
+            
+            google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+            if google_api_key:
+                try:
+                    search_query = f"{p_name} {item['address'].split()[0]}" 
+                    g_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={urllib.parse.quote(search_query)}&inputtype=textquery&fields=place_id,rating,user_ratings_total,photos,opening_hours&locationbias=point:{p.get('y')},{p.get('x')}&key={google_api_key}"
+                    import requests
+                    g_resp = requests.get(g_url, timeout=2.0).json()
+                    
+                    if g_resp.get('status') == 'OK' and g_resp.get('candidates'):
+                        cand = g_resp['candidates'][0]
+                        rating = cand.get('rating')
+                        total_ratings = cand.get('user_ratings_total', 0)
+                        
+                        item['total_ratings'] = total_ratings
+                        item['place_id'] = cand.get('place_id')
+                        
+                        if 'opening_hours' in cand:
+                            item['is_open'] = cand['opening_hours'].get('open_now')
+                            
+                        if 'photos' in cand and cand['photos']:
+                            photo_ref = cand['photos'][0].get('photo_reference')
+                            item['photo_url'] = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference={photo_ref}&key={google_api_key}"
+                        
+                        if rating and total_ratings >= 10:
+                            item['rating'] = str(rating)
+                            item['trust_score'] = int(float(rating) * total_ratings)
+                        else:
+                            item['rating'] = "평가 부족"
+                            item['trust_score'] = 0
+                except Exception:
                     pass
             
             return item
