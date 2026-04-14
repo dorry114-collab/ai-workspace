@@ -1464,6 +1464,7 @@ def clinic():
 def clinic_search():
     data = request.json
     address = data.get('address', '').strip()
+    radius = data.get('radius', '3000')
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -1491,18 +1492,19 @@ def clinic_search():
         x = geo_resp['documents'][0]['x']
         y = geo_resp['documents'][0]['y']
         
-        # 2. HP8(병원) 카테고리 반경 검색 (3km 반경)
+        # 2. HP8(병원) 카테고리 반경 검색
         places = []
         for page in range(1, 4):  # 최대 3페이지(45개)
-            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=HP8&x={x}&y={y}&radius=3000&page={page}"
+            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=HP8&x={x}&y={y}&radius={radius}&page={page}"
             cat_resp = requests.get(cat_url, headers=headers)
             cat_data = cat_resp.json()
             docs = cat_data.get('documents', [])
             
-            # 요양병원 등 제외
+            # 요양병원 및 대학병원, 대형 의료원 제외
+            ignore_keywords = ["요양", "동물", "수의", "대학병원", "대학교병원", "의료원", "보건소"]
             for d in docs:
                 p_name = d.get('place_name', '')
-                if "요양" not in p_name and "동물" not in p_name and "수의" not in p_name:
+                if not any(k in p_name for k in ignore_keywords):
                     places.append(d)
                     
             if cat_data.get('meta', {}).get('is_end', True):
@@ -1522,11 +1524,12 @@ def clinic_search():
             dist = int(dist_str) if dist_str else 0
             
             # 카테고리 단순화
-            cat_simplified = "기타"
+            cat_simplified = "기타 병의원"
             if "치과" in p_name or "치과" in full_cat: cat_simplified = "치과"
             elif "피부과" in p_name or "성형외과" in p_name: cat_simplified = "피부과/성형"
             elif "내과" in p_name or "이비인후과" in p_name: cat_simplified = "내과/이비인후과"
-            elif "안과" in p_name or "정형외과" in p_name or "통증" in p_name: cat_simplified = "안과/정형외과"
+            elif "안과" in p_name or "정형외과" in p_name or "통증" in p_name or "재활" in p_name: cat_simplified = "안과/정형외과"
+            elif "한의원" in p_name or "한방" in p_name or "한의" in full_cat: cat_simplified = "한의원"
             else: cat_simplified = "기타 병의원"
             
             item = {
