@@ -1076,6 +1076,15 @@ def restaurant_summary():
 [리뷰 데이터]:
 {combined_text}
 """
+        elif place_type == "카페":
+            prompt = f"""다음은 특정 카페의 실제 리뷰 5개입니다.
+이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
+1. 🤖 핵심 요약 (2줄 이내): 커피의 맛, 감성/뷰, 작업(카공) 또는 데이트 분위기 등 가장 핵심적이고 유용한 점.
+2. ☕ 시그니처 메뉴: 리뷰어들이 가장 많이 극찬하는 커피나 디저트 등. (없으면 '알 수 없음' 표기)
+
+[리뷰 데이터]:
+{combined_text}
+"""
         else:
             prompt = f"""다음은 특정 맛집의 실제 리뷰 5개입니다.
 이 리뷰들을 종합해서 가장 핵심적이고 유용한 점(맛, 분위기, 주차, 서비스 등)을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 조언(요약)을 봇처럼 작성해주세요. 
@@ -1239,6 +1248,135 @@ def bakery_search():
             elif "베이커리" in p_name or "제과점" in full_cat: cat_simplified = "베이커리"
             elif "디저트" in full_cat: cat_simplified = "디저트/케이크"
             else: cat_simplified = "동네빵집"
+            
+            item = {
+                'id': pid,
+                'name': p_name,
+                'category': cat_simplified,
+                'full_category': full_cat,
+                'distance': dist,
+                'address': p.get('road_address_name') or p.get('address_name'),
+                'phone': p.get('phone', ''),
+                'x': p.get('x'),
+                'y': p.get('y'),
+                'url': p_url,
+                'rating': "N/A",
+                'total_ratings': 0,
+                'place_id': None,
+                'photo_url': None,
+                'is_open': None,
+                'trust_score': 0
+            }
+            
+            google_api_key = os.environ.get('GOOGLE_MAPS_API_KEY')
+            if google_api_key:
+                try:
+                    search_query = f"{p_name} {item['address'].split()[0]}" 
+                    g_url = f"https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input={urllib.parse.quote(search_query)}&inputtype=textquery&fields=place_id,rating,user_ratings_total,photos,opening_hours&locationbias=point:{p.get('y')},{p.get('x')}&key={google_api_key}"
+                    import requests
+                    g_resp = requests.get(g_url, timeout=2.0).json()
+                    
+                    if g_resp.get('status') == 'OK' and g_resp.get('candidates'):
+                        cand = g_resp['candidates'][0]
+                        rating = cand.get('rating')
+                        total_ratings = cand.get('user_ratings_total', 0)
+                        
+                        item['total_ratings'] = total_ratings
+                        item['place_id'] = cand.get('place_id')
+                        
+                        if 'opening_hours' in cand:
+                            item['is_open'] = cand['opening_hours'].get('open_now')
+                            
+                        if 'photos' in cand and cand['photos']:
+                            photo_ref = cand['photos'][0].get('photo_reference')
+                            item['photo_url'] = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photo_reference={photo_ref}&key={google_api_key}"
+                        
+                        if rating and total_ratings >= 10:
+                            item['rating'] = str(rating)
+                            item['trust_score'] = int(float(rating) * total_ratings)
+                        else:
+                            item['rating'] = "평가 부족"
+                            item['trust_score'] = 0
+                except Exception as e:
+                    pass
+            
+            return item
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:50]))
+            
+        results = sorted(scraped_places, key=lambda k: k.get('trust_score', 0), reverse=True)
+        
+        return jsonify({
+            "success": True, 
+            "data": results, 
+            "center": None
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
+
+@app.route('/cafe')
+def cafe():
+    return render_template('cafe.html')
+
+@app.route('/api/cafe/search', methods=['POST'])
+def cafe_search():
+    data = request.json
+    address = data.get('address', '').strip()
+    import os, urllib.parse, requests
+    from flask import jsonify
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
+        
+    if not address:
+        return jsonify({"success": False, "error": "지역명을 입력해주세요."})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    
+    try:
+        search_query = f"{address} 카페"
+        places = []
+        for page in range(1, 4):  # 카카오 키워드 검색 최대 3페이지(45개)
+            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(search_query)}&page={page}"
+            cat_resp = requests.get(cat_url, headers=headers)
+            cat_data = cat_resp.json()
+            docs = cat_data.get('documents', [])
+            
+            # 대형 프랜차이즈 카페 제외
+            ignore_keywords = ['스타벅스', '투썸', '이디야', '메가커피', '메가MGC', '컴포즈', '빽다방', '할리스', '파스쿠찌', '엔제리너스', '탐앤탐스', '폴바셋', '커피빈']
+            for d in docs:
+                p_name = d.get('place_name', '')
+                if not any(k in p_name for k in ignore_keywords):
+                    places.append(d)
+                    
+            if cat_data.get('meta', {}).get('is_end', True):
+                break
+                
+        if not places:
+            return jsonify({"success": False, "error": f"'{search_query}'(으)로 검색된 결과가 없습니다."})
+            
+        results = []
+        import concurrent.futures
+        
+        def scrape_place(p):
+            pid = p.get('id')
+            p_name = p.get('place_name')
+            p_url = p.get('place_url')
+            full_cat = p.get('category_name', '')
+            dist_str = p.get('distance', '0')
+            dist = int(dist_str) if dist_str else 0
+            
+            # 카페 분류 단순화
+            cat_simplified = "기타"
+            if "로스터리" in p_name or "로스팅" in p_name: cat_simplified = "로스터리"
+            elif "에스프레소" in p_name or "에스프레소" in full_cat: cat_simplified = "에스프레소"
+            elif "디저트" in full_cat or "케이크" in p_name: cat_simplified = "디저트/케이크"
+            else: cat_simplified = "동네카페"
             
             item = {
                 'id': pid,
