@@ -3,20 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>회사원 키우기</title>
+    <title>회사원 육성 시뮬레이터</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-color: #121212;
-            --panel-bg: #1e1e1e;
-            --text-main: #f5f5f5;
-            --text-muted: #a0a0a0;
-            --primary: #8b5cf6; /* 보라색 테마 */
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #8b5cf6;
             --primary-hover: #7c3aed;
-            --accent: #10b981; /* 잔고 표시 등 */
+            --accent: #10b981;
             --danger: #ef4444;
-            --border-color: #333;
+            --warning: #f59e0b;
+            --border-color: #334155;
         }
 
         * {
@@ -24,7 +26,7 @@
             margin: 0;
             padding: 0;
             font-family: 'Pretendard', sans-serif;
-            user-select: none; /* 드래그 방지 */
+            user-select: none;
         }
 
         body {
@@ -36,554 +38,566 @@
             min-height: 100vh;
         }
 
-        /* Top Navbar */
+        /* Nav */
         .navbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            background: rgba(30, 30, 30, 0.8);
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 1rem; background: rgba(30, 41, 59, 0.8);
+            border-bottom: 1px solid var(--border-color); sticky; top: 0; z-index: 100;
         }
+        .navbar a { color: var(--text-muted); text-decoration: none; }
+        .title { font-weight: 700; color: var(--primary); }
 
-        .navbar a.back-btn {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 1rem;
-            transition: color 0.3s ease;
+        /* Dash Area */
+        .top-dash {
+            display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem;
+            background: var(--panel-bg); border-bottom: 2px solid var(--border-color);
         }
-        .navbar a.back-btn:hover { color: var(--text-main); }
-        .navbar .title { font-weight: 700; font-size: 1.1rem; color: var(--primary); }
         
-        .reset-btn {
-            background: none; border: 1px solid var(--danger); color: var(--danger);
-            padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+        .header-stats {
+            display: flex; justify-content: space-between; align-items: flex-end;
+        }
+        
+        .age-info { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
+        .title-info { font-size: 1rem; color: var(--primary); background: rgba(139, 92, 246, 0.2); padding: 0.2rem 0.6rem; border-radius: 8px;}
+
+        .wealth-info { text-align: right; }
+        .net-worth { font-size: 2rem; color: var(--accent); font-weight: 700; letter-spacing: -1px; margin-bottom: 0.2rem;}
+        .salary { font-size: 0.9rem; color: var(--text-muted); }
+
+        /* Time Bar */
+        .time-box {
+            background: #000; height: 8px; border-radius: 4px; overflow: hidden; position: relative; margin-top: 0.5rem;
+        }
+        .time-bar {
+            height: 100%; background: linear-gradient(90deg, var(--primary), #d946ef); width: 0%; transition: width 1s linear;
+        }
+        .time-label { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;}
+
+        /* Main layout: Chart + Actions */
+        .main-content {
+            display: flex; flex-direction: column; flex-grow: 1; padding: 1rem; gap: 1rem;
         }
 
-        /* Status Header */
-        .status-header {
-            padding: 1.5rem 1rem;
-            text-align: center;
-            background: var(--panel-bg);
-            border-bottom: 2px solid var(--border-color);
+        @media(min-width: 768px) {
+            .main-content { flex-direction: row; align-items: flex-start; }
+            .chart-section { flex: 1; }
+            .action-section { flex: 1; min-width: 300px; }
         }
 
-        .age-badge {
-            display: inline-block;
-            background: rgba(139, 92, 246, 0.2);
-            color: var(--primary);
-            padding: 0.4rem 1rem;
-            border-radius: 20px;
-            font-weight: 700;
-            font-size: 1.2rem;
-            margin-bottom: 0.5rem;
-            border: 1px solid rgba(139, 92, 246, 0.4);
+        .chart-section {
+            background: var(--panel-bg); padding: 1rem; border-radius: 16px; border: 1px solid var(--border-color);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        .money-display {
-            font-size: 2.2rem;
-            font-weight: 700;
-            color: var(--accent);
-            margin: 0.5rem 0;
-            letter-spacing: -1px;
+        .chart-container {
+            width: 100%; max-width: 350px; aspect-ratio: 1/1; position: relative;
         }
 
-        .stats-row {
-            display: flex;
-            justify-content: space-around;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            margin-top: 0.8rem;
+        /* Stamina UI */
+        .stamina-box {
+            width: 100%; margin-top: 1rem; background: #000; border-radius: 8px; padding: 0.5rem; border: 1px solid var(--border-color);
+        }
+        .hp-bar-bg { width: 100%; height: 16px; background: #333; border-radius: 8px; overflow: hidden; margin-top: 0.3rem;}
+        .hp-bar { height: 100%; background: var(--danger); width: 100%; transition: width 0.3s ease; }
+        .hp-txt { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;}
+
+        /* Actions */
+        .action-section {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;
         }
 
-        .stats-item strong { color: var(--text-main); }
+        .action-btn {
+            background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-main);
+            padding: 1rem; border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.2s ease;
+            display: flex; flex-direction: column; gap: 0.3rem;
+        }
 
-        /* Main Clicker Area */
-        .clicker-area {
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 2rem;
+        .action-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.1); border-color: var(--primary); transform: translateY(-2px);}
+        .action-btn:active:not(:disabled) { transform: scale(0.95); }
+        .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .act-icon { font-size: 1.5rem; margin-bottom: 0.2rem; }
+        .act-title { font-weight: 700; font-size: 0.95rem; }
+        .act-cost { font-size: 0.75rem; color: var(--danger); display: flex; align-items: center; gap:0.2rem;}
+        .act-effect { font-size: 0.75rem; color: var(--accent); }
+
+        /* Logs */
+        .log-section {
+            background: var(--panel-bg); margin: 0 1rem 1rem 1rem; padding: 1rem; border-radius: 12px;
+            height: 150px; overflow-y: auto; border: 1px solid var(--border-color); font-size: 0.85rem;
+        }
+
+        .log-entry { margin-bottom: 0.4rem; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 0.4rem; color:var(--text-muted);}
+        .log-entry strong { color: var(--text-main); }
+        .log-entry.month { color: var(--primary); font-weight: 700; background: rgba(139,92,246,0.1); padding: 0.3rem; border-radius: 4px;}
+        .log-entry.event { color: var(--warning); font-weight: 700;}
+
+        /* Modal */
+        .modal-bg {
+            position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter: blur(5px);
+            z-index: 1000; display: none; justify-content: center; align-items: center; padding: 1rem;
+        }
+        .modal-content {
+            background: var(--panel-bg); width: 100%; max-width: 400px; padding: 2rem; border-radius: 20px;
+            border: 1px solid var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center;
             position: relative;
-            background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%);
         }
-
-        .character-btn {
-            font-size: 5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            transition: transform 0.05s ease;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .character-btn:active {
-            transform: scale(0.9);
-        }
-
-        .job-title {
-            margin-top: 1rem;
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-main);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .click-effect {
-            position: absolute;
-            font-weight: 700;
-            font-size: 1.2rem;
-            color: var(--accent);
-            pointer-events: none;
-            animation: floatUp 1s ease-out forwards;
-            text-shadow: 0 1px 2px #000;
-            z-index: 50;
-        }
-
-        @keyframes floatUp {
-            0% { opacity: 1; transform: translateY(0); }
-            100% { opacity: 0; transform: translateY(-50px); }
-        }
-
-        /* Upgrades Store */
-        .store-panel {
-            background: var(--panel-bg);
-            border-top: 2px solid var(--border-color);
-            border-radius: 20px 20px 0 0;
-            padding: 1.5rem 1rem;
-            height: 45vh;
-            overflow-y: auto;
-        }
-
-        .store-header {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: justify;
-        }
-
-        .upgrade-list {
-            display: flex;
-            flex-direction: column;
-            gap: 0.8rem;
-        }
-
-        .upgrade-card {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid var(--border-color);
-            padding: 1rem;
-            border-radius: 12px;
-            transition: all 0.2s ease;
-        }
-
-        .upgrade-card:hover:not(.locked) {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(139, 92, 246, 0.5);
-        }
-
-        .upgrade-card.locked {
-            opacity: 0.5;
-            filter: grayscale(1);
-        }
-
-        .up-info { display: flex; align-items: center; gap: 1rem; }
-        .up-icon { font-size: 2rem; width: 40px; text-align: center; }
-        .up-desc h4 { font-size: 1rem; margin-bottom: 0.2rem; }
-        .up-desc p { font-size: 0.8rem; color: var(--text-muted); }
-        .up-level { font-size: 0.8rem; color: var(--primary); font-weight: 700; margin-top: 0.2rem;}
-
-        .up-buy-btn {
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            padding: 0.6rem 1rem;
-            border-radius: 8px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.2s ease;
-            white-space: nowrap;
-        }
-
-        .up-buy-btn:hover { background: var(--primary-hover); }
-        .up-buy-btn:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
-
-        /* Ending Modal */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); backdrop-filter: blur(5px);
-            display: none; justify-content: center; align-items: center; z-index: 1000;
-        }
-
-        .modal-box {
-            background: var(--panel-bg); border: 1px solid var(--primary);
-            padding: 2.5rem; border-radius: 20px; text-align: center; width: 90%; max-width: 400px;
-            box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
-        }
-
-        .modal-box h2 { font-size: 2rem; color: var(--primary); margin-bottom: 1rem; }
-        .modal-box p { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-main); }
-        .modal-box .final-money { font-size: 2rem; color: var(--accent); font-weight: 700; margin: 1rem 0 2rem 0; }
+        .modal-icon { font-size: 3rem; margin-bottom: 1rem; }
+        .modal-title { font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;}
+        .modal-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.5rem; text-align: left; background: rgba(0,0,0,0.3); padding: 1rem; border-radius:8px;}
         
-        .restart-btn {
-            background: var(--primary); color: #fff; border: none; padding: 1rem 2rem;
-            border-radius: 12px; font-weight: 700; font-size: 1.1rem; cursor: pointer; width: 100%;
-        }
+        .modal-btns { display: flex; gap: 0.5rem; }
+        .btn-yes { flex:1; padding: 1rem; background: var(--primary); color: white; border:none; border-radius: 12px; font-weight: 700; cursor: pointer;}
+        .btn-no { flex:1; padding: 1rem; background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 12px; font-weight: 700; cursor: pointer;}
+        .btn-yes:hover { background: var(--primary-hover); }
+        .btn-no:hover { color: white; border-color: white; }
 
     </style>
 </head>
 <body>
 
     <nav class="navbar">
-        <a href="/" class="back-btn"><i class="fa-solid fa-arrow-left"></i> 나가기</a>
-        <div class="title">💼 회사원 키우기</div>
-        <button class="reset-btn" onclick="resetGame()"><i class="fa-solid fa-rotate-right"></i> 초기화</button>
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 워크스페이스</a>
+        <div class="title">회사원 육성 시뮬레이터</div>
+        <a href="#" onclick="resetGame()"><i class="fa-solid fa-rotate-right"></i></a>
     </nav>
 
-    <div class="status-header">
-        <div class="age-badge" id="ageDisplay">내 나이: 26세</div>
-        <div class="money-display" id="moneyDisplay">0원</div>
-        <div class="stats-row">
-            <div class="stats-item">초당 수익: <strong id="cpsDisplay">0원</strong></div>
-            <div class="stats-item">클릭 수익: <strong id="cpcDisplay">10,000원</strong></div>
+    <div class="top-dash">
+        <div class="header-stats">
+            <div>
+                <div class="age-info"><span id="uiYear">26</span>세 <span id="uiMonth" style="font-size:1rem; color:var(--text-muted);">1개월</span></div>
+                <div class="title-info" id="uiJobTitle">신입사원</div>
+            </div>
+            <div class="wealth-info">
+                <div class="net-worth" id="uiMoney">0원</div>
+                <div class="salary">월 급여: <strong id="uiSalary" style="color:var(--text-main);">0원</strong></div>
+            </div>
         </div>
-        <!-- Progress bar for aging -->
-        <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); margin-top: 1rem; border-radius: 2px; overflow: hidden;">
-            <div id="ageProgressBars" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;"></div>
-        </div>
-    </div>
-
-    <div class="clicker-area" id="clickArea" onclick="work(event)">
-        <button class="character-btn" id="characterIcon">👔</button>
-        <div class="job-title" id="jobTitleDisplay">신입사원</div>
-    </div>
-
-    <div class="store-panel">
-        <div class="store-header"><i class="fa-solid fa-shop"></i> 자기계발 & 투자</div>
-        <div class="upgrade-list" id="upgradeList">
-            <!-- Injected by JS -->
+        <div>
+            <div class="time-box"><div class="time-bar" id="uiTimeBar"></div></div>
+            <div class="time-label">1개월 경과까지: <span id="uiTimeLeft">60</span>초</div>
         </div>
     </div>
 
-    <!-- Ending Modal -->
-    <div class="modal-overlay" id="endingModal">
-        <div class="modal-box">
-            <h2>🎉 은퇴 축하합니다! 🎉</h2>
-            <p>100세가 되어 치열했던 직장 생활과 투자 여정을 마무리합니다.</p>
-            <p>당신의 최종 직급: <strong id="endTitle" style="color:var(--primary);"></strong></p>
-            <p>최종 모은 자산</p>
-            <div class="final-money" id="endMoney">0원</div>
-            <button class="restart-btn" onclick="resetGame()">다시 태어나기</button>
+    <div class="main-content">
+        <!-- 6-Axis Chart -->
+        <div class="chart-section">
+            <div class="chart-container">
+                <canvas id="radarChart"></canvas>
+            </div>
+            <div class="stamina-box">
+                <div class="hp-txt"><span>체력 (Stamina)</span> <span id="uiStamina">100 / 100</span></div>
+                <div class="hp-bar-bg"><div class="hp-bar" id="uiStaminaBar"></div></div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-section">
+            <button class="action-btn" onclick="takeAction('work')">
+                <div class="act-icon">💻</div>
+                <div class="act-title">야근하기</div>
+                <div class="act-cost"><i class="fa-solid fa-battery-quarter"></i> 체력 -20</div>
+                <div class="act-effect">업무능력 +↑</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('lang')">
+                <div class="act-icon">🗣️</div>
+                <div class="act-title">외국어 학원</div>
+                <div class="act-cost"><i class="fa-solid fa-coins"></i> 돈 -50만</div>
+                <div class="act-effect">외국어 +↑</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('comm')">
+                <div class="act-icon">🍻</div>
+                <div class="act-title">사내 회식</div>
+                <div class="act-cost"><i class="fa-solid fa-coins"></i> 돈 -10만 | <i class="fa-solid fa-battery-quarter"></i> 체력 -15</div>
+                <div class="act-effect">소통 +↑</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('plan')">
+                <div class="act-icon">📚</div>
+                <div class="act-title">기획 스터디</div>
+                <div class="act-cost"><i class="fa-solid fa-coins"></i> 돈 -20만</div>
+                <div class="act-effect">기획력 +↑</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('lead')">
+                <div class="act-icon">👑</div>
+                <div class="act-title">리더십 연수</div>
+                <div class="act-cost"><i class="fa-solid fa-coins"></i> 돈 -100만</div>
+                <div class="act-effect">리더십 +↑</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('rest')" style="border-color:var(--accent);">
+                <div class="act-icon">🛌</div>
+                <div class="act-title">꿀잠 자기</div>
+                <div class="act-cost" style="color:var(--text-muted);"><i class="fa-regular fa-clock"></i> 턴 소모</div>
+                <div class="act-effect" style="color:var(--accent);">체력 만땅 회복</div>
+            </button>
+        </div>
+    </div>
+
+    <div class="log-section" id="logBox">
+        <!-- Logs appear here -->
+    </div>
+
+    <!-- Event Modal -->
+    <div class="modal-bg" id="eventModal">
+        <div class="modal-content">
+            <div class="modal-icon" id="evtIcon">✨</div>
+            <div class="modal-title" id="evtTitle">이벤트</div>
+            <div class="modal-desc" id="evtDesc">설명 텍스트</div>
+            <div class="modal-btns">
+                <button class="btn-no" id="evtBtnNo" onclick="closeModal()">거절</button>
+                <button class="btn-yes" id="evtBtnYes" onclick="acceptEvent()">수락</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- Game Setup & State ---
-        const GAME_SPEED_MS = 1000; // 1틱 = 1초
-        const SECONDS_PER_YEAR = 5; // 5초에 1살 증가
+        // --- GAME STATE ---
+        const MONTH_SECONDS = 60; 
         const END_AGE = 100;
 
-        let state = {
+        let s = {
             age: 26,
-            ageTicks: 0,
-            money: 0,
-            jobLevel: 0,
-            cpcLevel: 0,
-            cpsLevel1: 0, // 예적금
-            cpsLevel2: 0, // 펀드
-            cpsLevel3: 0, // 부동산
-            lastSaved: Date.now()
+            month: 1,
+            money: 3000000, 
+            secondsLived: 0,
+            currSec: 0,
+            
+            stamina: 100,
+            maxStamina: 100,
+
+            // Stats
+            job: 10,  // 업무
+            comm: 10, // 소통
+            lang: 5,  // 외국어
+            plan: 5,  // 기획
+            lead: 0,  // 리더십
+
+            // Job info
+            jobTitle: '신입사원',
+            baseSalary: 3000000,
+            companyType: '중소기업', // 중소기업, 중견기업, 대기업, 외국계, 유니콘
+            
+            lastEventAge: 0
         };
 
-        // --- Data Definitions ---
-        const JOBS = [
-            { title: "신입사원", icon: "👔", mult: 1, cost: 0 },
-            { title: "대리",     icon: "💼", mult: 3, cost: 500000 },
-            { title: "과장",     icon: "📊", mult: 10, cost: 3000000 },
-            { title: "차장",     icon: "📈", mult: 25, cost: 15000000 },
-            { title: "부장",     icon: "🤝", mult: 80, cost: 80000000 },
-            { title: "임원(이사)", icon: "🏌️", mult: 300, cost: 500000000 },
-            { title: "사장",     icon: "👑", mult: 1000, cost: 3000000000 }
+        // --- CONSTANTS ---
+        const CAREER_PATH = [
+            { title: '사원', req: {job:0, comm:0}, mult: 1 },
+            { title: '대리', req: {job:30, comm:20}, mult: 1.3 },
+            { title: '과장', req: {job:60, plan:30, comm:40}, mult: 1.8 },
+            { title: '차장', req: {job:90, plan:60, lead:30}, mult: 2.5 },
+            { title: '부장', req: {job:120, lead:60, comm:80}, mult: 3.5 },
+            { title: '임원', req: {lead:100, plan:100, lang:50}, mult: 8.0 },
+            { title: 'CEO', req: {lead:150, plan:150, comm:150, lang:100, job:150}, mult: 20.0 }
         ];
 
-        const UPGRADES = [
-            {
-                id: 'cpc', name: "업무능력 향상", desc: "클릭 당 수익이 기본금만큼 증가합니다.", icon: "💪",
-                baseCost: 20000, costMult: 1.5,
-                effectInfo: "+클릭수익",
-                getLevel: () => state.cpcLevel,
-                buy: () => { state.cpcLevel++; }
-            },
-            {
-                id: 'cps1', name: "정기 예적금", desc: "초당 수익을 소량 확보합니다.", icon: "🏦",
-                baseCost: 50000, costMult: 1.15,
-                effectInfo: "+2,000원 / 초",
-                getLevel: () => state.cpsLevel1,
-                buy: () => { state.cpsLevel1++; }
-            },
-            {
-                id: 'cps2', name: "우량주 주식투자", desc: "자본주의의 꽃. 초당 수익이 꽤 오릅니다.", icon: "📈",
-                baseCost: 500000, costMult: 1.25,
-                effectInfo: "+25,000원 / 초",
-                getLevel: () => state.cpsLevel2,
-                buy: () => { state.cpsLevel2++; }
-            },
-            {
-                id: 'cps3', name: "꼬마빌딩 갭투자", desc: "조물주 위에 건물주. 초당 수익이 대폭 상승합니다.", icon: "🏢",
-                baseCost: 5000000, costMult: 1.4,
-                effectInfo: "+300,000원 / 초",
-                getLevel: () => state.cpsLevel3,
-                buy: () => { state.cpsLevel3++; }
-            },
-            {
-                id: 'job', name: "승진 심사", desc: "다음 직급으로 승진하여 모든 수익에 배수가 붙습니다.", icon: "🎖️",
-                baseCost: 0, costMult: 1, // dynamically calculated
-                effectInfo: "수익 배수 대폭 상승",
-                getLevel: () => state.jobLevel,
-                buy: () => { state.jobLevel++; }
-            }
-        ];
+        const COMPANY_MUL = {
+            '중소기업': 1.0,
+            '중견기업': 1.5,
+            '외국계': 2.0,
+            '대기업': 2.5,
+            '유니콘스타트업': 3.0
+        };
 
-        // --- Core Calculus ---
-        function getClickPower() {
-            let base = 10000 + (state.cpcLevel * 10000);
-            return base * JOBS[state.jobLevel].mult;
-        }
+        // --- CHART JS SETUP ---
+        let radarChart;
 
-        function getPassiveIncome() {
-            let base = (state.cpsLevel1 * 2000) + (state.cpsLevel2 * 25000) + (state.cpsLevel3 * 300000);
-            return base * JOBS[state.jobLevel].mult;
-        }
-
-        function formatMoney(num) {
-            // 한글 금액 포맷팅 (조, 억, 만, 원)
-            if (num < 10000) return Math.floor(num).toLocaleString() + "원";
+        function initChart() {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            Chart.defaults.color = "#94a3b8";
+            Chart.defaults.font.family = "Pretendard";
             
+            radarChart = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['업무(Hard)', '소통(Comm)', '외국어(Lang)', '리더십(Lead)', '기획(Plan)'],
+                    datasets: [{
+                        label: '내 능력치',
+                        data: [s.job, s.comm, s.lang, s.lead, s.plan],
+                        backgroundColor: 'rgba(139, 92, 246, 0.4)',
+                        borderColor: '#8b5cf6',
+                        pointBackgroundColor: '#10b981',
+                        borderWidth: 2,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { font: { size: 12, weight: '700' } },
+                            ticks: { display: false, min: 0, max: 200, stepSize: 40 }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        function updateChart() {
+            radarChart.data.datasets[0].data = [s.job, s.comm, s.lang, s.lead, s.plan];
+            radarChart.update();
+        }
+
+        // --- UTILS ---
+        function formatMoney(num) {
+            if (num < 10000) return Math.floor(num).toLocaleString() + "원";
             let res = "";
             let jo = Math.floor(num / 1000000000000);
             let uk = Math.floor((num % 1000000000000) / 100000000);
             let man = Math.floor((num % 100000000) / 10000);
-            
             if (jo > 0) res += jo + "조 ";
             if (uk > 0) res += uk + "억 ";
             if (man > 0) res += man + "만 ";
-            // 원 단위까지 쓰면 너무 기니까 만 단위 이하 절사 (선택사항)
-            // if (rem > 0 && jo === 0) res += rem + "원"; 
-            
             return res.trim() + "원";
         }
 
-        function getCost(upgrade) {
-            if (upgrade.id === 'job') {
-                if (state.jobLevel + 1 < JOBS.length) {
-                    return JOBS[state.jobLevel + 1].cost;
-                }
-                return Infinity; // 만렙
+        function logMsg(msg, isMonth=false, isEvent=false) {
+            let logBox = document.getElementById('logBox');
+            let div = document.createElement('div');
+            div.className = `log-entry ${isMonth ? 'month' : ''} ${isEvent ? 'event' : ''}`;
+            let t = `[${s.age}세 ${s.month}월] `;
+            div.innerHTML = `<span>${t}</span> ` + msg;
+            logBox.appendChild(div);
+            logBox.scrollTop = logBox.scrollHeight;
+            
+            // Keep only 50 logs max
+            if(logBox.childElementCount > 50) {
+                logBox.removeChild(logBox.firstChild);
             }
-            return Math.floor(upgrade.baseCost * Math.pow(upgrade.costMult, upgrade.getLevel()));
         }
 
-        // --- Save / Load ---
-        function saveGame() {
-            if (state.age >= END_AGE) return; // 엔딩 이후 저장 안함
-            state.lastSaved = Date.now();
-            localStorage.setItem('officeClientSave', JSON.stringify(state));
+        // --- ACTIONS ---
+        function takeAction(type) {
+            if (type === 'work') {
+                if(s.stamina < 20) return alert("체력이 부족합니다.");
+                s.stamina -= 20;
+                let inc = Math.floor(Math.random() * 3) + 2;
+                s.job += inc;
+                logMsg(`야근 강행! 업무능력이 <strong>${inc}</strong> 올랐습니다.`);
+            } 
+            else if (type === 'lang') {
+                if (s.money < 500000) return alert("돈이 부족합니다.");
+                s.money -= 500000;
+                let inc = Math.floor(Math.random() * 3) + 1;
+                s.lang += inc;
+                logMsg(`어학 학원 수강. 외국어 능력이 <strong>${inc}</strong> 올랐습니다.`);
+            }
+            else if (type === 'comm') {
+                if (s.money < 100000) return alert("돈이 부족합니다.");
+                if (s.stamina < 15) return alert("회식 갈 체력이 없습니다.");
+                s.money -= 100000; s.stamina -= 15;
+                let inc = Math.floor(Math.random() * 4) + 1;
+                s.comm += inc;
+                logMsg(`부서 회식 참여. 소통 능력이 <strong>${inc}</strong> 올랐습니다.`);
+            }
+            else if (type === 'plan') {
+                if (s.money < 200000) return alert("돈이 부족합니다.");
+                s.money -= 200000;
+                let inc = Math.floor(Math.random() * 3) + 2;
+                s.plan += inc;
+                logMsg(`기획 세미나 수료. 기획력이 <strong>${inc}</strong> 올랐습니다.`);
+            }
+            else if (type === 'lead') {
+                if (s.money < 1000000) return alert("돈이 부족합니다.");
+                s.money -= 1000000;
+                let inc = Math.floor(Math.random() * 3) + 2;
+                s.lead += inc;
+                logMsg(`고급 리더십 포럼 참여. 리더십이 <strong>${inc}</strong> 올랐습니다.`);
+            }
+            else if (type === 'rest') {
+                s.stamina = s.maxStamina;
+                logMsg(`집에서 달콤한 휴식... 체력이 <strong>모두 회복</strong> 되었습니다.`);
+            }
+
+            saveData();
+            updateUI();
         }
 
-        function loadGame() {
-            let save = localStorage.getItem('officeClientSave');
-            if (save) {
-                try {
-                    let parsed = JSON.parse(save);
-                    Object.assign(state, parsed);
-                    
-                    // 오프라인 보상 계산 (최대 24시간치만)
-                    let now = Date.now();
-                    let diffMs = now - (state.lastSaved || now);
-                    if (diffMs > 1000 * 60) { // 1분 이상 지났으면
-                        let offlineSecs = Math.min(diffMs / 1000, 86400); 
-                        let earned = offlineSecs * getPassiveIncome();
-                        if (earned > 0 && state.age < END_AGE) {
-                            state.money += earned;
-                            // 오프라인 중에 나이도 먹게 만들려면... 일단 게임오버 방지를 위해 나이는 오프라인으로 1년까지만 늙게 제한
-                            let ageGained = Math.floor(offlineSecs / SECONDS_PER_YEAR);
-                            state.age += Math.min(ageGained, 1);
-                            
-                            alert(`부재중 오프라인 수익으로 ${formatMoney(earned)}을 벌었습니다!`);
-                        }
+        // --- GAME LOOP ---
+        let currentEvent = null;
+
+        function calcSalary() {
+            // Find max title
+            let myTitleObj = CAREER_PATH[0];
+            for (let t of CAREER_PATH) {
+                let reqMet = true;
+                for (let k in t.req) {
+                    if (s[k] < t.req[k]) reqMet = false;
+                }
+                if (reqMet) myTitleObj = t;
+            }
+            
+            if (s.jobTitle !== myTitleObj.title) {
+                logMsg(`🎉 승진 축하! <strong>[${myTitleObj.title}]</strong>(으)로 승진했습니다!`, false, true);
+                s.jobTitle = myTitleObj.title;
+            }
+
+            let compMul = COMPANY_MUL[s.companyType] || 1;
+            return s.baseSalary * myTitleObj.mult * compMul;
+        }
+
+        function triggerPayday() {
+            let actualSalary = calcSalary();
+            s.money += actualSalary;
+            logMsg(`💰 월급날! <strong>${formatMoney(actualSalary)}</strong>이 입금되었습니다.`, true);
+            s.stamina = Math.min(s.maxStamina, s.stamina + 20); // 매월 자연회복 20
+        }
+
+        function checkRandomEvents() {
+            // 이직 오퍼 (1년마다 확률적으로 발생)
+            if (s.secondsLived % 12 === 0 && Math.random() < 0.4 && s.lastEventAge < s.age) {
+                // Determine target company based on stats
+                let evt = null;
+                if (s.lang >= 50 && s.comm >= 50 && s.companyType !== '외국계') {
+                    evt = {
+                        title: "외국계 기업 스카웃 제의",
+                        desc: "글로벌 헤드헌터로부터 연락이 왔습니다!<br><br>조건: 외항사 등 글로벌 커뮤니케이션 능력 우수자.<br>이직 성공 시 연봉이 크게 상승(배수 2.0x)합니다.<br>이직하시겠습니까?",
+                        yes: () => { s.companyType = '외국계'; logMsg("✈️ 외국계 기업으로 성공적으로 이직했습니다!", false, true); }
+                    };
+                }
+                else if (s.plan > 80 && s.job > 80 && s.companyType !== '대기업') {
+                    evt = {
+                        title: "대기업 IT기획팀 스카웃",
+                        desc: "탁월한 실무와 기획력을 눈여겨본 대기업에서 이직을 제안합니다.<br>기본급 배수가 2.5x로 크게 오릅니다. 승낙하시겠습니까?",
+                        yes: () => { s.companyType = '대기업'; logMsg("🏢 대기업으로 이직 성공! 사원증이 무겁습니다.", false, true); }
+                    };
+                }
+                else if (s.plan >= 40 && s.companyType === '중소기업') {
+                    evt = {
+                        title: "중견기업 이직 기회",
+                        desc: "조금 더 안정적인 중견기업에서 면접 제안이 왔습니다. (배수 1.5x) 보시겠습니까?",
+                        yes: () => { s.companyType = '중견기업'; logMsg("🤝 중견기업 이직 성공!", false, true); }
+                    };
+                }
+
+                if (evt) {
+                    s.lastEventAge = s.age;
+                    showModal(evt);
+                }
+            }
+
+            // 체력 고갈 페널티
+            if (s.stamina < 10 && Math.random() < 0.5) {
+                logMsg("🚨 과로로 쓰러졌습니다... 병원비 지출: <strong>200만원</strong>", false, true);
+                s.money = Math.max(0, s.money - 2000000);
+                s.stamina = 50;
+            }
+        }
+
+        let loopInterval = setInterval(() => {
+            if(s.age >= END_AGE || currentEvent !== null) return; // 모달 떠있으면 시간 정지
+
+            s.currSec += 1;
+            
+            // 1 minute (60s) passed = 1 Month
+            if (s.currSec >= MONTH_SECONDS) {
+                s.currSec = 0;
+                s.month += 1;
+                s.secondsLived += 1; // logical months
+                
+                triggerPayday();
+                checkRandomEvents();
+
+                // 12개월 -> 1년(나이 증가)
+                if (s.month > 12) {
+                    s.month = 1;
+                    s.age += 1;
+                    logMsg(`🎂 새해가 밝았습니다. <strong>${s.age}세</strong>가 되었습니다!`, false, true);
+                    if (s.age >= END_AGE) {
+                        endGame();
+                        return;
                     }
-                } catch(e) { console.error("Save load failed"); }
+                }
+            }
+
+            updateUI();
+            if(s.currSec % 5 === 0) saveData(); 
+        }, 1000); // UI updates every 1 real-time second
+
+        // --- UI & MODAL ---
+        function updateUI() {
+            document.getElementById('uiYear').innerText = s.age;
+            document.getElementById('uiMonth').innerText = s.month + "개월";
+            document.getElementById('uiJobTitle').innerText = `[${s.companyType}] ${s.jobTitle}`;
+            document.getElementById('uiMoney').innerText = formatMoney(s.money);
+            document.getElementById('uiSalary').innerText = formatMoney(calcSalary());
+
+            document.getElementById('uiStamina').innerText = `${s.stamina} / ${s.maxStamina}`;
+            document.getElementById('uiStaminaBar').style.width = `${(s.stamina/s.maxStamina)*100}%`;
+            if(s.stamina < 30) document.getElementById('uiStaminaBar').style.background = 'var(--danger)';
+            else document.getElementById('uiStaminaBar').style.background = 'var(--accent)';
+
+            // Time Bar (smooth width % within the current minute)
+            let pct = (s.currSec / MONTH_SECONDS) * 100;
+            document.getElementById('uiTimeBar').style.width = pct + '%';
+            document.getElementById('uiTimeLeft').innerText = (MONTH_SECONDS - s.currSec);
+
+            updateChart();
+        }
+
+        function showModal(evtObj) {
+            currentEvent = evtObj;
+            document.getElementById('eventModal').style.display = 'flex';
+            document.getElementById('evtTitle').innerHTML = evtObj.title;
+            document.getElementById('evtDesc').innerHTML = evtObj.desc;
+        }
+
+        function closeModal() {
+            document.getElementById('eventModal').style.display = 'none';
+            if (currentEvent && currentEvent.no) currentEvent.no();
+            currentEvent = null;
+        }
+
+        function acceptEvent() {
+            document.getElementById('eventModal').style.display = 'none';
+            if (currentEvent && currentEvent.yes) currentEvent.yes();
+            currentEvent = null;
+            updateUI();
+        }
+
+        function endGame() {
+            showModal({
+                title: "은퇴",
+                desc: `당신은 100세가 될 때까지 치열하게 직장생활을 버티셨습니다.<br><br>최종 자산: <strong>${formatMoney(s.money)}</strong><br>최종 직장: <strong>${s.companyType} ${s.jobTitle}</strong><br><br>새로운 인생을 시작하시겠습니까?`,
+                yes: () => resetGame(),
+                no: () => resetGame()
+            });
+            document.getElementById('evtBtnNo').style.display = 'none';
+            document.getElementById('evtBtnYes').innerText = "환생하기";
+        }
+
+        // --- SAVE / LOAD ---
+        function saveData() {
+            localStorage.setItem('officeLifeSaveV2', JSON.stringify(s));
+        }
+
+        function loadData() {
+            let j = localStorage.getItem('officeLifeSaveV2');
+            if (j) {
+                try {
+                    let parsed = JSON.parse(j);
+                    if (parsed.age && parsed.age >= 26) {
+                        s = Object.assign(s, parsed);
+                    }
+                } catch(e) {}
             }
         }
 
         function resetGame() {
-            if(confirm("모든 데이터가 초기화되고 26세로 돌아갑니다. 진행하시겠습니까?")) {
-                localStorage.removeItem('officeClientSave');
+            if(confirm("모든 데이터를 초기화하고 26세로 리셋하시겠습니까?")) {
+                localStorage.removeItem('officeLifeSaveV2');
                 location.reload();
             }
         }
 
-        // --- UI Updates ---
-        function updateUI() {
-            if (state.age >= END_AGE) return;
-
-            document.getElementById('moneyDisplay').innerText = formatMoney(state.money);
-            document.getElementById('cpsDisplay').innerText = formatMoney(getPassiveIncome());
-            document.getElementById('cpcDisplay').innerText = formatMoney(getClickPower());
-            
-            document.getElementById('ageDisplay').innerText = `내 나이: ${state.age}세`;
-            let job = JOBS[state.jobLevel];
-            document.getElementById('jobTitleDisplay').innerText = job.title;
-            document.getElementById('characterIcon').innerText = job.icon;
-
-            // Age Progress Bar
-            let progressPct = (state.ageTicks / SECONDS_PER_YEAR) * 100;
-            document.getElementById('ageProgressBars').style.width = progressPct + '%';
-
-            // Store Buttons
-            UPGRADES.forEach(up => {
-                let btn = document.getElementById(`buyBtn_${up.id}`);
-                let card = document.getElementById(`card_${up.id}`);
-                let lvlTxt = document.getElementById(`lvl_${up.id}`);
-                
-                if(!btn) return;
-
-                let cost = getCost(up);
-                btn.innerText = cost === Infinity ? "MAX" : formatMoney(cost);
-                
-                if (up.id === 'job') {
-                    lvlTxt.innerText = state.jobLevel + 1 >= JOBS.length ? "최고 직급" : `다음 직급: ${JOBS[state.jobLevel+1].title}`;
-                } else {
-                    lvlTxt.innerText = `Lv. ${up.getLevel()}`;
-                }
-
-                if (cost === Infinity || state.money < cost) {
-                    btn.disabled = true;
-                    if(cost > state.money) card.classList.add('locked');
-                } else {
-                    btn.disabled = false;
-                    card.classList.remove('locked');
-                }
-            });
-        }
-
-        function buildStore() {
-            let html = "";
-            UPGRADES.forEach(up => {
-                html += `
-                <div class="upgrade-card locked" id="card_${up.id}">
-                    <div class="up-info">
-                        <div class="up-icon">${up.icon}</div>
-                        <div class="up-desc">
-                            <h4>${up.name}</h4>
-                            <p>${up.desc}</p>
-                            <div class="up-level" id="lvl_${up.id}">Lv. 0</div>
-                        </div>
-                    </div>
-                    <button class="up-buy-btn" id="buyBtn_${up.id}" onclick="buyUpgrade('${up.id}')">비용</button>
-                </div>
-                `;
-            });
-            document.getElementById('upgradeList').innerHTML = html;
-        }
-
-        // --- Actions ---
-        function work(e) {
-            if (state.age >= END_AGE) return;
-
-            let earned = getClickPower();
-            state.money += earned;
-            
-            // Show click effect
-            let t = document.createElement('div');
-            t.className = 'click-effect';
-            t.innerText = `+${formatMoney(earned)}`;
-            
-            // Randomize position slightly around mouse/touch
-            let x, y;
-            if (e.touches && e.touches.length > 0) {
-                x = e.touches[0].clientX; y = e.touches[0].clientY;
-            } else {
-                x = e.clientX; y = e.clientY;
-            }
-            if(!x || !y) { x = window.innerWidth/2; y = window.innerHeight/2; } // fallback
-            
-            x += (Math.random() - 0.5) * 40;
-            y += (Math.random() - 0.5) * 40;
-
-            t.style.left = x + 'px';
-            t.style.top = y + 'px';
-            document.body.appendChild(t);
-            setTimeout(() => document.body.removeChild(t), 1000);
-
+        // Boot
+        window.onload = () => {
+            loadData();
+            initChart();
             updateUI();
-        }
-
-        function buyUpgrade(upId) {
-            let up = UPGRADES.find(u => u.id === upId);
-            let cost = getCost(up);
-            if (cost !== Infinity && state.money >= cost) {
-                state.money -= cost;
-                up.buy();
-                updateUI();
-                saveGame();
-            }
-        }
-
-        function triggerEnding() {
-            document.getElementById('endingModal').style.display = 'flex';
-            document.getElementById('endTitle').innerText = JOBS[state.jobLevel].title;
-            document.getElementById('endMoney').innerText = formatMoney(state.money);
-            localStorage.removeItem('officeClientSave'); // 엔딩봤으니 삭제
-        }
-
-        // --- Game Loop ---
-        setInterval(() => {
-            if (state.age >= END_AGE) return;
-
-            // Passive Income
-            let earned = getPassiveIncome();
-            state.money += (earned / (1000/200)); // 루프를 0.2초마다 돌리므로
-
-            updateUI();
-        }, 200); // 0.2초마다 UI 부드럽게 업데이트
-
-        setInterval(() => {
-            if (state.age >= END_AGE) return;
-
-            state.ageTicks++;
-            if (state.ageTicks >= SECONDS_PER_YEAR) {
-                state.age++;
-                state.ageTicks = 0;
-                
-                if (state.age >= END_AGE) {
-                    updateUI();
-                    triggerEnding();
-                    return;
-                }
-            }
-            saveGame();
-        }, 1000); // 1초마다 나이 타이머 증가 및 저장
-
-        // --- Init ---
-        loadGame();
-        buildStore();
-        updateUI();
-
-        // Check if already ended
-        if(state.age >= END_AGE) {
-            triggerEnding();
-        }
+        };
 
     </script>
 </body>
