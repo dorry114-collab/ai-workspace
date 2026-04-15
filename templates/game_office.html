@@ -225,10 +225,14 @@
                         </div>
                         <div class="stock-chart-wrapper"><canvas id="stockChart"></canvas></div>
                         <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem; background:#000; padding:0.5rem; border-radius:8px;">포트폴리오 수익률: <strong id="stTotalProfit" style="color:var(--text-main);">0원 (0%)</strong></div>
-                        <div class="stock-btns">
-                            <button class="btn-buy" onclick="buyStock()">매수 (가용액의 25%)</button>
-                            <button class="btn-buy" onclick="buyStockMax()" style="background:var(--stock-up); color:#fff; border-color:var(--stock-up);">영끌 풀매수</button>
-                            <button class="btn-sell" onclick="sellStockMax()">풀 매도</button>
+                        <div class="stock-btns" style="grid-template-columns: 1fr 1fr 1fr 1fr; margin-bottom: 0.5rem;">
+                            <button class="btn-buy" onclick="buyStock(0.1)">10% 매수</button>
+                            <button class="btn-buy" onclick="buyStock(0.25)">25% 매수</button>
+                            <button class="btn-buy" onclick="buyStock(0.5)">50% 매수</button>
+                            <button class="btn-buy" onclick="buyStock(1.0)" style="background:var(--stock-up); color:#fff; border-color:var(--stock-up);">풀매수</button>
+                        </div>
+                        <div class="stock-btns" style="grid-template-columns: 1fr; margin-top: 0;">
+                            <button class="btn-sell" onclick="sellStockMax()">현재 종목 전량 매도</button>
                         </div>
                     </div>
                     <div class="list-pane">
@@ -407,8 +411,8 @@
             Chart.defaults.color = "#94a3b8"; Chart.defaults.font.family = "Pretendard";
             radarChart = new Chart(ctxR, {
                 type: 'radar',
-                data: { labels: ['업무(Job)', '소통(Comm)', '어학(Lang)', '리더십(Lead)', '기획(Plan)'], datasets: [{ data: [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan], backgroundColor: 'rgba(139, 92, 246, 0.4)', borderColor: '#8b5cf6', pointBackgroundColor: '#10b981', borderWidth: 2 }] },
-                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: 'rgba(255,255,255,0.1)' }, grid: { color: 'rgba(255,255,255,0.1)' }, pointLabels: { font:{size:10, weight:'600'} }, ticks: { display:false, min:0, max:STAT_MAX } } }, plugins: { legend: {display:false} } }
+                data: { labels: ['업무(Lv.0)', '소통(Lv.0)', '외국어(Lv.0)', '리더십(Lv.0)', '기획(Lv.0)'], datasets: [{ data: [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan], backgroundColor: 'rgba(139, 92, 246, 0.4)', borderColor: '#8b5cf6', pointBackgroundColor: '#10b981', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: 'rgba(255,255,255,0.1)' }, grid: { color: 'rgba(255,255,255,0.1)' }, pointLabels: { font:{size:11, weight:'700'} }, ticks: { display:false, min:0, max:STAT_MAX } } }, plugins: { legend: {display:false} } }
             });
 
             // Stock Chart
@@ -484,27 +488,19 @@
             });
         }
         
-        function buyStock() {
+        function buyStock(percent) {
             let st = s.stocks[currStockId];
-            let cost = s.money * 0.25; // 25%
-            if(cost < st.price) return alert("자금이 부족합니다.");
+            if(!st) return;
+            let cost = s.money * percent; 
+            if(cost < st.price) return alert("자금이 부족하여 매수할 수 없습니다.");
             let sh = Math.floor(cost / st.price);
+            if(sh <= 0) return alert("자금이 부족합니다.");
+            
             s.money -= sh * st.price;
             let ot = st.owned * st.avgPrice;
             st.owned += sh;
             st.avgPrice = (ot + (sh * st.price)) / st.owned;
-            logMsg(`[주식] ${st.name} ${sh.toLocaleString()}주 매수`);
-            updateUI();
-        }
-        function buyStockMax() {
-            let st = s.stocks[currStockId];
-            let sh = Math.floor(s.money / st.price);
-            if(sh <= 0) return alert("가용 자금이 부족합니다.");
-            s.money -= sh * st.price;
-            let ot = st.owned * st.avgPrice;
-            st.owned += sh;
-            st.avgPrice = (ot + (sh * st.price)) / st.owned;
-            logMsg(`[주식 풀매수] 영혼을 끌어모아 ${st.name} ${sh.toLocaleString()}주 매수!`);
+            logMsg(`[주식] ${st.name} ${sh.toLocaleString()}주 매수 (${Math.floor(percent*100)}% 투입)`);
             updateUI();
         }
         function sellStockMax() {
@@ -717,10 +713,17 @@
             document.getElementById('uiStaminaBar').style.width = `${(s.stamina/s.maxStamina)*100}%`;
 
             // Charts
+            radarChart.data.labels = [
+                `업무(Lv.${s.stats.job})`, 
+                `소통(Lv.${s.stats.comm})`, 
+                `외국어(Lv.${s.stats.lang})`, 
+                `리더십(Lv.${s.stats.lead})`, 
+                `기획(Lv.${s.stats.plan})`
+            ];
             radarChart.data.datasets[0].data = [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan];
             radarChart.update();
             Object.keys(s.stats).forEach(k => {
-                let v = s.stats[k]; document.getElementById(`txt_${k}`).innerText = `Lv. ${v}`;
+                let v = s.stats[k]; document.getElementById(`txt_${k}`).innerText = `Lv. ${Math.floor(v)}`;
                 let b = document.getElementById(`bar_${k}`); b.style.width = `${(v/STAT_MAX)*100}%`;
                 if(v >= STAT_MAX) b.classList.add('maxed'); else b.classList.remove('maxed');
             });
@@ -775,13 +778,15 @@
             document.getElementById('evtBtnNo').style.display='none'; document.getElementById('evtBtnYes').innerText="환생하기";
         }
 
-        function saveData() { localStorage.setItem('officeLifeSaveV4', JSON.stringify(s)); }
+        function saveData() { localStorage.setItem('officeLifeSaveV4_1', JSON.stringify(s)); }
         function loadData() {
-            let j = localStorage.getItem('officeLifeSaveV4');
+            let j = localStorage.getItem('officeLifeSaveV4_1');
             if (j) {
                 try {
                     let p = JSON.parse(j);
-                    if(p.age >= 26 && p.stocks) { s = Object.assign(s, p); }
+                    if(p.age >= 26 && p.stocks && Object.keys(p.stocks).length > 0) { 
+                        s = Object.assign(s, p); 
+                    }
                     
                     let now = Date.now(); let diffSecs = Math.floor((now - s.lastSavedTime) / 1000);
                     if (diffSecs > 10 && s.age < END_AGE) {
@@ -792,7 +797,7 @@
             }
             initDataObjects();
         }
-        function resetGame() { if(confirm("초기화하시겠습니까? (영끌 빚투 실패 시 사용)")) { localStorage.removeItem('officeLifeSaveV4'); location.reload(); } }
+        function resetGame() { if(confirm("초기화하시겠습니까? (영끌 빚투 실패 시 사용)")) { localStorage.removeItem('officeLifeSaveV4_1'); location.reload(); } }
 
         window.onload = () => { loadData(); initCharts(); buildReUI(); updateUI(); };
     </script>
