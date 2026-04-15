@@ -870,8 +870,7 @@
             document.getElementById('uiBaseRate').innerText = `${s.baseRate.toFixed(2)}%`;
             document.getElementById('uiTotDebt').innerText = formatMoney(Math.floor(s.debt));
             document.getElementById('uiMaxDebt').innerText = formatMoney(getMyMaxDebt());
-            
-
+        }
 
         function showModal(evtObj) { currentEvent = evtObj; document.getElementById('eventModal').style.display='flex'; document.getElementById('evtTitle').innerHTML=evtObj.title; document.getElementById('evtDesc').innerHTML=evtObj.desc; }
         function closeModal() { document.getElementById('eventModal').style.display='none'; currentEvent=null; }
