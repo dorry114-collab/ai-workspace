@@ -3,180 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>회사원 육성 & 투자 시뮬레이터</title>
+    <title>회사원 육성 & 투자 시뮬레이터 V4</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --bg-color: #0f172a;
-            --panel-bg: #1e293b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --primary: #8b5cf6;
-            --primary-hover: #7c3aed;
-            --accent: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --border-color: #334155;
-            --stock-up: #ef4444; /* 한국식 주식 상승색(빨강) */
-            --stock-down: #3b82f6; /* 한국식 주식 하락색(파랑) */
+            --bg-color: #0f172a; --panel-bg: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8;
+            --primary: #8b5cf6; --primary-hover: #7c3aed; --accent: #10b981; --danger: #ef4444; 
+            --warning: #f59e0b; --border-color: #334155; --stock-up: #ef4444; --stock-down: #3b82f6; 
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Pretendard', sans-serif;
-            user-select: none;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', sans-serif; user-select: none; }
+        body { background-color: var(--bg-color); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; overflow-x: hidden; }
 
         /* Nav */
-        .navbar {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0.8rem 1rem; background: rgba(30, 41, 59, 0.8);
-            border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100;
-        }
+        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1rem; background: rgba(30, 41, 59, 0.8); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
         .navbar a { color: var(--text-muted); text-decoration: none; }
         .title { font-weight: 700; color: var(--primary); }
 
-        /* Dash Area */
-        .top-dash {
-            display: flex; flex-direction: column; gap: 0.8rem; padding: 1rem;
-            background: var(--panel-bg); border-bottom: 2px solid var(--border-color);
-        }
+        /* Top Dash */
+        .top-dash { display: flex; flex-direction: column; gap: 0.8rem; padding: 1rem; background: var(--panel-bg); border-bottom: 2px solid var(--border-color); }
         .header-stats { display: flex; justify-content: space-between; align-items: flex-end; }
         .age-info { font-size: 1.4rem; font-weight: 700; color: var(--text-main); }
         .title-info { font-size: 0.9rem; color: var(--primary); background: rgba(139, 92, 246, 0.2); padding: 0.2rem 0.6rem; border-radius: 8px;}
         .wealth-info { text-align: right; }
         .net-worth { font-size: 1.8rem; color: var(--accent); font-weight: 700; letter-spacing: -1px; margin-bottom: 0.2rem;}
         .salary { font-size: 0.85rem; color: var(--text-muted); }
-
-        /* Time Bar */
+        
         .time-box { background: #000; height: 8px; border-radius: 4px; overflow: hidden; position: relative; }
         .time-bar { height: 100%; background: linear-gradient(90deg, var(--primary), #d946ef); width: 0%; transition: width 1s linear; }
         .time-label { text-align: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;}
 
-        /* Main layout split */
-        .main-content {
-            display: grid; grid-template-columns: 1fr; gap: 1rem; padding: 1rem;
-        }
-        @media(min-width: 900px) {
-            .main-content { grid-template-columns: 1fr 1fr; }
-            .stock-section { grid-column: 1 / -1; } /* 주식은 아래쪽 전체 양옆 차지 */
-        }
+        .main-content { display: grid; grid-template-columns: 1fr; gap: 1rem; padding: 1rem; }
+        @media(min-width: 900px) { .main-content { grid-template-columns: 1fr 1fr; } .bottom-section { grid-column: 1 / -1; } }
 
-        /* Chart & Gauges Section */
-        .stats-section {
-            background: var(--panel-bg); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);
-            display: flex; flex-direction: column; gap: 1rem;
-        }
-        
-        .stamina-box {
-            background: #000; border-radius: 8px; padding: 0.5rem; border: 1px solid var(--border-color);
-        }
+        /* Stats Section */
+        .stats-section { background: var(--panel-bg); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 1rem; }
+        .stamina-box { background: #000; border-radius: 8px; padding: 0.5rem; border: 1px solid var(--border-color); }
         .hp-txt { display: flex; justify-content: space-between; font-size: 0.8rem; font-weight: 700;}
         .hp-bar-bg { width: 100%; height: 16px; background: #333; border-radius: 8px; overflow: hidden; margin-top: 0.3rem;}
         .hp-bar { height: 100%; background: var(--danger); width: 100%; transition: width 0.3s ease; }
-
-        .radar-gage-wrap {
-            display: flex; flex-direction: row; gap: 1rem; align-items: center;
-        }
-        .chart-container { width: 50%; max-width: 250px; aspect-ratio: 1/1; position: relative; }
         
-        .gauges-container {
-            width: 50%; display: flex; flex-direction: column; gap: 0.6rem;
-        }
+        .radar-gage-wrap { display: flex; flex-direction: row; gap: 1rem; align-items: center; }
+        .chart-container { width: 50%; max-width: 250px; aspect-ratio: 1/1; position: relative; }
+        .gauges-container { width: 50%; display: flex; flex-direction: column; gap: 0.6rem; }
         .gauge-row { display: flex; flex-direction: column; gap: 0.2rem; }
         .gauge-label { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; color: var(--text-muted); }
         .gauge-bar-bg { width: 100%; height: 10px; background: #000; border-radius: 5px; overflow: hidden;}
         .gauge-bar { height: 100%; background: var(--primary); width: 0%; transition: width 0.5s ease;}
-        .gauge-bar.maxed { background: var(--warning); } /* 100레벨일때 노란색 금빛 */
+        .gauge-bar.maxed { background: var(--warning); }
 
         /* Actions Section */
-        .action-section {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-content: start;
-        }
-        .action-btn {
-            background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-main);
-            padding: 0.8rem; border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.2s ease;
-            display: flex; flex-direction: column; gap: 0.3rem;
-        }
+        .action-section { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-content: start; }
+        .action-btn { background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.8rem; border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 0.3rem; }
         .action-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.1); border-color: var(--primary); transform: translateY(-2px);}
         .action-btn:active:not(:disabled) { transform: scale(0.95); }
         .action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
         .act-icon { font-size: 1.3rem; margin-bottom: 0.2rem; }
         .act-title { font-weight: 700; font-size: 0.9rem; }
         .act-cost { font-size: 0.7rem; color: var(--danger); }
         .act-effect { font-size: 0.7rem; color: var(--accent); }
 
-        /* Stock Market Section */
-        .stock-section {
-            background: var(--panel-bg); padding: 1rem; border-radius: 12px; border: 1px solid var(--border-color);
-        }
-        .stock-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem;}
-        .stock-title { font-size: 1.2rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 0.5rem;}
-        .stock-title .ticker { background: #333; color: var(--text-muted); font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; }
-        .stock-price { font-size: 1.5rem; font-weight: 700; color: var(--stock-up); } /* 기본적으로 빨강, 떨어지면 파랑 클래스 주입 */
-        .stock-price.down { color: var(--stock-down); }
-        .stock-change { font-size: 0.85rem; font-weight: 600; }
+        /* Bottom Section (Tabs) */
+        .bottom-section { background: var(--panel-bg); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; }
+        .tabs { display: flex; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.2); }
+        .tab-btn { flex: 1; padding: 1rem; font-weight: 700; color: var(--text-muted); background: none; border: none; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: rgba(139, 92, 246, 0.1); }
+        .tab-content { padding: 1rem; display: none; }
+        .tab-content.active { display: block; }
 
-        .stock-chart-wrapper { width: 100%; height: 200px; margin-bottom: 1rem; }
+        /* Stock UI */
+        .stock-flex { display: flex; flex-direction: column; gap: 1rem; }
+        @media(min-width: 900px){ .stock-flex { flex-direction: row; } .chart-pane {flex:1;} .list-pane {width: 40%;} }
         
-        .stock-controls { display: flex; flex-direction: column; gap: 0.5rem; }
-        .stock-info { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--text-muted); background: #000; padding: 0.5rem; border-radius: 8px;}
-        .stock-info strong { color: var(--text-main); }
-        
-        .stock-btns { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+        .stock-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 400px; overflow-y: auto; }
+        .stock-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem; border-radius: 8px; cursor: pointer; border: 1px solid transparent; background: rgba(0,0,0,0.2); transition: background 0.2s; }
+        .stock-item:hover { background: rgba(255,255,255,0.05); }
+        .stock-item.active { border-color: var(--primary); background: rgba(139, 92, 246, 0.1); }
+        .st-name { font-weight: 700; font-size: 0.9rem;}
+        .st-vol { font-size: 0.65rem; color: var(--text-muted); background: #333; padding: 2px 4px; border-radius: 4px; margin-left:0.3rem; }
+        .st-owned { font-size: 0.75rem; color: var(--accent); margin-top: 0.2rem;}
+        .st-price-wrap { text-align: right; }
+        .st-price { font-weight: 700; font-size: 0.95rem; }
+        .st-change { font-size: 0.75rem; font-weight: 700; }
+        .st-up { color: var(--stock-up); }
+        .st-down { color: var(--stock-down); }
+
+        .selected-stock-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;}
+        .stock-chart-wrapper { width: 100%; height: 200px; border-radius: 8px; background: rgba(0,0,0,0.3); padding: 0.5rem;}
+        .stock-btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; margin-top: 1rem; }
         .btn-buy { background: rgba(239, 68, 68, 0.1); border: 1px solid var(--stock-up); color: var(--stock-up); padding: 0.6rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;}
         .btn-buy:hover { background: var(--stock-up); color: #fff;}
         .btn-sell { background: rgba(59, 130, 246, 0.1); border: 1px solid var(--stock-down); color: var(--stock-down); padding: 0.6rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;}
         .btn-sell:hover { background: var(--stock-down); color: #fff;}
 
-        /* Logs */
-        .log-section {
-            background: var(--panel-bg); margin: 0 1rem 1rem 1rem; padding: 1rem; border-radius: 12px;
-            height: 120px; overflow-y: auto; border: 1px solid var(--border-color); font-size: 0.8rem;
-        }
+        /* Real Estate UI */
+        .re-list { display: flex; flex-direction: column; gap: 1rem; }
+        .re-item { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; gap: 0.5rem;}
+        .re-header { display: flex; justify-content: space-between; align-items: center; }
+        .re-title { font-weight: 700; font-size: 1.1rem; color: var(--text-main); }
+        .re-desc { font-size: 0.8rem; color: var(--text-muted); }
+        .re-price { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+        .re-my { font-size: 0.85rem; color: var(--primary); }
+        .re-btns { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+        .btn-re { flex:1; padding: 0.8rem; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; color: #fff; }
+        .btn-re.buy { background: var(--stock-up); }
+        .btn-re.sell { background: var(--stock-down); }
+        .btn-re:disabled { background: var(--border-color); color: var(--text-muted); cursor: not-allowed; }
+
+        /* Bank UI */
+        .bank-dash { display: grid; grid-template-columns: 1fr; gap: 1rem; margin-bottom: 1rem; }
+        @media(min-width: 600px) { .bank-dash { grid-template-columns: 1fr 1fr; } }
+        .bank-card { background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 12px; text-align: center; }
+        .bc-title { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem;}
+        .bc-val { font-size: 1.8rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;}
+        .bc-sub { font-size: 0.8rem; color: var(--warning); }
+        
+        .bank-actions { display: flex; flex-direction: column; gap: 1rem; }
+        .bank-row { display: flex; gap: 0.5rem;}
+        .bank-input { flex:1; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.8rem; border-radius: 8px; font-size: 1rem; }
+        .bank-btn { background: var(--primary); color: #fff; padding: 0.8rem 1.5rem; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+        .bank-btn:hover { background: var(--primary-hover); }
+
+        /* Alert / Modals */
+        .log-section { background: var(--panel-bg); margin: 1rem; padding: 1rem; border-radius: 12px; height: 120px; overflow-y: auto; border: 1px solid var(--border-color); font-size: 0.8rem; }
         .log-entry { margin-bottom: 0.4rem; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 0.4rem; color:var(--text-muted);}
         .log-entry strong { color: var(--text-main); }
         .log-entry.month { color: var(--primary); font-weight: 700; background: rgba(139,92,246,0.1); padding: 0.3rem; border-radius: 4px;}
         .log-entry.event { color: var(--warning); font-weight: 700;}
+        .log-entry.danger { color: var(--danger); font-weight: 700; }
 
-        /* Modal */
-        .modal-bg {
-            position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter: blur(5px);
-            z-index: 1000; display: none; justify-content: center; align-items: center; padding: 1rem;
-        }
-        .modal-content {
-            background: var(--panel-bg); width: 100%; max-width: 400px; padding: 2rem; border-radius: 20px;
-            border: 1px solid var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center;
-        }
+        .modal-bg { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter: blur(5px); z-index: 1000; display: none; justify-content: center; align-items: center; padding: 1rem; }
+        .modal-content { background: var(--panel-bg); width: 100%; max-width: 400px; padding: 2rem; border-radius: 20px; border: 1px solid var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,0.5); text-align: center; }
         .modal-icon { font-size: 3rem; margin-bottom: 1rem; }
         .modal-title { font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 0.5rem;}
         .modal-desc { font-size: 0.95rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.5rem; text-align: left; background: rgba(0,0,0,0.3); padding: 1rem; border-radius:8px;}
-        
         .modal-btns { display: flex; gap: 0.5rem; }
         .btn-yes { flex:1; padding: 1rem; background: var(--primary); color: white; border:none; border-radius: 12px; font-weight: 700; cursor: pointer;}
         .btn-no { flex:1; padding: 1rem; background: transparent; color: var(--text-muted); border: 1px solid var(--text-muted); border-radius: 12px; font-weight: 700; cursor: pointer;}
-        
     </style>
 </head>
 <body>
 
     <nav class="navbar">
         <a href="/"><i class="fa-solid fa-arrow-left"></i> 워크스페이스</a>
-        <div class="title">회사원 시뮬레이터 V3</div>
+        <div class="title">회사원 시뮬레이터 V4</div>
         <a href="#" onclick="resetGame()"><i class="fa-solid fa-rotate-right"></i></a>
     </nav>
 
@@ -187,103 +160,123 @@
                 <div class="title-info" id="uiJobTitle">신입사원</div>
             </div>
             <div class="wealth-info">
-                <div class="net-worth" id="uiMoney">0원</div>
-                <div class="salary">보유 현금: <strong id="uiCash" style="color:var(--text-main);">0원</strong> | 월급: <strong id="uiSalary" style="color:var(--primary);">0원</strong></div>
+                <div class="net-worth" id="uiNetWorth">0원</div>
+                <div class="salary">잔가용 현금: <strong id="uiCash" style="color:var(--text-main);">0원</strong> | 부채: <strong id="uiDebt" style="color:var(--danger);">0원</strong></div>
             </div>
         </div>
         <div>
             <div class="time-box"><div class="time-bar" id="uiTimeBar"></div></div>
-            <div class="time-label">1개월 (월급) 까지: <span id="uiTimeLeft">3600</span>초 남음</div>
+            <div class="time-label">1개월 (월급/이자인출) 까지: <span id="uiTimeLeft">3600</span>초 남음</div>
         </div>
     </div>
 
     <div class="main-content">
-        
-        <!-- Stats & Gauges -->
+        <!-- Stats & Actions -->
         <div class="stats-section">
             <div class="stamina-box">
                 <div class="hp-txt"><span>체력 (Stamina)</span> <span id="uiStamina">100 / 100</span></div>
                 <div class="hp-bar-bg"><div class="hp-bar" id="uiStaminaBar"></div></div>
             </div>
-
             <div class="radar-gage-wrap">
-                <div class="chart-container">
-                    <canvas id="radarChart"></canvas>
-                </div>
-                <div class="gauges-container" id="gaugesWrap">
-                    <!-- Injected by JS -->
-                </div>
+                <div class="chart-container"><canvas id="radarChart"></canvas></div>
+                <div class="gauges-container" id="gaugesWrap"></div>
             </div>
         </div>
 
-        <!-- Action Buttons -->
         <div class="action-section">
             <button class="action-btn" onclick="takeAction('work')">
-                <div class="act-icon">💻</div>
-                <div class="act-title">살인적 야근</div>
-                <div class="act-cost">체력 -30</div>
-                <div class="act-effect">업무능력 큰폭 상승</div>
+                <div class="act-icon">💻</div><div class="act-title">살인적 야근</div><div class="act-cost">체력 -30</div><div class="act-effect">업무능력 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('comm')">
-                <div class="act-icon">🍻</div>
-                <div class="act-title">간 빼놓는 회식</div>
-                <div class="act-cost">돈 -20만 | 체력 -20</div>
-                <div class="act-effect">소통 대폭 상승</div>
+                <div class="act-icon">🍻</div><div class="act-title">간 빼놓는 회식</div><div class="act-cost">돈 -20만 | 체력 -20</div><div class="act-effect">소통 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('lang')">
-                <div class="act-icon">🗣️</div>
-                <div class="act-title">심야 외국어 특강</div>
-                <div class="act-cost">돈 -100만</div>
-                <div class="act-effect">외국어 상승</div>
+                <div class="act-icon">🗣️</div><div class="act-title">심야 특강</div><div class="act-cost">돈 -100만</div><div class="act-effect">외국어 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('plan')">
-                <div class="act-icon">📚</div>
-                <div class="act-title">수면부족 기획구상</div>
-                <div class="act-cost">체력 -15 | 돈 -30만</div>
-                <div class="act-effect">기획력 상승</div>
+                <div class="act-icon">📚</div><div class="act-title">수면부족 기획구상</div><div class="act-cost">체력 -15 | 돈 -30만</div><div class="act-effect">기획력 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('lead')">
-                <div class="act-icon">👑</div>
-                <div class="act-title">최고위 리더십 과정</div>
-                <div class="act-cost">돈 -500만</div>
-                <div class="act-effect">리더십 획득</div>
+                <div class="act-icon">👑</div><div class="act-title">최고위 리더십</div><div class="act-cost">돈 -500만</div><div class="act-effect">리더십 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('rest')" style="border-color:var(--accent);">
-                <div class="act-icon">🛌</div>
-                <div class="act-title">주말 요양 (꿀잠)</div>
-                <div class="act-cost" style="color:var(--text-muted);"><i class="fa-regular fa-clock"></i> 턴 소모</div>
-                <div class="act-effect" style="color:var(--accent);">체력 만땅 회복</div>
+                <div class="act-icon">🛌</div><div class="act-title">주말 휴식(꿀잠)</div><div class="act-cost" style="color:var(--text-muted);">턴 소모</div><div class="act-effect" style="color:var(--accent);">체력 회복</div>
             </button>
         </div>
 
-        <!-- Stock Market -->
-        <div class="stock-section">
-            <div class="stock-header">
-                <div class="stock-title"><i class="fa-solid fa-arrow-trend-up"></i> 광기전자 <span class="ticker">GWANG</span></div>
-                <div style="text-align: right;">
-                    <div class="stock-price" id="uiStockPrice">50,000원</div>
-                    <div class="stock-change" id="uiStockChange">+0.00%</div>
-                </div>
+        <!-- Investment Tabs -->
+        <div class="bottom-section">
+            <div class="tabs">
+                <button class="tab-btn active" onclick="switchTab('stock')">📈 주식장</button>
+                <button class="tab-btn" onclick="switchTab('realestate')">🏢 부동산</button>
+                <button class="tab-btn" onclick="switchTab('bank')">🏦 은행(대출)</button>
             </div>
             
-            <div class="stock-chart-wrapper">
-                <canvas id="stockChart"></canvas>
+            <!-- STOCK TAB -->
+            <div id="tab-stock" class="tab-content active">
+                <div class="stock-flex">
+                    <div class="chart-pane">
+                        <div class="selected-stock-header">
+                            <div><strong id="stChartName" style="font-size:1.2rem; color:var(--text-main);">선택 종목</strong> <span id="stChartTicker" style="color:var(--text-muted); font-size:0.8rem;">---</span></div>
+                            <div style="text-align:right;">
+                                <div id="stChartPrice" style="font-size:1.5rem; font-weight:700;">0원</div>
+                                <div id="stChartChange" style="font-size:0.8rem; font-weight:700;">0.00%</div>
+                            </div>
+                        </div>
+                        <div class="stock-chart-wrapper"><canvas id="stockChart"></canvas></div>
+                        <div style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.5rem; background:#000; padding:0.5rem; border-radius:8px;">포트폴리오 수익률: <strong id="stTotalProfit" style="color:var(--text-main);">0원 (0%)</strong></div>
+                        <div class="stock-btns">
+                            <button class="btn-buy" onclick="buyStock()">매수 (가용액의 25%)</button>
+                            <button class="btn-buy" onclick="buyStockMax()" style="background:var(--stock-up); color:#fff; border-color:var(--stock-up);">영끌 풀매수</button>
+                            <button class="btn-sell" onclick="sellStockMax()">풀 매도</button>
+                        </div>
+                    </div>
+                    <div class="list-pane">
+                        <div class="stock-list" id="stockListWrap"></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="stock-controls">
-                <div class="stock-info">
-                    <span>보유 수량: <strong id="uiStockOwned">0주</strong></span>
-                    <span>평가 금액: <strong id="uiStockValue" style="color:var(--accent);">0원</strong></span>
+            <!-- REAL ESTATE TAB -->
+            <div id="tab-realestate" class="tab-content">
+                <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;"><i class="fa-solid fa-circle-info"></i> 부동산 가격은 매년 1회(12개월 주기) 이사회의 시세 평가를 거쳐 변동됩니다.</p>
+                <div class="re-list" id="reListWrap"></div>
+            </div>
+
+            <!-- BANK TAB -->
+            <div id="tab-bank" class="tab-content">
+                <div class="bank-dash">
+                    <div class="bank-card">
+                        <div class="bc-title">현재 한국은행 기준 금리</div>
+                        <div class="bc-val" id="uiBaseRate">3.50%</div>
+                        <div class="bc-sub">대출 실제 금리: 기준금리 + 은행마진(2.0%)</div>
+                    </div>
+                    <div class="bank-card">
+                        <div class="bc-title">나의 총 부채액</div>
+                        <div class="bc-val" id="uiTotDebt" style="color:var(--danger);">0원</div>
+                        <div class="bc-sub">대출 한도: <span id="uiMaxDebt">0원</span></div>
+                    </div>
                 </div>
-                <div class="stock-btns">
-                    <button class="btn-buy" onclick="buyStock(100000)">10만 매수</button>
-                    <button class="btn-buy" onclick="buyStock(1000000)">100만 매수</button>
-                    <button class="btn-buy" onclick="buyStock('MAX')" style="background:var(--stock-up); color:#fff;">풀 매수</button>
-                    <button class="btn-sell" onclick="sellStock('MAX')" style="background:var(--stock-down); color:#fff;">풀 매도</button>
+                <div class="bank-actions">
+                    <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:8px;">
+                        <h4 style="margin-bottom:0.5rem;">💸 신용/주택 담보 대출 실행</h4>
+                        <div class="bank-row">
+                            <button class="bank-btn" style="flex:1;" onclick="takeLoan('s')">소액 (5천만 원)</button>
+                            <button class="bank-btn" style="flex:1;" onclick="takeLoan('m')">중형 (3억 원)</button>
+                            <button class="bank-btn" style="flex:1; background:var(--stock-up);" onclick="takeLoan('max')">영끌 초대출 (한도 100%)</button>
+                        </div>
+                    </div>
+                    <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:8px;">
+                        <h4 style="margin-bottom:0.5rem;">갚기 (대출 상환)</h4>
+                        <div class="bank-row">
+                            <button class="bank-btn" style="flex:1; background:var(--accent);" onclick="repayLoan('some')">보유 현금의 절반 상환</button>
+                            <button class="bank-btn" style="flex:1; background:var(--stock-down);" onclick="repayLoan('all')">전액 상환</button>
+                        </div>
+                    </div>
                 </div>
             </div>
+
         </div>
-
     </div>
 
     <!-- Logs -->
@@ -297,7 +290,7 @@
             <div class="modal-desc" id="evtDesc"></div>
             <div class="modal-btns">
                 <button class="btn-no" id="evtBtnNo" onclick="closeModal()">거절</button>
-                <button class="btn-yes" id="evtBtnYes" onclick="acceptEvent()">수락</button>
+                <button class="btn-yes" id="evtBtnYes" onclick="acceptEvent()">확인</button>
             </div>
         </div>
     </div>
@@ -305,251 +298,87 @@
     <!-- Overlay Loader -->
     <div class="modal-bg" id="loadingModal" style="flex-direction:column;">
         <div style="font-size:3rem; margin-bottom:1rem; animation: rotation 2s infinite linear;"><i class="fa-solid fa-spinner" style="color:var(--primary);"></i></div>
-        <div style="font-size:1.2rem; font-weight:700;" id="loadingText">오프라인 밀린 월급 정산 중...</div>
+        <div style="font-size:1.2rem; font-weight:700;" id="loadingText">오프라인 밀린 데이터 정산 중...</div>
     </div>
-    
     <style>@keyframes rotation { from {transform: rotate(0deg);} to {transform: rotate(359deg);} }</style>
 
     <script>
-        // --- GAME SETTINGS ---
-        const MONTH_SECONDS = 3600; // 1시간 = 1개월 (초고장기 게임)
+        // --- CONSTANTS ---
+        const MONTH_SECONDS = 3600; // 1시간 = 1개월
         const END_AGE = 100;
         const STAT_MAX = 100;
 
-        let s = {
-            age: 26, month: 1, money: 2000000, 
-            currSec: 0, secondsLived: 0,
-            stamina: 100, maxStamina: 100,
-            
-            // Stats
-            stats: { job: 5, comm: 5, lang: 2, plan: 2, lead: 0 },
-            
-            // Job & Events
-            jobTitle: '신입사원', baseSalary: 3000000, companyType: '중소기업',
-            lastEventAge: 0, lastSavedTime: Date.now(),
-            
-            // Stock
-            stockOwned: 0, stockAvgPrice: 0
-        };
-
-        // UI Mapping
-        const statLabels = {
-            job: "업무(Hard)", comm: "소통(Comm)", lang: "외국어(Lang)", plan: "기획(Plan)", lead: "리더십(Lead)"
-        };
-
-        // Company Paths
+        const statLabels = { job: "업무", comm: "소통", lang: "외국어", plan: "기획", lead: "리더십" };
         const CAREER_PATH = [
-            { title: '사원', req: {job:0, comm:0}, mult: 1 },
-            { title: '대리', req: {job:20, comm:15}, mult: 1.3 },
-            { title: '과장', req: {job:40, plan:20, comm:30}, mult: 1.8 },
-            { title: '차장', req: {job:60, plan:40, lead:20}, mult: 2.5 },
-            { title: '부장', req: {job:80, lead:40, comm:50}, mult: 3.5 },
-            { title: '임원', req: {job:90, lead:80, plan:70, lang:40}, mult: 8.0 },
-            { title: '최고경영자', req: {lead:100, plan:100, comm:100, lang:80, job:100}, mult: 20.0 }
+            { title: '사원', req: {job:0, comm:0}, mult: 1, debtLimit: 50000000 },
+            { title: '대리', req: {job:20, comm:15}, mult: 1.3, debtLimit: 150000000 },
+            { title: '과장', req: {job:40, plan:20, comm:30}, mult: 1.8, debtLimit: 400000000 },
+            { title: '차장', req: {job:60, plan:40, lead:20}, mult: 2.5, debtLimit: 800000000 },
+            { title: '부장', req: {job:80, lead:40, comm:50}, mult: 3.5, debtLimit: 1500000000 },
+            { title: '임원', req: {job:90, lead:80, plan:70, lang:40}, mult: 8.0, debtLimit: 3000000000 },
+            { title: 'CEO', req: {lead:100, plan:100, comm:100, lang:80, job:100}, mult: 20.0, debtLimit: 10000000000 }
         ];
 
-        const COMPANY_MUL = {
-            '중소기업': 1.0, '중견기업': 1.5, '외국계': 2.0, '대기업': 2.5, '유니콘스타트업': 3.0
+        const COMPANY_MUL = { '중소기업': 1.0, '중견기업': 1.5, '외국계': 2.0, '대기업': 2.5, '유니콘스타트업': 3.0 };
+
+        // --- GAME STATE ---
+        let s = {
+            age: 26, month: 1, money: 50000000, debt: 0,
+            currSec: 0, secondsLived: 0, stamina: 100, maxStamina: 100,
+            stats: { job: 5, comm: 5, lang: 2, plan: 2, lead: 0 },
+            jobTitle: '사원', baseSalary: 3000000, companyType: '중소기업',
+            lastEventAge: 0, lastSavedTime: Date.now(), baseRate: 3.5,
+            
+            // Portfolios
+            stocks: {}, // { ticker: { id, name, price, history, vol, owned, avgPrice } }
+            reals: {}   // { id: { title, desc, price, owned, prevPrice } }
         };
 
-        // --- STOCK LOGIC (High Volatility) ---
-        let currentStockPrice = 50000;
-        let stockHistory = Array(30).fill(50000);
-        let stockLineChart;
+        // --- INIT DATA ---
+        const STOCK_DEFS = [
+            { id: "S1", name: "광기전자 (대형주)", vol: 0.03, start: 80000 },
+            { id: "S2", name: "사과증권 (배당주)", vol: 0.01, start: 50000 },
+            { id: "S3", name: "에코배터리 (테마)", vol: 0.15, start: 120000 },
+            { id: "S4", name: "바이오시밀 (바이오)", vol: 0.18, start: 40000 },
+            { id: "S5", name: "A.I 로보틱스 (비전)", vol: 0.25, start: 15000 },
+            { id: "S6", name: "머스크 스페이스 (해외)", vol: 0.10, start: 250000 },
+            { id: "S7", name: "오징어엔터 (미디어)", vol: 0.12, start: 30000 },
+            { id: "S8", name: "잡코인 (초위험)", vol: 0.60, start: 500 },
+            { id: "S9", name: "파멸코인 (도박)", vol: 0.90, start: 100 },
+            { id: "S10", name: "금 (안전자산)", vol: 0.005, start: 300000 }
+        ];
 
-        function updateStockPrice() {
-            // 1초마다 가격 변동 - 초고스피드 심장 쫄깃 난수 알고리즘
-            // -90% ~ +120%까지 폭등락이 가능한 구조
-            let volatility = 0.05; // 5% base volatility per tick
-            // 가끔씩 미친 폭락/폭등장 (1% 확률로 50% 떡락 또는 2배 폭등)
-            if (Math.random() < 0.01) volatility = 0.8; 
+        const REAL_DEFS = [
+            { id: "R1", title: "구옥 빨간벽돌 빌라", desc: "녹물이 나오지만 역세권이라 버팀", start: 150000000 },
+            { id: "R2", title: "수도권 신도시 84㎡", desc: "출퇴근 왕복 3시간. 그래도 자가.", start: 800000000 },
+            { id: "R3", title: "마용성 한강뷰 아파트", desc: "영끌의 끝판왕. 한강이 조금 보임.", start: 2200000000 },
+            { id: "R4", title: "강남 청담 펜트하우스", desc: "성공한 자들의 요새. 그들만의 리그.", start: 7000000000 }
+        ];
 
-            let changePercent = (Math.random() - 0.49) * volatility; 
-            currentStockPrice = Math.max(10, currentStockPrice * (1 + changePercent)); // 최소 10원 보장 방어선 (상폐방지)
-            
-            // Queue shifting
-            stockHistory.shift();
-            stockHistory.push(currentStockPrice);
-
-            updateStockUI();
-        }
-
-        function getNetWorth() {
-            return s.money + (s.stockOwned * currentStockPrice);
-        }
-
-        // Action Buttons JS Logic
-        function buyStock(amount) {
-            let cashToSpend = amount === 'MAX' ? s.money : amount;
-            if (cashToSpend <= 0) return alert("자금이 부족합니다.");
-            if (s.money < cashToSpend) return alert("자금이 부족합니다.");
-
-            let shares = Math.floor(cashToSpend / currentStockPrice);
-            if (shares <= 0) return alert("주가가 너무 비싸 매수할 수 없습니다.");
-
-            let totalCost = shares * currentStockPrice;
-            
-            // 평단가 계산
-            let oldTotal = s.stockOwned * s.stockAvgPrice;
-            let newTotal = oldTotal + totalCost;
-            s.stockOwned += shares;
-            s.stockAvgPrice = newTotal / s.stockOwned;
-            
-            s.money -= totalCost;
-            logMsg(`📈 광기전자 ${shares}주 매수 완료! (현재가: ${formatMoney(Math.floor(currentStockPrice))})`);
-            updateUI();
-        }
-
-        function sellStock(method) {
-            if (s.stockOwned <= 0) return alert("보유 주식이 없습니다.");
-            let shares = s.stockOwned; // All
-            let revenu = shares * currentStockPrice;
-            
-            let profit = revenu - (shares * s.stockAvgPrice);
-            let profitPrc = ((revenu / (shares * s.stockAvgPrice)) - 1) * 100;
-            
-            s.money += revenu;
-            s.stockOwned = 0;
-            s.stockAvgPrice = 0;
-
-            let sign = profit > 0 ? '수익' : '손실';
-            logMsg(`📉 주식 전량 매도 완료! ${sign}: <strong>${formatMoney(Math.abs(profit))}</strong> (${profitPrc.toFixed(2)}%)`, false, profit > 0);
-            updateUI();
-        }
-
-        // --- CHARTS INITIALIZATION ---
-        let radarChart;
-        function initCharts() {
-            // Radar
-            const ctxR = document.getElementById('radarChart').getContext('2d');
-            Chart.defaults.color = "#94a3b8";
-            Chart.defaults.font.family = "Pretendard";
-            
-            radarChart = new Chart(ctxR, {
-                type: 'radar',
-                data: {
-                    labels: ['업무(Job)', '소통(Comm)', '어학(Lang)', '리더십(Lead)', '기획(Plan)'],
-                    datasets: [{
-                        label: '내 능력치',
-                        data: [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan],
-                        backgroundColor: 'rgba(139, 92, 246, 0.4)',
-                        borderColor: '#8b5cf6',
-                        pointBackgroundColor: '#10b981',
-                        borderWidth: 2,
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        r: {
-                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            pointLabels: { font: { size: 10, weight: '600' } },
-                            ticks: { display: false, min: 0, max: STAT_MAX, stepSize: 20 }
-                        }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            // Stock
-            const ctxS = document.getElementById('stockChart').getContext('2d');
-            stockLineChart = new Chart(ctxS, {
-                type: 'line',
-                data: {
-                    labels: Array(30).fill(''),
-                    datasets: [{
-                        label: 'Price',
-                        data: stockHistory,
-                        borderColor: '#ef4444',
-                        borderWidth: 2,
-                        tension: 0.1,
-                        pointRadius: 0
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    animation: false,
-                    scales: {
-                        x: { display: false },
-                        y: { position: 'right', grid: { color: 'rgba(255,255,255,0.05)' }, ticks:{ callback: v => v > 10000 ? Math.floor(v/10000)+'만' : v } }
-                    },
-                    plugins: { legend: { display: false }, tooltip: { enabled: false } }
-                }
-            });
-            
-            buildGauges();
-        }
-
-        function buildGauges() {
-            let html = "";
-            let keys = ['job', 'comm', 'lang', 'plan', 'lead'];
-            keys.forEach(k => {
-                html += `
-                <div class="gauge-row">
-                    <div class="gauge-label">
-                        <span>${statLabels[k]}</span>
-                        <span id="txt_${k}">${s.stats[k]} / ${STAT_MAX}</span>
-                    </div>
-                    <div class="gauge-bar-bg">
-                        <div class="gauge-bar" id="bar_${k}"></div>
-                    </div>
-                </div>`;
-            });
-            document.getElementById('gaugesWrap').innerHTML = html;
-        }
-
-        function updateChartsAndGauges() {
-            // Radar Update
-            radarChart.data.datasets[0].data = [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan];
-            radarChart.update();
-
-            // Progress Bars Update
-            let keys = ['job', 'comm', 'lang', 'plan', 'lead'];
-            keys.forEach(k => {
-                let val = s.stats[k];
-                document.getElementById(`txt_${k}`).innerText = `Lv. ${val}`;
-                let b = document.getElementById(`bar_${k}`);
-                b.style.width = `${(val/STAT_MAX)*100}%`;
-                if(val >= STAT_MAX) b.classList.add('maxed');
-                else b.classList.remove('maxed');
-            });
-        }
-
-        function updateStockUI() {
-            let prev = stockHistory[stockHistory.length - 2] || currentStockPrice;
-            let diff = currentStockPrice - prev;
-            let perc = (diff / prev) * 100;
-            
-            let elPrice = document.getElementById('uiStockPrice');
-            let elChange = document.getElementById('uiStockChange');
-            
-            elPrice.innerText = formatMoney(Math.floor(currentStockPrice));
-            if (diff >= 0) {
-                elPrice.className = "stock-price";
-                elChange.innerText = `+${perc.toFixed(2)}% ▲`;
-                elChange.style.color = "var(--stock-up)";
-                stockLineChart.data.datasets[0].borderColor = "#ef4444";
-            } else {
-                elPrice.className = "stock-price down";
-                elChange.innerText = `${perc.toFixed(2)}% ▼`;
-                elChange.style.color = "var(--stock-down)";
-                stockLineChart.data.datasets[0].borderColor = "#3b82f6";
+        function initDataObjects() {
+            if (Object.keys(s.stocks).length === 0) {
+                STOCK_DEFS.forEach(sd => {
+                    s.stocks[sd.id] = { ...sd, price: sd.start, history: Array(30).fill(sd.start), owned: 0, avgPrice: 0 };
+                });
             }
-
-            stockLineChart.data.datasets[0].data = stockHistory;
-            stockLineChart.update();
-
-            document.getElementById('uiStockOwned').innerText = s.stockOwned.toLocaleString() + "주";
-            document.getElementById('uiStockValue').innerText = formatMoney(Math.floor(s.stockOwned * currentStockPrice));
-            
-            // Updates Net Worth
-            document.getElementById('uiMoney').innerText = formatMoney(getNetWorth());
+            if (Object.keys(s.reals).length === 0) {
+                REAL_DEFS.forEach(rd => {
+                    s.reals[rd.id] = { ...rd, price: rd.start, prevPrice: rd.start, owned: 0 };
+                });
+            }
         }
+
+        let currStockId = "S1";
+        let stockLineChart;
+        let radarChart;
 
         // --- UTILS ---
         function formatMoney(num) {
-            if (num < 10000) return Math.floor(num).toLocaleString() + "원";
+            if (num === 0) return "0원";
+            // allow negative
+            let isNeg = num < 0;
+            num = Math.abs(num);
+            if (num < 10000) return (isNeg?"-":"") + Math.floor(num).toLocaleString() + "원";
             let res = "";
             let jo = Math.floor(num / 1000000000000);
             let uk = Math.floor((num % 1000000000000) / 100000000);
@@ -557,78 +386,199 @@
             if (jo > 0) res += jo + "조 ";
             if (uk > 0) res += uk + "억 ";
             if (man > 0) res += man + "만 ";
-            return res.trim() + "원";
+            return (isNeg?"-":"") + res.trim() + "원";
         }
 
-        function logMsg(msg, isMonth=false, isEvent=false) {
+        function logMsg(msg, isMonth=false, isEvent=false, isDanger=false) {
             let logBox = document.getElementById('logBox');
             let div = document.createElement('div');
-            div.className = `log-entry ${isMonth ? 'month' : ''} ${isEvent ? 'event' : ''}`;
-            let t = `[${s.age}세 ${s.month}월] `;
-            div.innerHTML = `<span>${t}</span> ` + msg;
+            let cls = `log-entry ${isMonth ? 'month' : ''} ${isEvent ? 'event' : ''} ${isDanger ? 'danger' : ''}`;
+            div.className = cls;
+            div.innerHTML = `<span>[${s.age}세 ${s.month}월]</span> ` + msg;
             logBox.appendChild(div);
             logBox.scrollTop = logBox.scrollHeight;
-            if(logBox.childElementCount > 30) logBox.removeChild(logBox.firstChild);
+            if(logBox.childElementCount > 40) logBox.removeChild(logBox.firstChild);
         }
 
-        // --- CORE ENGINE ---
-        function gainStat(key, amount) {
-            s.stats[key] = Math.min(STAT_MAX, s.stats[key] + amount);
+        // --- CHARTS & UI ---
+        function initCharts() {
+            // Radar
+            const ctxR = document.getElementById('radarChart').getContext('2d');
+            Chart.defaults.color = "#94a3b8"; Chart.defaults.font.family = "Pretendard";
+            radarChart = new Chart(ctxR, {
+                type: 'radar',
+                data: { labels: ['업무(Job)', '소통(Comm)', '어학(Lang)', '리더십(Lead)', '기획(Plan)'], datasets: [{ data: [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan], backgroundColor: 'rgba(139, 92, 246, 0.4)', borderColor: '#8b5cf6', pointBackgroundColor: '#10b981', borderWidth: 2 }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: 'rgba(255,255,255,0.1)' }, grid: { color: 'rgba(255,255,255,0.1)' }, pointLabels: { font:{size:10, weight:'600'} }, ticks: { display:false, min:0, max:STAT_MAX } } }, plugins: { legend: {display:false} } }
+            });
+
+            // Stock Chart
+            const ctxS = document.getElementById('stockChart').getContext('2d');
+            stockLineChart = new Chart(ctxS, {
+                type: 'line',
+                data: { labels: Array(30).fill(''), datasets: [{ data: Array(30).fill(0), borderColor: '#ef4444', borderWidth: 2, tension: 0.1, pointRadius: 0 }] },
+                options: { responsive: true, maintainAspectRatio: false, animation: false, scales: { x: {display:false}, y: { position:'right', grid:{color:'rgba(255,255,255,0.05)'}, ticks:{callback: v => v>10000?Math.floor(v/10000)+'만':v} } }, plugins: {legend:{display:false}, tooltip:{enabled:false}} }
+            });
+
+            // Build Gauges
+            let html = "";
+            Object.keys(s.stats).forEach(k => { html += `<div class="gauge-row"><div class="gauge-label"><span>${statLabels[k]}</span><span id="txt_${k}">${s.stats[k]} / ${STAT_MAX}</span></div><div class="gauge-bar-bg"><div class="gauge-bar" id="bar_${k}"></div></div></div>`; });
+            document.getElementById('gaugesWrap').innerHTML = html;
         }
 
+        function switchTab(t) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+            document.querySelector(`button[onclick="switchTab('${t}')"]`).classList.add('active');
+            document.getElementById(`tab-${t}`).classList.add('active');
+        }
+
+        function buildReUI() {
+            let html = "";
+            Object.values(s.reals).forEach(r => {
+                let pDiff = r.price - r.prevPrice;
+                let diffStr = pDiff === 0 ? "-" : (pDiff > 0 ? `+${formatMoney(pDiff)} ▲` : `${formatMoney(pDiff)} ▼`);
+                let diffCol = pDiff > 0 ? 'var(--stock-up)' : (pDiff < 0 ? 'var(--stock-down)' : 'var(--text-muted)');
+                
+                html += `<div class="re-item">
+                    <div class="re-header">
+                        <div>
+                            <div class="re-title">${r.title} <span class="re-my">${r.owned>0 ? `(보유: ${r.owned}채)` : ''}</span></div>
+                            <div class="re-desc">${r.desc}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="re-price">${formatMoney(r.price)}</div>
+                            <div style="font-size:0.8rem; font-weight:700; color:${diffCol};">${diffStr} (작년비)</div>
+                        </div>
+                    </div>
+                    <div class="re-btns">
+                        <button class="btn-re buy" onclick="buyRe('${r.id}')">매수</button>
+                        <button class="btn-re sell" onclick="sellRe('${r.id}')" ${r.owned<=0?'disabled':''}>매도</button>
+                    </div>
+                </div>`;
+            });
+            document.getElementById('reListWrap').innerHTML = html;
+        }
+
+        // --- ACTIONS ---
+        function gainStat(key, amount) { s.stats[key] = Math.min(STAT_MAX, s.stats[key] + amount); }
         function takeAction(type) {
             if(s.age >= END_AGE) return;
+            if (type === 'work') { if(s.stamina<30)return alert("체력 부족!"); s.stamina-=30; gainStat('job', Math.floor(Math.random()*3)+3); logMsg("🔥 야근! 실무능력 상승."); }
+            else if (type === 'comm') { if(s.money<200000)return alert("회식비 부족!"); if(s.stamina<20)return alert("체력 바닥!"); s.money-=200000; s.stamina-=20; gainStat('comm', Math.floor(Math.random()*4)+2); logMsg("🍻 회식! 소통능력 상승."); }
+            else if (type === 'lang') { if(s.money<1000000)return alert("학원비 부족!"); s.money-=1000000; gainStat('lang', Math.floor(Math.random()*3)+2); logMsg("🗣️ 주말특강! 외국어 상승."); }
+            else if (type === 'plan') { if(s.money<300000)return alert("돈 부족!"); if(s.stamina<15)return alert("수면 부족!"); s.money-=300000; s.stamina-=15; gainStat('plan', Math.floor(Math.random()*4)+1); logMsg("📚 기획구상. 기획력 상승."); }
+            else if (type === 'lead') { if(s.money<5000000)return alert("포럼 참가비 부족!"); s.money-=5000000; gainStat('lead', Math.floor(Math.random()*5)+3); logMsg("👑 리더십 포럼! 리더십 획득."); }
+            else if (type === 'rest') { s.stamina = s.maxStamina; logMsg("🛌 집 꿀잠... 체력 완전회복!"); }
+            saveData(); updateUI();
+        }
 
-            if (type === 'work') {
-                if(s.stamina < 30) return alert("스트레스/체력 고갈! 꿀잠 자고 오세요.");
-                s.stamina -= 30;
-                let inc = Math.floor(Math.random() * 3) + 3;
-                gainStat('job', inc);
-                logMsg(`🔥 야근 강행! 실무 능력이 크게 상승(+${inc})`);
-            } 
-            else if (type === 'comm') {
-                if(s.money < 200000) return alert("회식비가 부족합니다.");
-                if(s.stamina < 20) return alert("체력이 바닥입니다.");
-                s.money -= 200000; s.stamina -= 20;
-                let inc = Math.floor(Math.random() * 4) + 2;
-                gainStat('comm', inc);
-                logMsg(`🍻 신명나는 회식. 라인타기에 성공했습니다! 통솔력 상승(+${inc})`);
-            }
-            else if (type === 'lang') {
-                if(s.money < 1000000) return alert("학원비가 부족합니다.");
-                s.money -= 1000000;
-                let inc = Math.floor(Math.random() * 3) + 2;
-                gainStat('lang', inc);
-                logMsg(`🗣️ 주말 특강 수료! 외국어 점수 상승(+${inc})`);
-            }
-            else if (type === 'plan') {
-                if(s.money < 300000) return alert("돈이 부족합니다.");
-                if(s.stamina < 15) return alert("머리가 안돌아갑니다. 자세요.");
-                s.money -= 300000; s.stamina -= 15;
-                let inc = Math.floor(Math.random() * 4) + 1;
-                gainStat('plan', inc);
-                logMsg(`📚 철야 기획구상 완료. 기획력 상승(+${inc})`);
-            }
-            else if (type === 'lead') {
-                if(s.money < 5000000) return alert("연수비 500만원이 부족합니다.");
-                s.money -= 5000000;
-                let inc = Math.floor(Math.random() * 5) + 3;
-                gainStat('lead', inc);
-                logMsg(`👑 카네기 리더십 코스 수료. 리더십 급상승(+${inc})`);
-            }
-            else if (type === 'rest') {
-                s.stamina = s.maxStamina;
-                logMsg(`🛌 집구석 달콤휴식... 체력 100% 회복!`);
-            }
-
-            saveData();
+        // --- STOCKS & REALS ---
+        function selectStock(sid) { currStockId = sid; updateUI(); }
+        function processStocks() {
+            Object.values(s.stocks).forEach(st => {
+                let v = st.vol;
+                if(Math.random() < 0.01) v *= 10; // Random mega crash/pump
+                let chg = (Math.random() - 0.495) * v; // slight upward drift ? 0.495 bias
+                st.price = Math.max(10, st.price * (1 + chg)); // no delisting fully
+                st.history.shift(); st.history.push(st.price);
+            });
+        }
+        
+        function buyStock() {
+            let st = s.stocks[currStockId];
+            let cost = s.money * 0.25; // 25%
+            if(cost < st.price) return alert("자금이 부족합니다.");
+            let sh = Math.floor(cost / st.price);
+            s.money -= sh * st.price;
+            let ot = st.owned * st.avgPrice;
+            st.owned += sh;
+            st.avgPrice = (ot + (sh * st.price)) / st.owned;
+            logMsg(`[주식] ${st.name} ${sh.toLocaleString()}주 매수`);
+            updateUI();
+        }
+        function buyStockMax() {
+            let st = s.stocks[currStockId];
+            let sh = Math.floor(s.money / st.price);
+            if(sh <= 0) return alert("가용 자금이 부족합니다.");
+            s.money -= sh * st.price;
+            let ot = st.owned * st.avgPrice;
+            st.owned += sh;
+            st.avgPrice = (ot + (sh * st.price)) / st.owned;
+            logMsg(`[주식 풀매수] 영혼을 끌어모아 ${st.name} ${sh.toLocaleString()}주 매수!`);
+            updateUI();
+        }
+        function sellStockMax() {
+            let st = s.stocks[currStockId];
+            if(st.owned <= 0) return;
+            let val = st.owned * st.price;
+            let profit = val - (st.owned * st.avgPrice);
+            s.money += val;
+            logMsg(`[주식 풀매도] ${st.name} 전량 매도. 차익: ${formatMoney(Math.floor(profit))}`);
+            st.owned = 0; st.avgPrice = 0;
             updateUI();
         }
 
-        // --- TIME ENGINE & PROGRESSION ---
-        let currentEvent = null;
+        function buyRe(rid) {
+            let re = s.reals[rid];
+            if(s.money < re.price) return alert("부동산을 매수할 현금이 부족합니다. 대출을 알아보세요.");
+            s.money -= re.price;
+            re.owned++;
+            logMsg(`[부동산] ${re.title} 매수 완료! 등기권리증을 획득했습니다.`, false, true);
+            buildReUI(); updateUI();
+        }
+        function sellRe(rid) {
+            let re = s.reals[rid];
+            if(re.owned <= 0) return;
+            // 약간의 거래세 5% 차감
+            let net = re.price * 0.95;
+            re.owned--;
+            s.money += net;
+            logMsg(`[부동산] ${re.title} 매도! (거래세 5% 차감: ${formatMoney(Math.floor(net))} 수령)`);
+            buildReUI(); updateUI();
+        }
 
-        function calcSalary() {
+        // --- DEBT & BANK ---
+        function getMyMaxDebt() {
+            let myTitleObj = CAREER_PATH[0];
+            for (let t of CAREER_PATH) {
+                let reqMet = true;
+                for (let k in t.req) { if (s.stats[k] < t.req[k]) reqMet = false; }
+                if (reqMet) myTitleObj = t;
+            }
+            return myTitleObj.debtLimit * (COMPANY_MUL[s.companyType]||1);
+        }
+
+        function takeLoan(type) {
+            let maxD = getMyMaxDebt();
+            if(s.debt >= maxD) return alert("더 이상 대출 한도가 발생하지 않습니다.");
+            let amt = 0;
+            if(type === 's') amt = 50000000;
+            else if(type === 'm') amt = 300000000;
+            else if(type === 'max') amt = maxD - s.debt;
+
+            if(amt + s.debt > maxD) amt = maxD - s.debt;
+            s.debt += amt;
+            s.money += amt;
+            logMsg(`💵 이율 ${getInterestRate()}%로 ${formatMoney(amt)} 대출 실행!`, false, false, true);
+            updateUI();
+        }
+
+        function repayLoan(type) {
+            if(s.debt <= 0) return alert("갚을 빚이 없습니다!");
+            let pay = 0;
+            if(type === 'some') pay = Math.min(Math.floor(s.money/2), s.debt);
+            else if(type === 'all') pay = Math.min(s.money, s.debt);
+
+            if(pay <= 0) return alert("상환할 여유 자금이 없습니다.");
+            s.money -= pay;
+            s.debt -= pay;
+            logMsg(`💸 대출금 ${formatMoney(pay)} 상환 완료.`);
+            updateUI();
+        }
+
+        function getInterestRate() { return (s.baseRate + 2.0).toFixed(2); }
+
+        function triggerPayday(offlineCount = 1) {
             let myTitleObj = CAREER_PATH[0];
             for (let t of CAREER_PATH) {
                 let reqMet = true;
@@ -641,168 +591,210 @@
                 s.jobTitle = myTitleObj.title;
             }
 
-            let compMul = COMPANY_MUL[s.companyType] || 1;
-            return s.baseSalary * myTitleObj.mult * compMul;
-        }
+            let actualSalary = s.baseSalary * myTitleObj.mult * (COMPANY_MUL[s.companyType] || 1);
+            let loanRate = parseFloat(getInterestRate());
+            let monthlyInterest = (s.debt * (loanRate / 100)) / 12;
 
-        function triggerPayday(offlineCount = 1) {
-            let actualSalary = calcSalary();
-            let total = actualSalary * offlineCount;
-            s.money += total;
-            s.stamina = Math.min(s.maxStamina, s.stamina + 30 * offlineCount); 
+            s.money += (actualSalary * offlineCount);
+            s.stamina = Math.min(s.maxStamina, s.stamina + 20 * offlineCount); 
             
-            if(offlineCount === 1) {
-                logMsg(`💰 월급날! <strong>${formatMoney(actualSalary)}</strong>이 입금되었습니다.`, true);
+            // Deduct interest
+            if (s.debt > 0) {
+                let intHit = monthlyInterest * offlineCount;
+                s.money -= intHit;
+                if(offlineCount === 1) {
+                    logMsg(`💰 월급 ${formatMoney(actualSalary)} 입금됨. (대출 이자 ${formatMoney(-Math.floor(intHit))} 차감 자동이체)`, true);
+                }
+                
+                // Bankruptcy Check!
+                if(s.money < 0) {
+                    processBankruptcy();
+                }
+            } else {
+                if(offlineCount === 1) logMsg(`💰 깨끗한 월급날! <strong>${formatMoney(actualSalary)}</strong> 전액 입금.`, true);
             }
         }
 
-        function checkRandomEvents() {
-            if (s.secondsLived % 12 === 0 && Math.random() < 0.5 && s.lastEventAge < s.age) {
-                let evt = null;
-                if (s.stats.lang >= 60 && s.stats.comm >= 50 && s.companyType !== '외국계') {
-                    evt = {
-                        title: "외국계 임원 스카웃", desc: "외국어 능통자를 대상으로 구글코리아 스카웃 제의가 왔습니다. 수락 시 연봉 배수 2배 점프 창출!",
-                        yes: () => { s.companyType = '외국계'; logMsg("✈️ 헬반도를 탈출해 외국계 입성!", false, true); }
-                    };
+        function processBankruptcy() {
+            logMsg(`🚨 마이너스 통장 초과! 은행에서 자산을 **강제 반대매매** 합니다!!`, false, true, true);
+            // Sell all stocks implicitly
+            Object.values(s.stocks).forEach(st => {
+                if(st.owned > 0) {
+                    s.money += (st.owned * st.price) * 0.9; // 10% penalty for forced liq
+                    st.owned = 0; st.avgPrice = 0;
                 }
-                else if (s.stats.plan > 80 && s.stats.job > 80 && s.companyType !== '대기업') {
-                    evt = {
-                        title: "네/카/라/쿠/배 직행", desc: "압도적 실무력으로 판교 대기업 오퍼를 받습니다. (배수 2.5x)",
-                        yes: () => { s.companyType = '대기업'; logMsg("🏢 판교행 막차 탑승 완료!", false, true); }
-                    };
+            });
+            // Sell real estate implicitly
+            Object.values(s.reals).forEach(re => {
+                if(re.owned > 0) {
+                    s.money += (re.owned * re.price) * 0.8; // 20% penalty
+                    re.owned = 0;
                 }
-                else if (s.stats.lead === STAT_MAX && s.stats.plan === STAT_MAX && s.companyType !== '유니콘스타트업') {
-                    evt = {
-                        title: "유니콘 CEO 취임 제의", desc: "당신의 완벽한 리더십 명성에 투자자들이 몰려옵니다. 스톡옵션과 함께 유니콘 스타트업을 이끌어주십시오! (배수 3.0x)",
-                        yes: () => { s.companyType = '유니콘스타트업'; logMsg("🦄 유니콘 스타트업 등극!", false, true); }
-                    };
-                }
-                if (evt) { s.lastEventAge = s.age; showModal(evt); }
+            });
+
+            if(s.money >= 0) {
+                logMsg(`⚠️ 자산 강제 처분으로 간신히 위기를 넘겼습니다.`, false, true);
+            } else {
+                // GAME OVER
+                showModal({
+                    title: "파산 (Game Over)",
+                    desc: "대출 이자를 갚지 못하고 강제 압류를 당했습니다. 인생의 무서움을 느낍니다.<br><br>잔액: " + formatMoney(Math.floor(s.money)) + "<br><br>새롭게 26세로 인생을 시작합니다.",
+                    yes: () => resetGame(), no: () => resetGame()
+                });
+                document.getElementById('evtBtnNo').style.display = 'none';
             }
         }
 
+        function handleEconomyLoop() {
+            // Update Base Rate (2.0 ~ 8.0 randomness)
+            s.baseRate = Math.max(2.0, Math.min(8.0, s.baseRate + (Math.random() - 0.5) * 1.5));
+            
+            // Advance Real Estate Prices (random walk skewed slightly positive)
+            Object.values(s.reals).forEach(r => {
+                r.prevPrice = r.price;
+                let bump = (Math.random() - 0.45) * 0.15; // up to 15% volatility yearly, slightly positive
+                r.price = Math.floor(r.price * (1 + bump));
+            });
+            buildReUI();
+        }
+
+        // --- GLOBAL TIME ENGINE ---
         function processTimeTick(ticks) {
             for(let i=0; i<ticks; i++) {
                 if(s.age >= END_AGE) break;
-                
                 s.currSec += 1;
+                
                 if (s.currSec >= MONTH_SECONDS) {
                     s.currSec = 0; s.month += 1; s.secondsLived += 1;
                     
                     triggerPayday(1);
-                    checkRandomEvents();
 
+                    // Yearly checks
                     if (s.month > 12) {
                         s.month = 1; s.age += 1;
-                        logMsg(`🎂 새해가 밝았습니다. <strong>${s.age}세</strong>가 되었습니다!`, false, true);
-                        if (s.age >= END_AGE) {
-                            endGame();
-                        }
+                        handleEconomyLoop();
+                        logMsg(`🎂 새해가 밝았습니다. 한국은행 기준금리: <strong>${s.baseRate.toFixed(2)}%</strong>`, false, true);
+                        if(s.age >= END_AGE) endGame();
                     }
                 }
             }
         }
 
-        // --- MAIN LOOP ---
         setInterval(() => {
-            if(s.age >= END_AGE || currentEvent !== null) return;
-            processTimeTick(1);
-            s.lastSavedTime = Date.now();
-            updateUI();
+            if(s.age >= END_AGE || document.getElementById('eventModal').style.display==='flex') return;
+            processTimeTick(1); s.lastSavedTime = Date.now(); updateUI();
         }, 1000); 
 
-        // Stock chart updates much faster to simulate high frequency trading
-        setInterval(() => {
-            if(s.age >= END_AGE || currentEvent !== null) return;
-            updateStockPrice();
-        }, 2000);
+        // Stock Ticker (5 secs)
+        setInterval(() => { if(s.age >= END_AGE) return; processStocks(); updateUI(); }, 5000);
+        setInterval(() => { saveData(); }, 5000);
 
-        setInterval(() => { saveData(); }, 5000); // Save every 5 real-sec
+        // --- UI REFRESH ---
+        function getNetWorth() {
+            let nw = s.money - s.debt;
+            Object.values(s.stocks).forEach(st => nw += st.owned * st.price);
+            Object.values(s.reals).forEach(re => nw += re.owned * re.price);
+            return nw;
+        }
 
-        // --- UI & Lifecycle ---
         function updateUI() {
-            document.getElementById('uiYear').innerText = s.age;
-            document.getElementById('uiMonth').innerText = s.month + "개월";
+            // Dash
+            document.getElementById('uiYear').innerText = s.age; document.getElementById('uiMonth').innerText = s.month;
             document.getElementById('uiJobTitle').innerText = `[${s.companyType}] ${s.jobTitle}`;
-            document.getElementById('uiCash').innerText = formatMoney(s.money);
-            document.getElementById('uiSalary').innerText = formatMoney(calcSalary());
+            document.getElementById('uiCash').innerText = formatMoney(Math.floor(s.money));
+            document.getElementById('uiDebt').innerText = formatMoney(Math.floor(s.debt));
+            document.getElementById('uiNetWorth').innerText = formatMoney(Math.floor(getNetWorth()));
+            
+            // Salary calculation for display
+            let tb = CAREER_PATH.find(t=>t.title === s.jobTitle) || CAREER_PATH[0];
+            let sal = s.baseSalary * tb.mult * (COMPANY_MUL[s.companyType]||1);
+            document.getElementById('uiSalary').innerText = formatMoney(sal);
 
+            // Time & Stamina
+            document.getElementById('uiTimeLeft').innerText = (MONTH_SECONDS - s.currSec);
+            document.getElementById('uiTimeBar').style.width = ((s.currSec / MONTH_SECONDS) * 100) + '%';
             document.getElementById('uiStamina').innerText = `${Math.floor(s.stamina)} / ${s.maxStamina}`;
             document.getElementById('uiStaminaBar').style.width = `${(s.stamina/s.maxStamina)*100}%`;
-            
-            let pct = (s.currSec / MONTH_SECONDS) * 100;
-            document.getElementById('uiTimeBar').style.width = pct + '%';
-            document.getElementById('uiTimeLeft').innerText = (MONTH_SECONDS - s.currSec);
 
-            updateChartsAndGauges();
-            // Note: 주식 UI는 updateStockUI에서 별도 처리되지만 돈(Net Worth) 계산을 위해 호출됨
+            // Charts
+            radarChart.data.datasets[0].data = [s.stats.job, s.stats.comm, s.stats.lang, s.stats.lead, s.stats.plan];
+            radarChart.update();
+            Object.keys(s.stats).forEach(k => {
+                let v = s.stats[k]; document.getElementById(`txt_${k}`).innerText = `Lv. ${v}`;
+                let b = document.getElementById(`bar_${k}`); b.style.width = `${(v/STAT_MAX)*100}%`;
+                if(v >= STAT_MAX) b.classList.add('maxed'); else b.classList.remove('maxed');
+            });
+
+            // Stock Tab Update
+            let stHtml = "";
+            let totP = 0, totC = 0;
+            Object.values(s.stocks).forEach(st => {
+                let diff = st.price - st.history[st.history.length-2]; let pct = (diff/st.history[st.history.length-2])*100;
+                let cls = diff>0?'st-up':(diff<0?'st-down':'');
+                let act = st.id === currStockId ? 'active' : '';
+                
+                stHtml += `<div class="stock-item ${act}" onclick="selectStock('${st.id}')">
+                    <div><span class="st-name">${st.name}</span><span class="st-vol">수익률 극대화 ${Math.floor(st.vol*100)}%급</span><div class="st-owned">${st.owned>0?`보유: ${st.owned}주`:''}</div></div>
+                    <div class="st-price-wrap"><div class="st-price ${cls}">${formatMoney(Math.floor(st.price))}</div><div class="st-change ${cls}">${diff>0?'+':''}${pct.toFixed(2)}%</div></div>
+                </div>`;
+                
+                let v = st.owned * st.price; let cost = st.owned * st.avgPrice;
+                totP += v; totC += cost;
+            });
+            document.getElementById('stockListWrap').innerHTML = stHtml;
+
+            let curSt = s.stocks[currStockId];
+            document.getElementById('stChartName').innerText = curSt.name; document.getElementById('stChartTicker').innerText = curSt.id;
+            let ld = curSt.price - curSt.history[curSt.history.length-2];
+            let ldp = (ld / curSt.history[curSt.history.length-2]) * 100;
+            document.getElementById('stChartPrice').innerText = formatMoney(Math.floor(curSt.price));
+            document.getElementById('stChartPrice').className = ld > 0 ? 'st-up' : 'st-down';
+            document.getElementById('stChartChange').innerText = `${ld>0?'+':''}${ldp.toFixed(2)}%`;
+            document.getElementById('stChartChange').className = ld > 0 ? 'st-up' : 'st-down';
+
+            stockLineChart.data.datasets[0].data = curSt.history;
+            stockLineChart.data.datasets[0].borderColor = ld > 0 ? "#ef4444" : "#3b82f6";
+            stockLineChart.update();
+
+            let prof = totP - totC; let profp = totC === 0 ? 0 : (prof/totC)*100;
+            document.getElementById('stTotalProfit').innerText = `${formatMoney(Math.floor(prof))} (${profp.toFixed(2)}%)`;
+
+            // Bank Tab Update
+            document.getElementById('uiBaseRate').innerText = `${s.baseRate.toFixed(2)}%`;
+            document.getElementById('uiTotDebt').innerText = formatMoney(Math.floor(s.debt));
+            document.getElementById('uiMaxDebt').innerText = formatMoney(getMyMaxDebt());
         }
 
-        function showModal(evtObj) {
-            currentEvent = evtObj;
-            document.getElementById('eventModal').style.display = 'flex';
-            document.getElementById('evtTitle').innerHTML = evtObj.title;
-            document.getElementById('evtDesc').innerHTML = evtObj.desc;
-        }
-
+        // Window & Modals
+        function showModal(evtObj) { currentEvent = evtObj; document.getElementById('eventModal').style.display='flex'; document.getElementById('evtTitle').innerHTML=evtObj.title; document.getElementById('evtDesc').innerHTML=evtObj.desc; }
         function closeModal() { document.getElementById('eventModal').style.display='none'; currentEvent=null; }
         function acceptEvent() { document.getElementById('eventModal').style.display='none'; if(currentEvent.yes) currentEvent.yes(); currentEvent=null; updateUI(); }
-
+        
         function endGame() {
-            showModal({
-                title: "은퇴",
-                desc: `100세가 되셨습니다. 치열했던 회사생활과 역대급 주식 투기판에서 잘 살아남으셨습니다.<br><br>최종 총자산: <strong>${formatMoney(getNetWorth())}</strong><br>최종 직장: <strong>${s.companyType} ${s.jobTitle}</strong><br><br>수고하셨습니다.`,
-                yes: () => resetGame(), no: () => resetGame()
-            });
-            document.getElementById('evtBtnNo').style.display = 'none';
-            document.getElementById('evtBtnYes').innerText = "환생하기";
+            showModal({ title: "은퇴", desc: `100세 사장으로 명예롭게 은퇴합니다.<br>최종 총자산: <strong>${formatMoney(getNetWorth())}</strong>`, yes:()=>resetGame(), no:()=>resetGame() });
+            document.getElementById('evtBtnNo').style.display='none'; document.getElementById('evtBtnYes').innerText="환생하기";
         }
 
-        // Data Management
-        function saveData() { localStorage.setItem('officeLifeSaveV3', JSON.stringify(s)); }
-
+        function saveData() { localStorage.setItem('officeLifeSaveV4', JSON.stringify(s)); }
         function loadData() {
-            let j = localStorage.getItem('officeLifeSaveV3');
+            let j = localStorage.getItem('officeLifeSaveV4');
             if (j) {
                 try {
                     let p = JSON.parse(j);
-                    if(p.age >= 26) { s = Object.assign(s, p); }
+                    if(p.age >= 26 && p.stocks) { s = Object.assign(s, p); }
                     
-                    // Offline progress calculation
-                    let now = Date.now();
-                    let diffSeconds = Math.floor((now - s.lastSavedTime) / 1000);
-                    
-                    if (diffSeconds > 10 && s.age < END_AGE) {
+                    let now = Date.now(); let diffSecs = Math.floor((now - s.lastSavedTime) / 1000);
+                    if (diffSecs > 10 && s.age < END_AGE) {
                         document.getElementById('loadingModal').style.display = 'flex';
-                        logMsg(`⚡ 오프라인 경과 시간: ${diffSeconds}초. 밀린 데이터 동기화 중...`);
-                        
-                        setTimeout(() => {
-                            // Max catch-up limit = 24 real hours (86400 seconds = 24 months = 2 years game time)
-                            let processSecs = Math.min(diffSeconds, 86400); 
-                            processTimeTick(processSecs);
-                            s.lastSavedTime = Date.now();
-                            saveData();
-                            document.getElementById('loadingModal').style.display = 'none';
-                            updateUI();
-                        }, 500);
+                        setTimeout(() => { let processSecs = Math.min(diffSecs, 86400*3); processTimeTick(processSecs); s.lastSavedTime = Date.now(); saveData(); document.getElementById('loadingModal').style.display='none'; updateUI(); }, 500);
                     }
                 } catch(e) {}
             }
+            initDataObjects();
         }
+        function resetGame() { if(confirm("초기화하시겠습니까? (영끌 빚투 실패 시 사용)")) { localStorage.removeItem('officeLifeSaveV4'); location.reload(); } }
 
-        function resetGame() {
-            if(confirm("완전 초기화하시겠습니까?")) {
-                localStorage.removeItem('officeLifeSaveV3'); location.reload();
-            }
-        }
-
-        window.onload = () => {
-            loadData();
-            initCharts();
-            updateUI();
-            updateStockUI();
-        };
-
+        window.onload = () => { loadData(); initCharts(); buildReUI(); updateUI(); };
     </script>
 </body>
 </html>
