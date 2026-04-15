@@ -415,7 +415,7 @@
         ];
 
         const FLEX_DEFS = [
-            { id: "oma", title: "오마카세 평일권", desc: "고오급 회식으로 스트레스를 조금 풉니다 (상시 구매 가능, 체력+20 회복)", price: 50000, icon: "🍣", repetitive: true, heal: 20 },
+            { id: "oma", title: "오마카세 평일권", desc: "고오급 회식으로 스트레스를 조금 풉니다 (체력+20 회복)", price: 200000, icon: "🍣", repetitive: true, heal: 20 },
             { id: "health", title: "최고급 노화방지 PT", desc: "나이가 들어 깎인 최대 체력을 +5 영구 복원합니다 (무한 중첩 구매)", price: 500000, icon: "💊", repetitive: true },
             { id: "rlx", title: "금장 롤렉스 시계", desc: "번쩍이는 손목이 스카우트 확률을 2배 높여줍니다", price: 25000000, icon: "⌚" },
             { id: "por", title: "포르쉐 911 카레라", desc: "카푸어가 되지만 자존감이 올라 모든 경험치 획득량 1.5배 보너스!", price: 250000000, icon: "🏎️" },
@@ -523,9 +523,9 @@
         }
 
         function getFlexPrice(fDef) {
-            if(!fDef.repetitive) return fDef.price;
+            if(!fDef.repetitive || fDef.id === 'oma') return fDef.price;
             let count = s.items[fDef.id] || 0;
-            let rate = (fDef.id === 'health') ? 1.3 : 1.15; // PT: 30% 증가, 오마카세: 15% 증가
+            let rate = 1.03; // PT: 기하급수 30% -> 3% 로 10분의 1 대폭 하향 완화
             return Math.floor(fDef.price * Math.pow(rate, count));
         }
 
@@ -538,7 +538,7 @@
                     <div class="re-header" style="align-items:flex-start;">
                         <div>
                             <div class="re-title">${f.icon} ${f.title} ${f.repetitive && s.items[f.id] ? `<span style='font-size:0.8rem;color:var(--warning);'>(x${s.items[f.id]})</span>`:''}</div>
-                            <div class="re-desc" style="color:var(--warning); margin-bottom:0.5rem;">${f.desc} ${f.repetitive ? '(구매 시마다 가격 상승)' : ''}</div>
+                            <div class="re-desc" style="color:var(--warning); margin-bottom:0.5rem;">${f.desc} ${f.id === 'health' ? '(구매 시마다 가격 소폭 상승)' : ''}</div>
                             <div class="re-price">${formatMoney(cPrice)}</div>
                         </div>
                         <div>
