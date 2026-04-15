@@ -423,7 +423,7 @@
                 STOCK_DEFS.forEach(sd => { s.stocks[sd.id] = { ...sd, price: sd.start, history: Array(30).fill(sd.start), owned: 0, avgPrice: 0 }; });
             }
             if (Object.keys(s.reals).length === 0) {
-                REAL_DEFS.forEach(rd => { s.reals[rd.id] = { ...rd, price: rd.start, prevPrice: rd.start, owned: 0 }; });
+                REAL_DEFS.forEach(rd => { s.reals[rd.id] = { ...rd, price: rd.start, prevPrice: rd.start, owned: 0, avgPrice: 0 }; });
             }
         }
 
@@ -642,6 +642,12 @@
             Object.values(s.reals).forEach(re => inv += re.owned * re.price);
             return inv;
         }
+        function getInvestPrincipal() {
+            let prin = 0;
+            Object.values(s.stocks).forEach(st => prin += st.owned * (st.avgPrice || 0));
+            Object.values(s.reals).forEach(re => prin += re.owned * (re.avgPrice || 0));
+            return prin;
+        }
         function getNetWorth() { return Math.max(0, s.money) + getInvested() - s.debt; }
 
         function triggerPayday(offlineCount = 1) {
@@ -695,7 +701,7 @@
         function processBankruptcy() {
             logMsg(`🚨 빚/생활비 연체 발생!! 은행에서 자산을 **강제 반대매매** 합니다!!`, false, true, true);
             Object.values(s.stocks).forEach(st => { if(st.owned > 0) { s.money += (st.owned * st.price) * 0.9; st.owned = 0; st.avgPrice = 0; } });
-            Object.values(s.reals).forEach(re => { if(re.owned > 0) { s.money += (re.owned * re.price) * 0.8; re.owned = 0; } });
+            Object.values(s.reals).forEach(re => { if(re.owned > 0) { s.money += (re.owned * re.price) * 0.8; re.owned = 0; re.avgPrice = 0; } });
 
             if(s.money >= 0) {
                 logMsg(`⚠️ 영끌 폭망자산 처분으로 파산을 간신히 면했습니다. 잔고: ${formatMoney(Math.floor(s.money))}`, false, true);
@@ -808,8 +814,8 @@
             s.money += val; logMsg(`[주식 익절/손절] ${st.name} 매도 차익: ${formatMoney(Math.floor(profit))}`);
             st.owned = 0; st.avgPrice = 0; updateUI();
         }
-        function buyRe(rid) { let re = s.reals[rid]; if(s.money < re.price) return alert("현금이 부족합니다."); s.money -= re.price; re.owned++; logMsg(`[부동산] ${re.title} 영끌 매수 완료!`, false, true); buildReUI(); updateUI(); }
-        function sellRe(rid) { let re = s.reals[rid]; if(re.owned <= 0) return; let net = re.price * 0.95; re.owned--; s.money += net; logMsg(`[부동산] ${re.title} 매도! (수령액: ${formatMoney(Math.floor(net))})`); buildReUI(); updateUI(); }
+        function buyRe(rid) { let re = s.reals[rid]; if(s.money < re.price) return alert("현금이 부족합니다."); s.money -= re.price; let ot = re.owned * (re.avgPrice || 0); re.owned++; re.avgPrice = (ot + re.price) / re.owned; logMsg(`[부동산] ${re.title} 영끌 매수 완료!`, false, true); buildReUI(); updateUI(); }
+        function sellRe(rid) { let re = s.reals[rid]; if(re.owned <= 0) return; let net = re.price * 0.95; re.owned--; if(re.owned === 0) re.avgPrice = 0; s.money += net; logMsg(`[부동산] ${re.title} 매도! (수령액: ${formatMoney(Math.floor(net))})`); buildReUI(); updateUI(); }
 
         setInterval(() => { if(s.age >= END_AGE) return; processStocks(); updateUI(); }, 5000);
         setInterval(() => { saveData(); }, 5000);
@@ -821,8 +827,20 @@
             document.getElementById('uiDay').innerText = s.day;
             document.getElementById('uiJobTitle').innerText = s.isCEO ? `[창업주 (CEO)]` : `[${s.companyType}] ${s.jobTitle}`;
             
+            let tInv = getInvested();
+            let tPrin = getInvestPrincipal();
+            let tProf = tInv - tPrin;
+            let tROI = tPrin > 0 ? (tProf / tPrin) * 100 : 0;
+            
+            let profStr = "";
+            if (tInv > 0 && tPrin > 0) {
+                let sign = tProf > 0 ? '+' : '';
+                let col = tProf > 0 ? 'var(--stock-up)' : (tProf < 0 ? 'var(--stock-down)' : 'var(--text-muted)');
+                profStr = ` <span style="font-size:0.85rem; color:${col}; font-weight:700;">(${sign}${formatMoney(Math.floor(tProf))} / ${sign}${tROI.toFixed(2)}%)</span>`;
+            }
+
             document.getElementById('uiNetWorth').innerText = formatMoney(Math.floor(getNetWorth()));
-            document.getElementById('uiInvest').innerText = formatMoney(Math.floor(getInvested()));
+            document.getElementById('uiInvest').innerHTML = `${formatMoney(Math.floor(tInv))}${profStr}`;
             document.getElementById('uiCash').innerText = formatMoney(Math.floor(s.money));
             document.getElementById('uiDebt').innerText = formatMoney(Math.floor(s.debt));
             
@@ -884,6 +902,7 @@
                 try {
                     let p = JSON.parse(j);
                     if(p.age >= 26 && p.stocks && Object.keys(p.stocks).length > 0) { s = Object.assign(s, p); }
+                    if(s.reals) Object.values(s.reals).forEach(r => { if(r.avgPrice === undefined) r.avgPrice = (r.owned > 0 ? r.price : 0); });
                     let now = Date.now(); let diffSecs = Math.floor((now - s.lastSavedTime) / 1000);
                     if (diffSecs > 10 && s.age < END_AGE) {
                         document.getElementById('loadingModal').style.display = 'flex';
