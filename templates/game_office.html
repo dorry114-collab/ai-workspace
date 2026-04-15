@@ -60,6 +60,7 @@
 
         /* Actions Section */
         .action-section { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; align-content: start; }
+        @media(min-width: 900px) { .action-section { grid-template-columns: 1fr 1fr 1fr; } }
         .action-btn { background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 0.8rem; border-radius: 12px; cursor: pointer; text-align: left; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 0.3rem; }
         .action-btn:hover:not(:disabled) { background: rgba(139, 92, 246, 0.1); border-color: var(--primary); transform: translateY(-2px);}
         .action-btn:active:not(:disabled) { transform: scale(0.95); }
@@ -199,22 +200,40 @@
 
         <div class="action-section">
             <button class="action-btn" onclick="takeAction('work')">
-                <div class="act-icon">💻</div><div class="act-title">살인적 야근</div><div class="act-cost">체력 -30</div><div class="act-effect">업무 경험치 대폭 상승</div>
+                <div class="act-icon">💻</div><div class="act-title">살인적 야근</div><div class="act-cost">체력 -15</div><div class="act-effect">업무 경험치 대폭업</div>
             </button>
-            <button class="action-btn" onclick="takeAction('yt')" style="border-color:var(--youtube);">
-                <div class="act-icon" style="color:var(--youtube);">🎬</div><div class="act-title">퇴근후 유튜브 편집</div><div class="act-cost">체력 -25</div><div class="act-effect" style="color:var(--warning);">구독자 떡상 기원 룰렛</div>
+            <button class="action-btn" onclick="takeAction('pt')">
+                <div class="act-icon">🏋️</div><div class="act-title">피트니스 운동</div><div class="act-cost">체력 -20 | 돈 -10만</div><div class="act-effect">최대 체력 +1 영구 증가</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('date')">
+                <div class="act-icon">💖</div><div class="act-title">연인과 데이트</div><div class="act-cost">체력 -10 | 돈 -20만</div><div class="act-effect">소통/업무 능률 동시 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('lang')">
-                <div class="act-icon">🗣️</div><div class="act-title">새벽반 어학원</div><div class="act-cost">체력 -30 | 돈 -20만</div><div class="act-effect">외국어 경험치 집중 공략</div>
+                <div class="act-icon">🗣️</div><div class="act-title">새벽 어학원</div><div class="act-cost">체력 -15 | 돈 -15만</div><div class="act-effect">외국어 집중 공략</div>
             </button>
             <button class="action-btn" onclick="takeAction('plan')">
-                <div class="act-icon">📚</div><div class="act-title">기획구상 및 리서치</div><div class="act-cost">체력 -15 | 돈 -10만</div><div class="act-effect">기획 경험치 상승</div>
+                <div class="act-icon">📚</div><div class="act-title">독서 및 리서치</div><div class="act-cost">체력 -8 | 돈 -5만</div><div class="act-effect">기획 경험치 효율적 상승</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('intro')">
+                <div class="act-icon">📝</div><div class="act-title">사내 스터디랩</div><div class="act-cost">체력 -10 | 돈 -3만</div><div class="act-effect">기획/업무 소폭 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('comm')">
-                <div class="act-icon">🍻</div><div class="act-title">간 빼놓는 회식</div><div class="act-cost">체력 -20 | 돈 -20만</div><div class="act-effect">소통 경험치 상승</div>
+                <div class="act-icon">🍻</div><div class="act-title">부서 회식 고고</div><div class="act-cost">체력 -10 | 돈 -15만</div><div class="act-effect">소통 경험치 대폭 상승</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('golf')">
+                <div class="act-icon">⛳</div><div class="act-title">임원 골프 접대</div><div class="act-cost">체력 -25 | 돈 -150만</div><div class="act-effect">리더십/소통 고속 상승</div>
             </button>
             <button class="action-btn" onclick="takeAction('lead')">
-                <div class="act-icon">👑</div><div class="act-title">최고경영자 포럼</div><div class="act-cost">체력 -10 | 돈 -500만</div><div class="act-effect">리더십 경험치 상한돌파</div>
+                <div class="act-icon">👑</div><div class="act-title">최고경영자 포럼</div><div class="act-cost">체력 -5 | 돈 -300만</div><div class="act-effect">리더십 상한 돌파</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('yt')" style="border-color:var(--youtube);">
+                <div class="act-icon" style="color:var(--youtube);">🎬</div><div class="act-title">퇴근후 유튜브</div><div class="act-cost">체력 -10</div><div class="act-effect" style="color:var(--warning);">구독자 폭발 기원</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('parttime')" style="border-color:var(--accent);">
+                <div class="act-icon">🚗</div><div class="act-title">대리운전 투잡</div><div class="act-cost">체력 -20</div><div class="act-effect" style="color:var(--accent);">현금 10만 원 즉시 획득</div>
+            </button>
+            <button class="action-btn" onclick="takeAction('gamble')" style="border-color:var(--stock-up);">
+                <div class="act-icon">🎰</div><div class="act-title">스피또 즉석복권</div><div class="act-cost">돈 -5만</div><div class="act-effect" style="color:var(--stock-up);">확률형 대박 (체력 소모 0)</div>
             </button>
         </div>
 
@@ -222,7 +241,6 @@
         <div class="bottom-section">
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('stock')">📈 주식장</button>
-                <button class="tab-btn" onclick="switchTab('futures')">🎰 해외선물</button>
                 <button class="tab-btn" onclick="switchTab('realestate')">🏢 부동산</button>
                 <button class="tab-btn" onclick="switchTab('bank')">🏦 은행(대출)</button>
                 <button class="tab-btn" onclick="switchTab('flex')">🛍️ 상점(플렉스)</button>
@@ -257,26 +275,6 @@
                 </div>
             </div>
             
-            <!-- FUTURES TAB -->
-            <div id="tab-futures" class="tab-content">
-                <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;"><i class="fa-solid fa-triangle-exclamation" style="color:var(--danger);"></i> 경고: 마진거래소입니다. 10초 뒤의 방향성을 맞추면 투자액의 최대 50배, 틀리면 0원입니다.</p>
-                <div class="bank-dash">
-                    <div class="bank-card" style="border-color:var(--warning);">
-                        <div class="bc-title">10초 만에 인생 역전</div>
-                        <div class="bc-val" id="uiFutVal" style="color:var(--warning);">대기중</div>
-                        <div class="bc-sub" id="uiFutDesc">현재 진행 중인 배팅이 없습니다.</div>
-                    </div>
-                </div>
-                <div class="bank-actions">
-                    <div style="background:rgba(255,255,255,0.05); padding:1rem; border-radius:8px;">
-                        <input type="number" id="futAmt" class="bank-input" placeholder="야수의 심장 배팅 금액 (원)" style="width:100%; margin-bottom:1rem;">
-                        <div class="bank-row">
-                            <button class="bank-btn" style="flex:1; background:var(--stock-up);" onclick="placeFutures('long')">롱 (상승) 배팅</button>
-                            <button class="bank-btn" style="flex:1; background:var(--stock-down);" onclick="placeFutures('short')">숏 (하락) 배팅</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- REAL ESTATE TAB -->
             <div id="tab-realestate" class="tab-content">
@@ -549,23 +547,32 @@
         
         function takeAction(type) {
             if(s.age >= END_AGE) return;
-            if (type === 'work') { if(s.stamina<30)return alert("체력 부족!"); s.stamina-=30; gainStat('job', Math.floor(Math.random()*15)+10); logMsg("🔥 야근! 업무 능력치 상승."); }
+            if (type === 'work') { if(s.stamina<15)return alert("체력 부족!"); s.stamina-=15; gainStat('job', Math.floor(Math.random()*15)+10); logMsg("🔥 야근! 업무 능력치 대폭 상승."); }
+            else if (type === 'pt') { if(s.stamina<20)return alert("체력 부족!"); if(s.money<100000)return alert("PT 등록비 부족!"); s.stamina-=20; s.money-=100000; s.maxStamina+=1; logMsg("💪 열혈 헬스! 최대 체력이 +1 증가했습니다."); }
+            else if (type === 'date') { if(s.stamina<10)return alert("체력 부족!"); if(s.money<200000)return alert("데이트 비용 부족!"); s.stamina-=10; s.money-=200000; gainStat('comm', Math.floor(Math.random()*10)+5); gainStat('job', 5); logMsg("💖 달콤한 데이트! 소통과 업무 능률 상승."); }
+            else if (type === 'lang') { if(s.money<150000)return alert("학원비 부족!"); if(s.stamina<15)return alert("체력 부족!"); s.money-=150000; s.stamina-=15; gainStat('lang', Math.floor(Math.random()*15)+10); logMsg("🗣️ 새벽 어학원 출석! 외국어 폭풍 성장."); }
+            else if (type === 'plan') { if(s.money<50000)return alert("책값 부족!"); if(s.stamina<8)return alert("체력 부족!"); s.money-=50000; s.stamina-=8; gainStat('plan', Math.floor(Math.random()*15)+10); logMsg("📚 전문서적 독서 완료. 기획력 효율적 상승."); }
+            else if (type === 'intro') { if(s.stamina<10)return alert("체력 부족!"); if(s.money<30000)return alert("참가비 부족!"); s.money-=30000; s.stamina-=10; gainStat('plan', 5); gainStat('job', 5); logMsg("📝 사내 스터디 참석! 기획/업무 소폭 상승."); }
+            else if (type === 'comm') { if(s.money<150000)return alert("회식비 부족!"); if(s.stamina<10)return alert("체력 부족!"); s.money-=150000; s.stamina-=10; gainStat('comm', Math.floor(Math.random()*20)+10); logMsg("🍻 팀 회식 참석! 소통 경험치 대폭 획득."); }
+            else if (type === 'golf') { if(s.money<1500000)return alert("대여비 부족!"); if(s.stamina<25)return alert("체력 부족!"); s.money-=1500000; s.stamina-=25; gainStat('lead', 20); gainStat('comm', 15); logMsg("⛳ 임원 골프 접대! 리더십/소통 고속 상승."); }
+            else if (type === 'lead') { if(s.money<3000000)return alert("포럼 참가비 부족!"); s.stamina-=5; s.money-=3000000; gainStat('lead', Math.floor(Math.random()*30)+15); logMsg("👑 최고경영자 포럼 다녀옴! 리더십 상한 돌파."); }
             else if (type === 'yt') {
-                if(s.stamina<25) return alert("피곤해서 유튜브를 켤 수 없습니다.");
-                s.stamina-=25; 
+                if(s.stamina<10) return alert("체력이 부족합니다.");
+                s.stamina-=10; 
                 let getSubs = Math.floor(Math.random()*50) + 10;
                 let msg = `🎬 유튜브 영상 업로드... 구독자 +${getSubs}명`;
                 if(Math.random() < 0.05) { 
                     let jackpot = Math.floor(Math.random() * 5000) + 1000;
-                    getSubs += jackpot; msg = `🎉 [알고리즘 떡상!] 조회수 폭발! 단숨에 구독자 +${jackpot}명 증가!!!`;
+                    getSubs += jackpot; msg = `🎉 [알고리즘 떡상!] 조회수 폭발! 변방에서 구독자 +${jackpot}명 증가!!!`;
                 }
                 s.subs += getSubs; logMsg(msg);
             }
-            else if (type === 'lang') { if(s.money<200000)return alert("학원 등록금이 부족합니다!"); if(s.stamina<30)return alert("새벽반에 갈 체력이 없습니다!"); s.money-=200000; s.stamina-=30; gainStat('lang', Math.floor(Math.random()*15)+10); logMsg("🗣️ 새벽 어학원 출석! 외국어 폭풍 성장."); }
-            else if (type === 'plan') { if(s.money<100000)return alert("강의 자료 구매비가 부족합니다."); if(s.stamina<15)return alert("집중력이 부족합니다."); s.money-=100000; s.stamina-=15; gainStat('plan', Math.floor(Math.random()*15)+10); logMsg("📚 기획구상 및 리서치 완료. 기획력 상승."); }
-            else if (type === 'comm') { if(s.money<200000)return alert("회식비 부족!"); if(s.stamina<20)return alert("체력 바닥!"); s.money-=200000; s.stamina-=20; gainStat('comm', Math.floor(Math.random()*20)+10); logMsg("🍻 단합회 참석! 소통 경험치 획득."); }
-            else if (type === 'lead') { if(s.money<5000000)return alert("포럼 참가비가 부족합니다."); s.money-=5000000; s.stamina-=10; gainStat('lead', Math.floor(Math.random()*30)+15); logMsg("👑 최고경영자 포럼 다녀옴! 리더십 수치 대폭 획득."); }
-            
+            else if (type === 'parttime') { if(s.stamina<20) return alert("체력 부족!"); s.stamina-=20; s.money+=100000; logMsg("🚗 대리운전 밤샘 알바 완료. 10만 원 즉시 획득."); }
+            else if (type === 'gamble') {
+                if(s.money<50000)return alert("복권 살 돈도 없습니다."); s.money-=50000;
+                if(Math.random()<0.05){ let w = Math.floor(Math.random()*4000000)+1000000; s.money+=w; logMsg(`🤑 스피또 대박 당첨!!! ${formatMoney(w)} 획득!`); }
+                else { logMsg("🗑️ 복권 꽝... 5만 원만 허공에 날렸습니다."); }
+            }
             saveData(); updateUI();
         }
 
@@ -596,17 +603,6 @@
             buildFlexUI(); updateUI();
         }
 
-        // --- FUTURES ---
-        function placeFutures(pos) {
-            if(s.futTimer > 0) return alert("이미 대기 열에 배팅이 들어가 있습니다.");
-            let amt = parseInt(document.getElementById('futAmt').value);
-            if(isNaN(amt) || amt <= 0) return alert("올바른 배팅 금액을 입력하세요.");
-            if(s.money < amt) return alert("현금이 부족합니다.");
-            s.money -= amt; s.futPos = pos; s.futAmt = amt; s.futTimer = 10;
-            logMsg(`🎰 해외 마진거래 ${pos.toUpperCase()} 포지션 진입! (배팅액: ${formatMoney(amt)}) - 결과 대기 중...`, false, false, true);
-            document.getElementById('futAmt').value = "";
-            updateUI();
-        }
 
         // --- BANK & ENGINE ---
         function getLevel(exp) { return Math.min(100, Math.floor((exp||0) / 100) + 1); }
@@ -745,23 +741,6 @@
         function processTimeTick(ticks) {
             for(let i=0; i<ticks; i++) {
                 if(s.age >= END_AGE) break;
-                
-                // Futures Engine Countdown
-                if(s.futTimer > 0) {
-                    s.futTimer--;
-                    if(s.futTimer <= 0) {
-                        let isWin = Math.random() < 0.33; // 1/3 win rate
-                        if(isWin) {
-                            let mult = Math.floor(Math.random() * 45) + 5; 
-                            let reward = s.futAmt * mult;
-                            s.money += reward;
-                            logMsg(`🎉 [마진 빔 도달] ${mult}배 떡상!! 달달하게 ${formatMoney(reward)} 차익 실현!!!`, false, true);
-                        } else {
-                            logMsg(`☠️ [마진 청산] 뚝배기 파괴... 배팅액 ${formatMoney(s.futAmt)} 전액 강제 청산 당했습니다...`, false, false, true);
-                        }
-                        s.futPos = null; s.futAmt = 0; updateUI();
-                    }
-                }
 
                 if(document.getElementById('eventModal').style.display==='flex') continue;
 
@@ -892,15 +871,7 @@
             document.getElementById('uiTotDebt').innerText = formatMoney(Math.floor(s.debt));
             document.getElementById('uiMaxDebt').innerText = formatMoney(getMyMaxDebt());
             
-            // Futures Tab Label Update
-            if (s.futTimer > 0) {
-                document.getElementById('uiFutVal').innerText = `${s.futTimer}초 뒤 결전!`;
-                document.getElementById('uiFutDesc').innerHTML = `지금 <strong style="color:white;">${s.futPos.toUpperCase()}</strong> 포지션에 <strong>${formatMoney(s.futAmt)}</strong> 배팅 중...`;
-            } else {
-                document.getElementById('uiFutVal').innerText = "결과 대기 중";
-                document.getElementById('uiFutDesc').innerText = "현재 진행 중인 배팅이 없습니다.";
-            }
-        }
+
 
         function showModal(evtObj) { currentEvent = evtObj; document.getElementById('eventModal').style.display='flex'; document.getElementById('evtTitle').innerHTML=evtObj.title; document.getElementById('evtDesc').innerHTML=evtObj.desc; }
         function closeModal() { document.getElementById('eventModal').style.display='none'; currentEvent=null; }
