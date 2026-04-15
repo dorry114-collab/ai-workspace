@@ -341,9 +341,15 @@
     </div>
 
     <!-- Overlay Loader -->
-    <div class="modal-bg" id="loadingModal" style="flex-direction:column;">
-        <div style="font-size:3rem; margin-bottom:1rem; animation: rotation 2s infinite linear;"><i class="fa-solid fa-spinner" style="color:var(--primary);"></i></div>
-        <div style="font-size:1.2rem; font-weight:700;" id="loadingText">오프라인 밀린 데이터 정산 중...</div>
+    <!-- Intro Modal overlay that blocks everything if s.playerName is not set -->
+    <div class="modal-bg" id="introModal" style="flex-direction:column; background:rgba(0,0,0,0.95); z-index:2000;">
+        <div class="modal-content">
+            <div class="modal-icon">💼</div>
+            <div class="modal-title">입사지원서 작성</div>
+            <div class="modal-desc" style="text-align:center;">가혹한 K-회사원 라이프에 오신 것을 환영합니다.<br>당신의 이름을 입력하고 인생을 시작하세요.</div>
+            <input type="text" id="playerNameInput" class="bank-input" placeholder="이름 (예: 김철수)" style="width:100%; margin-bottom:1rem; text-align:center;" onkeydown="if(event.key==='Enter') startGameCustom()">
+            <button class="btn-yes" onclick="startGameCustom()" style="width:100%;">입사 지원 시작</button>
+        </div>
     </div>
     <style>@keyframes rotation { from {transform: rotate(0deg);} to {transform: rotate(359deg);} }</style>
 
@@ -354,15 +360,6 @@
         const EXP_MAX = 10000;
 
         const statLabels = { job: "업무", comm: "소통", lang: "외국어", plan: "기획", lead: "리더십" };
-        const CAREER_PATH = [
-            { title: '사원', req: {job:0, comm:0}, mult: 1, debtLimit: 50000000 },
-            { title: '대리', req: {job:20, comm:15}, mult: 1.3, debtLimit: 150000000 },
-            { title: '과장', req: {job:40, plan:20, comm:30}, mult: 1.8, debtLimit: 400000000 },
-            { title: '차장', req: {job:60, plan:40, lead:20}, mult: 2.5, debtLimit: 800000000 },
-            { title: '부장', req: {job:80, lead:40, comm:50}, mult: 3.5, debtLimit: 1500000000 },
-            { title: '임원', req: {job:90, lead:80, plan:70, lang:40}, mult: 8.0, debtLimit: 3000000000 },
-            { title: 'CEO', req: {lead:100, plan:100, comm:100, lang:80, job:100}, mult: 20.0, debtLimit: 10000000000 }
-        ];
         
         const COMPANY_TIERS = [
             { name:'중소기업', mult: 1.0 },
@@ -374,19 +371,27 @@
 
         // --- GAME STATE V7 ---
         let s = {
+            playerName: "", paused: true,
             age: 26, month: 1, day: 1, currSec: 0, secondsLived: 0,
             money: 50000000, debt: 0,
             stamina: 100, maxStamina: 100,
             stats: { job: 0, comm: 0, lang: 0, plan: 0, lead: 0 },
-            jobTitle: '사원', baseSalary: 3000000, companyType: '중소기업', isCEO: false,
+            jobTitle: '신입사원', careerMult: 1.0, maxDebtAllowed: 50000000,
+            baseSalary: 3000000, companyType: '중소기업', isCEO: false,
             lastSavedTime: Date.now(), baseRate: 3.5, subs: 0,
-            
-            // Futures state
-            futAmt: 0, futPos: null, futTimer: 0,
             
             items: { oma: false, rlx: false, por: false, family: false, health: 0, ceo: false },
             stocks: {}, reals: {}
         };
+
+        function startGameCustom() {
+            let name = document.getElementById('playerNameInput').value.trim();
+            if(name === "") return alert("이름을 꼭 입력하셔야 합니다!");
+            s.playerName = name; s.paused = false;
+            document.getElementById('introModal').style.display = 'none';
+            logMsg(`📣 신입사원 <strong>[${s.playerName}]</strong>님, 첫 입사를 축하합니다! 인생을 개척하세요.`, false, true);
+            updateUI();
+        }
 
         // --- INIT DATA ---
         const STOCK_DEFS = [
@@ -609,13 +614,7 @@
         function getExp(exp) { return (exp||0) >= 9900 ? 100 : (exp||0) % 100; }
         function getMyCompanyMult() { return COMPANY_TIERS.find(c => c.name===s.companyType)?.mult || 1.0; }
         function getMyMaxDebt() {
-            let myTitleObj = CAREER_PATH[0];
-            for (let t of CAREER_PATH) {
-                let reqMet = true;
-                for (let k in t.req) { if (getLevel(s.stats[k]) < t.req[k]) reqMet = false; }
-                if (reqMet) myTitleObj = t;
-            }
-            return myTitleObj.debtLimit * getMyCompanyMult();
+            return s.maxDebtAllowed * getMyCompanyMult();
         }
 
         function takeLoan(type) {
@@ -651,15 +650,43 @@
         function getNetWorth() { return Math.max(0, s.money) + getInvested() - s.debt; }
 
         function triggerPayday(offlineCount = 1) {
-            let myTitleObj = CAREER_PATH[0];
-            for (let t of CAREER_PATH) {
-                let reqMet = true;
-                for (let k in t.req) { if (getLevel(s.stats[k]) < t.req[k]) reqMet = false; }
-                if (reqMet) myTitleObj = t;
+            // PM Style Career Branching
+            let totalLv = Object.values(s.stats).reduce((a, b) => a + getLevel(b), 0);
+            let highestStat = 'job'; let highestVal = -1;
+            for (let k in s.stats) { if (getLevel(s.stats[k]) > highestVal) { highestVal = getLevel(s.stats[k]); highestStat = k; } }
+            
+            let newTitle = s.jobTitle; let myMult = 1.0; let myDebtLim = 50000000;
+            
+            if (s.subs >= 500000) { newTitle = "100만 유튜버 (자진퇴사)"; myMult = 0; myDebtLim = 5000000000; }
+            else if (totalLv >= 300) {
+                if (highestStat === 'job' || highestStat === 'lead') { newTitle = "현장출신 대표이사"; myMult = 20.0; myDebtLim = 10000000000; }
+                else if (highestStat === 'plan') { newTitle = "CSO (최고전략전문가)"; myMult = 15.0; myDebtLim = 8000000000; }
+                else if (highestStat === 'lang' || highestStat === 'comm') { newTitle = "다국적기업 아시아총괄"; myMult = 30.0; myDebtLim = 5000000000; }
+                else { newTitle = "명예 임원진"; myMult = 10.0; myDebtLim = 5000000000; }
             }
-            if (!s.isCEO && s.jobTitle !== myTitleObj.title) {
-                logMsg(`🎉 피나는 결실! <strong>[${myTitleObj.title}]</strong>(으)로 승진!!`, false, true);
-                s.jobTitle = myTitleObj.title;
+            else if (totalLv >= 150) {
+                if (highestStat === 'job') { newTitle = "워커홀릭 팀장"; myMult = 3.5; myDebtLim = 1500000000; }
+                else if (highestStat === 'plan') { newTitle = "전략기획실 차장"; myMult = 4.0; myDebtLim = 2000000000; }
+                else if (highestStat === 'comm') { newTitle = "파업 주도 노조위원장"; myMult = 2.0; myDebtLim = 1000000000; }
+                else if (highestStat === 'lang') { newTitle = "해외 주재원 (지사장)"; myMult = 8.0; myDebtLim = 3000000000; }
+                else if (highestStat === 'lead') { newTitle = "TF 본부장"; myMult = 5.0; myDebtLim = 2500000000; }
+            }
+            else if (totalLv >= 50) {
+                if (highestStat === 'job') { newTitle = "실무 깎는 노인 (과장)"; myMult = 1.8; myDebtLim = 400000000; }
+                else if (highestStat === 'comm') { newTitle = "사내 마당발 (대리)"; myMult = 1.5; myDebtLim = 300000000; }
+                else if (highestStat === 'plan') { newTitle = "기획팀 브레인 (대리)"; myMult = 2.0; myDebtLim = 500000000; }
+                else if (highestStat === 'lang') { newTitle = "번역기 셔틀 (사원)"; myMult = 1.3; myDebtLim = 200000000; }
+                else { newTitle = "평범한 대리"; myMult = 1.5; myDebtLim = 150000000; }
+            } else {
+                newTitle = "신입사원"; myMult = 1.0; myDebtLim = 50000000;
+            }
+            
+            if (s.careerMult === undefined) s.careerMult = 1.0;
+            s.careerMult = myMult; s.maxDebtAllowed = myDebtLim;
+
+            if (!s.isCEO && s.jobTitle !== newTitle) {
+                logMsg(`🎊 <strong>[${newTitle}]</strong>(으)로 직업 특성 전직 성공! 당신의 성향이 새로운 삶을 열었습니다!`, false, true);
+                s.jobTitle = newTitle;
             }
 
             let loanRate = parseFloat(getInterestRate());
@@ -669,10 +696,10 @@
             let totalIncome = 0;
             if (s.isCEO) {
                 let avgLv = Object.values(s.stats).reduce((a,b)=>a+getLevel(b), 0) / 5;
-                totalIncome = (Math.random() * (avgLv * 50000000)) - 50000000; // -50M to huge
+                totalIncome = (Math.random() * (avgLv * 50000000)) - 50000000; 
                 s.money += (totalIncome * offlineCount);
             } else {
-                totalIncome = s.baseSalary * myTitleObj.mult * getMyCompanyMult();
+                totalIncome = s.baseSalary * s.careerMult * getMyCompanyMult();
                 s.money += (totalIncome * offlineCount);
             }
             s.money += (ytIncome * offlineCount);
@@ -745,6 +772,7 @@
 
         // --- GLOBAL TIME ENGINE V6 (10s = 1day) ---
         function processTimeTick(ticks) {
+            if (s.paused) return;
             for(let i=0; i<ticks; i++) {
                 if(s.age >= END_AGE) break;
 
@@ -785,12 +813,13 @@
         }
 
         setInterval(() => {
-            if(s.age >= END_AGE || document.getElementById('eventModal').style.display==='flex') return;
+            if(s.age >= END_AGE || document.getElementById('eventModal').style.display==='flex' || s.paused) return;
             processTimeTick(1); s.lastSavedTime = Date.now(); updateUI();
         }, 1000); 
 
         function selectStock(sid) { currStockId = sid; updateUI(); }
         function processStocks() {
+            if (s.paused) return;
             Object.values(s.stocks).forEach(st => {
                 let v = st.vol; if(Math.random() < 0.01) v *= 10; 
                 let chg = (Math.random() - 0.495) * v; 
@@ -817,15 +846,15 @@
         function buyRe(rid) { let re = s.reals[rid]; if(s.money < re.price) return alert("현금이 부족합니다."); s.money -= re.price; let ot = re.owned * (re.avgPrice || 0); re.owned++; re.avgPrice = (ot + re.price) / re.owned; logMsg(`[부동산] ${re.title} 영끌 매수 완료!`, false, true); buildReUI(); updateUI(); }
         function sellRe(rid) { let re = s.reals[rid]; if(re.owned <= 0) return; let net = re.price * 0.95; re.owned--; if(re.owned === 0) re.avgPrice = 0; s.money += net; logMsg(`[부동산] ${re.title} 매도! (수령액: ${formatMoney(Math.floor(net))})`); buildReUI(); updateUI(); }
 
-        setInterval(() => { if(s.age >= END_AGE) return; processStocks(); updateUI(); }, 5000);
-        setInterval(() => { saveData(); }, 5000);
+        setInterval(() => { if(s.age >= END_AGE || s.paused) return; processStocks(); updateUI(); }, 5000);
+        setInterval(() => { if(s.paused) return; saveData(); }, 5000);
 
         // --- UI REFRESH ---
         function updateUI() {
             document.getElementById('uiYear').innerText = s.age; 
             document.getElementById('uiMonth').innerText = s.month;
             document.getElementById('uiDay').innerText = s.day;
-            document.getElementById('uiJobTitle').innerText = s.isCEO ? `[창업주 (CEO)]` : `[${s.companyType}] ${s.jobTitle}`;
+            document.getElementById('uiJobTitle').innerText = s.isCEO ? `[창업주] ${s.playerName || ''} 대표님` : `[${s.companyType}] ${s.jobTitle} ${s.playerName ? s.playerName + '님' : ''}`;
             
             let tInv = getInvested();
             let tPrin = getInvestPrincipal();
@@ -893,7 +922,14 @@
         function showModal(evtObj) { currentEvent = evtObj; document.getElementById('eventModal').style.display='flex'; document.getElementById('evtTitle').innerHTML=evtObj.title; document.getElementById('evtDesc').innerHTML=evtObj.desc; }
         function closeModal() { document.getElementById('eventModal').style.display='none'; currentEvent=null; }
         function acceptEvent() { document.getElementById('eventModal').style.display='none'; if(currentEvent.yes) currentEvent.yes(); currentEvent=null; updateUI(); }
-        function endGame() { showModal({ title: "장엄한 은퇴", desc: `100세 퇴직을 축하합니다.<br>이승을 뜨기 전 남긴 최종 총자산: <strong>${formatMoney(getNetWorth())}</strong>`, yes:()=>resetGame(), no:()=>resetGame() }); document.getElementById('evtBtnNo').style.display='none'; document.getElementById('evtBtnYes').innerText="인생 2회차 시작"; }
+        
+        function endGame() { 
+            let assetStr = formatMoney(getNetWorth());
+            let titleStr = s.isCEO ? "내 기업 창업주" : s.jobTitle;
+            let EndingText = `100세가 되어 파란만장한 직장 생활에 마침표를 찍습니다.<br><br><strong>[${s.playerName}]님의 최종 커리어:</strong><br><span style="color:var(--primary); font-size:1.4rem; font-weight:700;">${titleStr}</span><br><br>명예롭게 은퇴하며 남긴 생애 최종 자산: <strong style="color:var(--warning);">${assetStr}</strong><br><br>수고하셨습니다. 인생 2회차 도전을 건승을 빕니다.`;
+            showModal({ title: "장엄한 은퇴 (엔딩)", desc: EndingText, yes:()=>resetGame(), no:()=>resetGame() }); 
+            document.getElementById('evtBtnNo').style.display='none'; document.getElementById('evtBtnYes').innerText="인생 2회차 시작"; 
+        }
 
         function saveData() { localStorage.setItem('officeLifeSaveV7', JSON.stringify(s)); }
         function loadData() {
@@ -903,13 +939,22 @@
                     let p = JSON.parse(j);
                     if(p.age >= 26 && p.stocks && Object.keys(p.stocks).length > 0) { s = Object.assign(s, p); }
                     if(s.reals) Object.values(s.reals).forEach(r => { if(r.avgPrice === undefined) r.avgPrice = (r.owned > 0 ? r.price : 0); });
+                    if(s.playerName === "") s.paused = true;
+                    
                     let now = Date.now(); let diffSecs = Math.floor((now - s.lastSavedTime) / 1000);
-                    if (diffSecs > 10 && s.age < END_AGE) {
+                    if (diffSecs > 10 && s.age < END_AGE && !s.paused) {
                         document.getElementById('loadingModal').style.display = 'flex';
                         setTimeout(() => { let processSecs = Math.min(diffSecs, Math.floor(DAY_SECONDS*30*3)); processTimeTick(processSecs); s.lastSavedTime = Date.now(); saveData(); document.getElementById('loadingModal').style.display='none'; updateUI(); }, 500);
                     }
                 } catch(e) {}
             }
+            if(!s.playerName) {
+                document.getElementById('introModal').style.display = 'flex';
+                s.paused = true;
+            } else {
+                document.getElementById('introModal').style.display = 'none';
+            }
+
             initDataObjects();
             Object.values(s.stocks).forEach(st => { if(!st.history || !Array.isArray(st.history)) st.history = Array(30).fill(st.price || 0); });
             if(!s.stocks[currStockId]) currStockId = Object.keys(s.stocks)[0];
