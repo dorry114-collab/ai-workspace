@@ -392,6 +392,9 @@
                 <h2><i class="fa-solid fa-pen-nib"></i> 1단계: 대본 작성</h2>
                 <div class="editor-section">
                     <span class="editor-label">음성으로 흘러나올 나레이션을 적어주세요. (마침표로 문장이 구분됩니다)</span>
+                    <button class="btn-magic" onclick="openWizardModal()" style="background: linear-gradient(135deg, #b100ff, #ff0050); margin-bottom: 15px;">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI 대본 마법사 시작하기 (객관식 5단계)
+                    </button>
                     <textarea id="scriptInput" placeholder="예: 안녕하세요! 오늘은 엄청난 꿀팁을 하나 알려드릴게요. 꼭 끝까지 시청해 주세요."></textarea>
                 </div>
 
@@ -512,12 +515,174 @@
         </div>
     </div>
 
+    <!-- Wizard Modal -->
+    <div id="wizardModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center;">
+        <div style="background: var(--panel-bg); border: 1px solid var(--primary); border-radius: 20px; width: 90%; max-width: 600px; padding: 2rem; backdrop-filter: blur(15px); position:relative; max-height:80vh; display:flex; flex-direction:column; box-shadow: 0 10px 40px rgba(255,0,80,0.3);">
+            
+            <button onclick="closeWizard()" style="position:absolute; top:20px; right:20px; background:none; border:none; color:white; font-size:1.5rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+            
+            <h2 style="margin-top:0; color:var(--text-main); display:flex; align-items:center; gap:10px;"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--primary-accent);"></i> 쇼츠 대본 마법사 <span id="wizProgress" style="color:var(--primary); font-size:1.2rem;">(1/5)</span></h2>
+            
+            <div id="wizPhase1" style="display:block;">
+                <p style="color:var(--text-muted); margin-bottom:1rem; font-size:1.05rem;">어떤 주제의 쇼츠를 만들고 싶으신가요?</p>
+                <textarea id="wizIdea" style="width:100%; height:130px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:15px; color:white; font-size:1.1rem; resize:none; outline:none;" placeholder="예: 5분만에 꿀잠 자는 수면 방법"></textarea>
+                <button class="btn-magic" onclick="startWizardQuestions()" style="margin-top:20px; width:100%; font-size:1.2rem; padding:15px;">마법 시작하기 <i class="fa-solid fa-arrow-right"></i></button>
+            </div>
+
+            <div id="wizPhase2" style="display:none; flex:1; overflow-y:auto; padding-right:10px;">
+                <div id="wizChatHistory" style="display:flex; flex-direction:column; gap:10px; margin-bottom:15px;"></div>
+                
+                <div id="wizLoader" style="color:var(--primary-accent); text-align:center; display:none; padding:20px; font-weight:bold;"><i class="fa-solid fa-circle-notch fa-spin"></i> 마스터 통신 중... 잠시만 기다려주세요!</div>
+                
+                <div id="wizQuestionBox" style="background:rgba(255,255,255,0.02); padding:20px; border-radius:12px; border-left:4px solid var(--primary-accent); display:none;">
+                    <p id="wizQText" style="font-size:1.2rem; font-weight:700; margin-top:0; margin-bottom:15px; color:#fff; line-height:1.4;">질문 내용...</p>
+                    <div id="wizOptions" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                        <!-- Options injected here -->
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <input type="text" id="wizCustomAnswer" placeholder="혹은 주관식으로 직접 입력하기..." style="flex:1; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.2); background:rgba(0,0,0,0.6); color:white; font-size:1rem; outline:none;">
+                        <button class="btn-magic" style="width:auto; padding:12px 20px; margin:0;" onclick="submitWizardAnswer(document.getElementById('wizCustomAnswer').value)"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="wizPhase3" style="display:none; text-align:center; padding:3rem 0;">
+                <i class="fa-solid fa-wand-magic-sparkles fa-spin" style="font-size:4rem; color:var(--primary); margin-bottom:20px;"></i>
+                <h2 style="color:white; margin:0; margin-bottom:10px;">최고의 대본 작성 중...</h2>
+                <p style="color:var(--text-muted); font-size:1.1rem;">5가지 문답을 바탕으로 완벽한 쇼츠 대본을 조립하는 중입니다.</p>
+            </div>
+            
+        </div>
+    </div>
+
     <script>
         let uploadedImages = [];
         let isPlaying = false;
         let sentences = [];
         let currentSentenceIndex = 0;
         let currentImageIndex = 0;
+        
+        // Wizard Variables
+        let wizHistory = [];
+        let wizIndex = 1;
+        let wizIdea = "";
+
+        function openWizardModal() {
+            document.getElementById('wizardModal').style.display = 'flex';
+            document.getElementById('wizPhase1').style.display = 'block';
+            document.getElementById('wizPhase2').style.display = 'none';
+            document.getElementById('wizPhase3').style.display = 'none';
+            document.getElementById('wizIdea').value = '';
+            document.getElementById('wizChatHistory').innerHTML = '';
+            document.getElementById('wizProgress').textContent = '';
+            wizHistory = [];
+            wizIndex = 1;
+        }
+
+        function closeWizard() {
+            document.getElementById('wizardModal').style.display = 'none';
+        }
+
+        async function startWizardQuestions() {
+            wizIdea = document.getElementById('wizIdea').value.trim();
+            if (!wizIdea) return alert("만들고 싶은 쇼츠 주제를 간단히라도 적어주세요!");
+            document.getElementById('wizPhase1').style.display = 'none';
+            document.getElementById('wizPhase2').style.display = 'flex';
+            fetchNextWizardQ();
+        }
+
+        async function fetchNextWizardQ() {
+            document.getElementById('wizQuestionBox').style.display = 'none';
+            document.getElementById('wizLoader').style.display = 'block';
+            document.getElementById('wizProgress').textContent = `(${wizIndex}/5)`;
+
+            try {
+                let res = await fetch('/api/shorts/script/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({idea: wizIdea, history: wizHistory, questionIndex: wizIndex})
+                });
+                let data = await res.json();
+                if(data.success) {
+                    document.getElementById('wizLoader').style.display = 'none';
+                    document.getElementById('wizQuestionBox').style.display = 'block';
+                    document.getElementById('wizQText').textContent = data.question.question;
+                    
+                    let optsBox = document.getElementById('wizOptions');
+                    optsBox.innerHTML = '';
+                    if(data.question.options) {
+                        data.question.options.forEach(opt => {
+                            let btn = document.createElement('button');
+                            btn.style.cssText = "background: rgba(0,242,254,0.1); border: 1px solid rgba(0,242,254,0.3); color: white; padding: 12px 15px; border-radius: 8px; cursor: pointer; text-align: left; font-size:1.05rem; font-weight:600; transition: all 0.2s;";
+                            btn.onmouseover = () => btn.style.background = 'rgba(0,242,254,0.3)';
+                            btn.onmouseout = () => btn.style.background = 'rgba(0,242,254,0.1)';
+                            btn.innerHTML = `👉 ${opt}`;
+                            btn.onclick = () => submitWizardAnswer(opt);
+                            optsBox.appendChild(btn);
+                        });
+                    }
+                    document.getElementById('wizCustomAnswer').value = '';
+                } else {
+                    alert("서버 오류: " + data.error);
+                    document.getElementById('wizLoader').style.display = 'none';
+                }
+            } catch(e) {
+                alert("통신 오류 발생: " + e);
+            }
+        }
+
+        function submitWizardAnswer(ans) {
+            ans = ans.trim();
+            if(!ans) return;
+            const qtext = document.getElementById('wizQText').textContent;
+            
+            document.getElementById('wizChatHistory').innerHTML += `
+                <div style="background:rgba(255,255,255,0.03); padding:15px; border-radius:12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="color:var(--primary-accent); font-size:0.95rem; font-weight:bold; margin-bottom:8px;">Q${wizIndex}. ${qtext}</div>
+                    <div style="color:white; font-size:1.05rem;"><i class="fa-solid fa-reply fa-rotate-180" style="color:var(--text-muted); font-size:0.8rem; margin-right:5px;"></i> ${ans}</div>
+                </div>
+            `;
+            
+            // Auto scroll chat history to bottom
+            const p2 = document.getElementById('wizPhase2');
+            p2.scrollTop = p2.scrollHeight;
+            
+            wizHistory.push({question: qtext, answer: ans});
+            
+            if(wizIndex < 5) {
+                wizIndex++;
+                fetchNextWizardQ();
+            } else {
+                generateWizardScript();
+            }
+        }
+
+        async function generateWizardScript() {
+            document.getElementById('wizPhase2').style.display = 'none';
+            document.getElementById('wizPhase3').style.display = 'block';
+            document.getElementById('wizProgress').textContent = '(완성 중!)';
+            
+            try {
+                let res = await fetch('/api/shorts/script/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({idea: wizIdea, answers: wizHistory})
+                });
+                let data = await res.json();
+                if(data.success) {
+                    document.getElementById('scriptInput').value = data.script.trim();
+                    closeWizard();
+                    alert("성공적으로 완벽한 분량의 쇼츠 대본이 작성되었습니다! 내용을 확인해 보세요.");
+                } else {
+                    alert("생성 오류: " + data.error);
+                    closeWizard();
+                }
+            } catch(e) {
+                alert("통신 오류 발생");
+                closeWizard();
+            }
+        }
+
         let speechSynth = window.speechSynthesis;
         let utterance = null;
         let bgmAudio = new Audio();

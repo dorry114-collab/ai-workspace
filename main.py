@@ -755,6 +755,14 @@ def api_novel_chat():
         
     success, result_text = _call_gemini_chat(api_key, messages, temperature=0.65)
     
+    if not success and ("429" in result_text or "exceeded" in result_text.lower()):
+        # Fallback to Groq API if Gemini rate limit is hit
+        groq_api_key = os.environ.get('GROQ_API_KEY')
+        if groq_api_key:
+            success, result_text = _call_groq_chat(groq_api_key, messages, temperature=0.6)
+            if success:
+                result_text = "💡 (제미나이 사용량 초과로 보조 AI가 답합니다) \n\n" + result_text
+    
     if success:
         return jsonify({"success": True, "reply": result_text})
     else:
@@ -1826,6 +1834,93 @@ def clinic_search():
         import traceback
         traceback.print_exc()
         return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
+
+@app.route('/api/shorts/script/ask', methods=['POST'])
+def shorts_script_ask():
+    data = request.json
+    idea = data.get('idea', '')
+    history = data.get('history', [])
+    q_index = data.get('questionIndex', 1)
+    
+    if not idea:
+        return jsonify({"success": False, "error": "아이디어를 입력해주세요."})
+        
+    api_key = os.environ.get('GROQ_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GROQ_API_KEY가 없습니다."})
+        
+    try:
+        history_text = "\n".join([f"Q: {item['question']}\nA: {item['answer']}" for item in history]) if history else "없음"
+            
+        sys_prompt = f"""당신은 100만 유튜버를 기획하는 쇼츠(Shorts) 전문 PD이자 스크립트 라이터입니다.
+초기 기획: "{idea}"
+지금까지 진행된 문답:
+{history_text}
+
+이 쇼츠를 가장 흥미롭고 자극적(몰입감 있게)으로 구성하기 위해, 사용자에게 물어봐야 할 **과감한 질문 단 하나**를 생성하세요. 
+이 질문은 {q_index}번째 질문입니다. (총 5개의 질문 예정)
+사용자가 쉽게 고를 수 있도록 흥미로운 **객관식 선택지 3~4개**를 함께 제공해야 합니다.
+
+반드시 아래 JSON 형식으로만 응답해야 합니다. 다른 말은 절대 추가하지 마세요.
+{{
+  "question": "핵심 질문 내용...",
+  "options": ["매우 자극적인 도입부", "감성적인 스토리텔링", "핵심만 빠르게 전달"] 
+}}"""
+        success, text = _call_groq(api_key, sys_prompt)
+        
+        if not success:
+            return jsonify({"success": False, "error": f"통신 실패: {text}"})
+            
+        if "```json" in text:
+            text = text.split("```json")[1].split("```")[0].strip()
+        elif "```" in text:
+            text = text.split("```")[1].split("```")[0].strip()
+            
+        import json
+        q_data = json.loads(text)
+        return jsonify({"success": True, "question": q_data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/api/shorts/script/generate', methods=['POST'])
+def shorts_script_generate():
+    data = request.json
+    idea = data.get('idea', '')
+    answers = data.get('answers', [])
+    
+    api_key = os.environ.get('GROQ_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GROQ_API_KEY가 없습니다."})
+        
+    try:
+        if not answers:
+            return jsonify({"success": False, "error": "문답 기록이 부족합니다."})
+            
+        history_text = "\n".join([f"Q: {ans['question']}\nA: {ans['answer']}" for ans in answers])
+        
+        sys_prompt = f"""당신은 100만 구독자를 지닌 천재 쇼츠 기획자입니다.
+아래 사용자의 기획과 5번의 심층 문답을 바탕으로 완벽한 '유튜브 쇼츠 나레이션 대본'을 작성합니다.
+
+[기획안]
+{idea}
+
+[심층 문답]
+{history_text}
+
+[대본 작성 규칙]
+1. 인사말은 짧고 강렬하게, 혹은 생략하고 바로 본론(Hook)으로 들어가세요.
+2. 약 40초~60초 분량으로 읽기 좋은 길이로 작성하세요. (글자수 약 300~450자)
+3. 시각적 효과나 행동(지문)은 적지 마세요. 오직 화면에 출력될 "순수 나레이션/자막 텍스트"만 작성하세요.
+4. 문장은 마침표(.)나 느낌표(!)로 깔끔하게 끝나야 합니다. (이후 TTS와 이미지 생성 시스템이 자르기 쉽게)
+
+대본만을 출력하세요. 다른 안내말은 붙이지 마세요."""
+        success, text = _call_groq(api_key, sys_prompt)
+        if success:
+            return jsonify({"success": True, "script": text})
+        else:
+            return jsonify({"success": False, "error": text})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 @app.route('/game_office')
 def game_office():
