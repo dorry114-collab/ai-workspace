@@ -1898,8 +1898,8 @@ def shorts_script_generate():
             
         history_text = "\n".join([f"Q: {ans['question']}\nA: {ans['answer']}" for ans in answers])
         
-        sys_prompt = f"""당신은 100만 구독자를 지닌 천재 쇼츠 기획자입니다.
-아래 사용자의 기획과 5번의 심층 문답을 바탕으로 완벽한 '유튜브 쇼츠 나레이션 대본'을 작성합니다.
+        sys_prompt = f"""당신은 100만 구독자를 지닌 천재 쇼츠 기획출신 유튜버입니다. 
+당신의 임무는 아래 [유저의 기획안]과 [진행된 5번의 심층 문답]을 모두 종합하여, 유튜브 쇼츠(Shorts) 영상에서 성우가 직접 읽을 **'나레이션 대본 텍스트'**만을 완성해서 출력하는 것입니다.
 
 [기획안]
 {idea}
@@ -1907,14 +1907,24 @@ def shorts_script_generate():
 [심층 문답]
 {history_text}
 
-[대본 작성 규칙]
-1. 인사말은 짧고 강렬하게, 혹은 생략하고 바로 본론(Hook)으로 들어가세요.
-2. 약 40초~60초 분량으로 읽기 좋은 길이로 작성하세요. (글자수 약 300~450자)
-3. 시각적 효과나 행동(지문)은 적지 마세요. 오직 화면에 출력될 "순수 나레이션/자막 텍스트"만 작성하세요.
-4. 문장은 마침표(.)나 느낌표(!)로 깔끔하게 끝나야 합니다. (이후 TTS와 이미지 생성 시스템이 자르기 쉽게)
+[🚨 대본 작성 5대 절대 규칙 🚨]
+1. 절대로 질문을 다시 하거나, 사용자에게 피드백을 요구하지 마세요. 당신의 유일한 임무는 '완성된 대본 텍스트'를 출력하는 것입니다.
+2. 대본은 반드시 영상에 들어갈 순수 나레이션/자막 텍스트로만 100% 구성되어야 합니다. 시각적 효과 코멘트(예: [화면 전환], [음악 재생])나 지문(가로치고 적는 행동 묘사)을 절대로 적지 마세요.
+3. 숏폼 특성에 맞게 도입부(Hook)는 아주 강렬하고 빠르게 시작하세요.
+4. 문장은 성우 AI(TTS)가 자연스럽게 숨을 쉬며 읽을 수 있도록 마침표(.)나 느낌표(!)로 짧고 명확하게 끊어주세요.
+5. 오직 대본 문자열만 처음부터 끝까지 연속으로 출력하세요. 당신의 인사말, 서론 설명, 부가 코멘트, '제목 제안' 등을 절대로 붙이지 마세요.
 
-대본만을 출력하세요. 다른 안내말은 붙이지 마세요."""
-        success, text = _call_groq(api_key, sys_prompt)
+위 내용을 바탕으로 도파민이 터지는 60초 분량(문자수 약 300자~450자)의 '최고의 나레이션 대본'을 즉시 작성하세요."""
+        
+        # 제미나이 엔진 기반 대본 생성 (지시사항 이행 능력이 훨씬 좋음)
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        if gemini_key:
+            success, text = _call_gemini_chat(gemini_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+            # 할당량 초과 시 Groq으로 자동 우회
+            if not success and ("429" in text or "exceeded" in text.lower()):
+                success, text = _call_groq(api_key, sys_prompt)
+        else:
+            success, text = _call_groq(api_key, sys_prompt)
         if success:
             return jsonify({"success": True, "script": text})
         else:
