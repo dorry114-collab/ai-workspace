@@ -179,6 +179,13 @@
             color: #fff; outline: none; font-size: 1rem;
         }
         .setup-group input:focus { border-color: var(--primary); }
+        .preset-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; }
+        .preset-tag { 
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); 
+            padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.85rem; color: var(--text-muted);
+            cursor: pointer; transition: 0.2s;
+        }
+        .preset-tag:hover { background: rgba(217, 70, 239, 0.1); border-color: var(--primary); color: #fff; }
         .btn-start {
             background: var(--primary); color: #fff; border:none; padding: 1rem; width: 100%;
             border-radius: 8px; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: 0.2s;
@@ -223,15 +230,34 @@
             <h2>나만의 서사 만들기</h2>
             <div class="setup-group">
                 <label>어떤 장르의 소설인가요?</label>
-                <input type="text" id="setupGenre" placeholder="예: 정통 무협, 호러 스릴러, 사이버펑크..." value="정통 판타지">
+                <div class="preset-tags">
+                    <span class="preset-tag" onclick="setPreset('setupGenre', '정통 판타지')">정통 판타지</span>
+                    <span class="preset-tag" onclick="setPreset('setupGenre', '사이버펑크')">사이버펑크</span>
+                    <span class="preset-tag" onclick="setPreset('setupGenre', '현대 스릴러')">현대 스릴러</span>
+                    <span class="preset-tag" onclick="setPreset('setupGenre', '포스트 아포칼립스')">포스트 아포칼립스</span>
+                    <span class="preset-tag" onclick="setPreset('setupGenre', '무협')">정통 무협</span>
+                </div>
+                <input type="text" id="setupGenre" placeholder="직접 입력 (예: 좀비 아포칼립스)" value="정통 판타지">
             </div>
             <div class="setup-group">
                 <label>당신(주인공)의 캐릭터는?</label>
-                <input type="text" id="setupChar" placeholder="예: 기억을 잃은 암살자, 돈이 궁한 탐정..." value="평범한 시골 검사">
+                <div class="preset-tags">
+                    <span class="preset-tag" onclick="setPreset('setupChar', '가난한 용병')">가난한 용병</span>
+                    <span class="preset-tag" onclick="setPreset('setupChar', '천재 해커')">천재 해커</span>
+                    <span class="preset-tag" onclick="setPreset('setupChar', '기억을 잃은 마법사')">기억을 잃은 마법사</span>
+                    <span class="preset-tag" onclick="setPreset('setupChar', '재벌 3세 형사')">재벌 3세 형사</span>
+                </div>
+                <input type="text" id="setupChar" placeholder="직접 입력 (예: 은퇴한 암살자)" value="평범한 시골 검사">
             </div>
             <div class="setup-group">
                 <label>이 소설의 최종 목표나 시작 배경은?</label>
-                <input type="text" id="setupGoal" placeholder="예: 전설의 검을 찾기 위한 여정" value="세상을 멸망시키려는 마왕을 물리쳐야 한다">
+                <div class="preset-tags">
+                    <span class="preset-tag" onclick="setPreset('setupGoal', '마왕의 부활을 막아야 한다')">마왕 타도</span>
+                    <span class="preset-tag" onclick="setPreset('setupGoal', '행방불명된 동생을 찾아야 한다')">동생 찾기</span>
+                    <span class="preset-tag" onclick="setPreset('setupGoal', '거대 기업의 음모를 파헤친다')">기업의 음모</span>
+                    <span class="preset-tag" onclick="setPreset('setupGoal', '좀비 떼로부터 생존해야 한다')">좀비 생존</span>
+                </div>
+                <input type="text" id="setupGoal" placeholder="직접 입력 (예: 숨겨진 보물을 찾는다)" value="세상을 멸망시키려는 마왕을 물리쳐야 한다">
             </div>
             <button class="btn-start" onclick="startGame()">세계 생성하기</button>
         </div>
@@ -264,6 +290,10 @@
     <script>
         let messageHistory = [];
         let storyTurns = 0;
+
+        function setPreset(inputId, value) {
+            document.getElementById(inputId).value = value;
+        }
 
         function appendMessage(role, content) {
             let chatbox = document.getElementById('chatbox');

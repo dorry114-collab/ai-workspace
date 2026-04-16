@@ -703,20 +703,21 @@ def api_novel_chat():
         
     system_prompt = """당신은 TRPG 게임의 마스터이자, 사용자와 상호작용하며 흥미진진한 소설을 이끌어가는 작가입니다. 
 다음 규칙을 반드시 지켜주세요:
-1. 몰입감 넘치는 묘사와 생생한 전개를 유지하세요.
+1. 몰입감 넘치는 묘사와 생생한 전개를 유지하세요. (주변 환경, 인물의 심리, 색감 등을 아주 디테일하고 길게 묘사할 것)
 2. 절대 유저의 행동이나 대답을 당신이 대신 작성하지 마세요.
 3. 당신(마스터)의 출력 마지막 문장은 항상 유저에게 위기 상황 대처나 선택을 묻는 질문으로 끝내세요.
 4. 사용자의 선택 결과를 적극 반영해 다음 상황을 전개하세요.
 5. [가장 중요] 반드시 자연스러운 100% 한국어(Korean)로만 대답하세요. 한문(한자), 일본어, 러시아어 등 다른 언어를 절대 섞어 쓰지 마세요.
-6. HTML이나 마크다운 문법을 활용해 가독성 있게 응답하세요."""
+6. 답변은 최소 4 문단 이상, 아주 긴 호흡으로 넉넉하게 작성하세요.
+7. HTML이나 마크다운 문법을 활용해 가독성 있게 응답하세요."""
     
     if len(messages) > 0 and messages[0].get('role') != 'system':
         messages.insert(0, {"role": "system", "content": system_prompt})
         
     if len(messages) > 0 and messages[-1].get('role') == 'user':
-        messages[-1]['content'] += "\n\n(시스템 제약사항: 출력에 한자(漢字)나 일본어를 절대로 포함하지 마세요. 무조건 100% 한글(Korean Hangul)로만 대답해야 합니다. 그렇지 않으면 시스템이 에러를 발생시킵니다.)"
+        messages[-1]['content'] += "\n\n(시스템 제약사항: 분량을 아주 길고 풍부하게 작성하세요. 한자나 일본어는 절대 섞지 말고 100% 한글로만 답하세요.)"
         
-    success, result_text = _call_groq_chat(api_key, messages, temperature=0.5)
+    success, result_text = _call_groq_chat(api_key, messages, temperature=0.65)
     
     if success:
         return jsonify({"success": True, "reply": result_text})
