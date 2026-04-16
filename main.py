@@ -713,7 +713,10 @@ def api_novel_chat():
     if len(messages) > 0 and messages[0].get('role') != 'system':
         messages.insert(0, {"role": "system", "content": system_prompt})
         
-    success, result_text = _call_groq_chat(api_key, messages, temperature=0.6)
+    if len(messages) > 0 and messages[-1].get('role') == 'user':
+        messages[-1]['content'] += "\n\n(시스템 제약사항: 출력에 한자(漢字)나 일본어를 절대로 포함하지 마세요. 무조건 100% 한글(Korean Hangul)로만 대답해야 합니다. 그렇지 않으면 시스템이 에러를 발생시킵니다.)"
+        
+    success, result_text = _call_groq_chat(api_key, messages, temperature=0.5)
     
     if success:
         return jsonify({"success": True, "reply": result_text})
