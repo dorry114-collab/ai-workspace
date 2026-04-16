@@ -533,10 +533,79 @@ def prompt_generate():
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 통신 오류: {str(e)}"})
 
+# --- STATS & COMMENTS LOGIC ---
+STATS_FILE = 'stats.json'
+COMMENTS_FILE = 'comments.json'
+
+def get_stats():
+    if not os.path.exists(STATS_FILE):
+        return {"total": 0, "today": 0, "date": datetime.datetime.now().strftime('%Y-%m-%d')}
+    try:
+        with open(STATS_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {"total": 0, "today": 0, "date": datetime.datetime.now().strftime('%Y-%m-%d')}
+
+def save_stats(st):
+    try:
+        with open(STATS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(st, f)
+    except:
+        pass
+
+def track_visitor():
+    st = get_stats()
+    today_str = datetime.datetime.now().strftime('%Y-%m-%d')
+    st['total'] += 1
+    if st.get('date') != today_str:
+        st['date'] = today_str
+        st['today'] = 1
+    else:
+        st['today'] += 1
+    save_stats(st)
+    return st
+
 # --- ROUTES ---
 @app.route('/')
 def home():
-    return render_template('home.html')
+    st = track_visitor()
+    return render_template('home.html', stats=st)
+
+@app.route('/api/comments', methods=['GET', 'POST'])
+def api_comments():
+    comments = []
+    if os.path.exists(COMMENTS_FILE):
+        try:
+            with open(COMMENTS_FILE, 'r', encoding='utf-8') as f:
+                comments = json.load(f)
+        except:
+            pass
+            
+    if request.method == 'GET':
+        return jsonify({"success": True, "comments": comments})
+        
+    if request.method == 'POST':
+        data = request.json
+        author = data.get('author', '익명').strip()
+        text = data.get('text', '').strip()
+        if not author: author = "익명"
+        if not text: return jsonify({"success": False, "error": "내용을 입력해주세요."})
+        
+        new_comment = {
+            "id": str(uuid.uuid4()),
+            "author": author,
+            "text": text,
+            "date": datetime.datetime.now().strftime('%Y-%m-%d %H:%M')
+        }
+        comments.insert(0, new_comment)
+        comments = comments[:100] # 최근 100개만 유지
+        
+        try:
+            with open(COMMENTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(comments, f, ensure_ascii=False)
+            return jsonify({"success": True, "comments": comments})
+        except Exception as e:
+            return jsonify({"success": False, "error": str(e)})
 
 @app.route('/restaurant')
 def restaurant():
