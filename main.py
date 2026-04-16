@@ -707,12 +707,13 @@ def api_novel_chat():
 2. 절대 유저의 행동이나 대답을 당신이 대신 작성하지 마세요.
 3. 당신(마스터)의 출력 마지막 문장은 항상 유저에게 위기 상황 대처나 선택을 묻는 질문으로 끝내세요.
 4. 사용자의 선택 결과를 적극 반영해 다음 상황을 전개하세요.
-5. HTML이나 마크다운 문법을 활용해 가독성 있게 응답하세요."""
+5. [가장 중요] 반드시 자연스러운 100% 한국어(Korean)로만 대답하세요. 한문(한자), 일본어, 러시아어 등 다른 언어를 절대 섞어 쓰지 마세요.
+6. HTML이나 마크다운 문법을 활용해 가독성 있게 응답하세요."""
     
     if len(messages) > 0 and messages[0].get('role') != 'system':
         messages.insert(0, {"role": "system", "content": system_prompt})
         
-    success, result_text = _call_groq_chat(api_key, messages, temperature=0.8)
+    success, result_text = _call_groq_chat(api_key, messages, temperature=0.6)
     
     if success:
         return jsonify({"success": True, "reply": result_text})
