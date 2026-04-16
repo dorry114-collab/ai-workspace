@@ -481,6 +481,42 @@ def _call_groq_chat(api_key, messages, temperature=0.7):
     except Exception as e:
         return False, f"Groq 시스템 오류 발생: {str(e)}"
 
+def _call_gemini_chat(api_key, messages, temperature=0.7):
+    import google.generativeai as genai
+    try:
+        genai.configure(api_key=api_key)
+        
+        system_instruction = ""
+        gemini_messages = []
+        for msg in messages:
+            role = msg['role']
+            content = msg['content']
+            if role == 'system':
+                system_instruction += content + "\n"
+            elif role == 'assistant':
+                gemini_messages.append({"role": "model", "parts": [content]})
+            elif role == 'user':
+                gemini_messages.append({"role": "user", "parts": [content]})
+                
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=system_instruction.strip() if system_instruction else None
+        )
+        
+        if not gemini_messages:
+            return False, "에러: 보낼 메시지가 없습니다."
+            
+        last_msg = gemini_messages.pop()
+        chat = model.start_chat(history=gemini_messages)
+        
+        response = chat.send_message(
+            last_msg['parts'][0], 
+            generation_config=genai.types.GenerationConfig(temperature=temperature)
+        )
+        return True, response.text
+    except Exception as e:
+        return False, f"Gemini API 오류 발생: {str(e)}"
+
 @app.route('/api/prompt/ask', methods=['POST'])
 def prompt_ask():
     data = request.json
@@ -694,9 +730,9 @@ def api_novel_chat():
     data = request.json
     messages = data.get('messages', [])
     
-    api_key = os.environ.get('GROQ_API_KEY')
+    api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
-        return jsonify({"success": False, "error": "[필수] Groq API 키가 없습니다."})
+        return jsonify({"success": False, "error": "[필수] GEMINI_API_KEY가 없습니다. 환경변수를 확인하세요."})
         
     if not messages:
         return jsonify({"success": False, "error": "메시지 내역이 없습니다."})
@@ -715,9 +751,9 @@ def api_novel_chat():
         messages.insert(0, {"role": "system", "content": system_prompt})
         
     if len(messages) > 0 and messages[-1].get('role') == 'user':
-        messages[-1]['content'] += "\n\n(시스템 제약사항: 분량을 아주 길고 풍부하게 작성하세요. 한자나 일본어는 절대 섞지 말고 100% 한글로만 답하세요.)"
+        messages[-1]['content'] += "\n\n(시스템 제약사항: 분량을 아주 길고 풍부하게 작성하세요. 100% 한글로만 답하세요.)"
         
-    success, result_text = _call_groq_chat(api_key, messages, temperature=0.65)
+    success, result_text = _call_gemini_chat(api_key, messages, temperature=0.65)
     
     if success:
         return jsonify({"success": True, "reply": result_text})
