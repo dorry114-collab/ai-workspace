@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 인터랙티브 소설 (TRPG)</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --panel-bg: #161b22;
+            --border-color: #30363d;
+            --primary: #d946ef;
+            --primary-hover: #c026d3;
+            --text-main: #c9d1d9;
+            --text-muted: #8b949e;
+            --novel-bg: #ffffff;
+            --novel-text: #24292f;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .navbar {
+            padding: 1rem 2rem;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+            font-weight: 600;
+        }
+        .navbar a:hover { color: #fff; }
+        .title { font-weight: 700; color: var(--primary); font-size: 1.2rem; }
+
+        /* Main Layout */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+            padding: 1rem;
+            box-sizing: border-box;
+        }
+
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            scroll-behavior: smooth;
+        }
+
+        .chat-area::-webkit-scrollbar { width: 8px; }
+        .chat-area::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
+
+        /* Message Bubbles */
+        .msg {
+            max-width: 90%;
+            padding: 1.5rem;
+            border-radius: 12px;
+            line-height: 1.8;
+            font-family: 'Nanum Myeongjo', serif;
+            font-size: 1.1rem;
+            animation: fadeIn 0.5s ease;
+        }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+        .msg-ai {
+            background: rgba(217, 70, 239, 0.05);
+            border-left: 4px solid var(--primary);
+            align-self: flex-start;
+            color: #f0f6fc;
+        }
+        .msg-ai strong { color: var(--primary); }
+        .msg-ai em { color: #aaa; font-style: italic; }
+
+        .msg-user {
+            background: #1f2428;
+            border-right: 4px solid #3b82f6;
+            align-self: flex-end;
+            text-align: right;
+            color: #8ab4f8;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+        }
+
+        /* Input Widget */
+        .input-area {
+            display: flex;
+            gap: 1rem;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 16px;
+            margin-top: 1rem;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+
+        .input-area input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.1rem;
+            outline: none;
+        }
+
+        .input-area button {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.8rem 1.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .input-area button:hover { background: var(--primary-hover); transform: scale(1.05); }
+        .input-area button:disabled { background: #555; cursor: not-allowed; transform: none; }
+
+        /* Setup Modal */
+        #setupModal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2.5rem;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.7);
+        }
+        .modal-content h2 { margin-top: 0; color: var(--primary); margin-bottom: 1.5rem; }
+        .setup-group { text-align: left; margin-bottom: 1.5rem; }
+        .setup-group label { display: block; margin-bottom: 0.5rem; color: var(--text-muted); font-size: 0.9rem; }
+        .setup-group input { 
+            width: 100%; box-sizing: border-box; 
+            padding: 0.8rem; border-radius: 8px; 
+            background: rgba(255,255,255,0.05); 
+            border: 1px solid var(--border-color); 
+            color: #fff; outline: none; font-size: 1rem;
+        }
+        .setup-group input:focus { border-color: var(--primary); }
+        .btn-start {
+            background: var(--primary); color: #fff; border:none; padding: 1rem; width: 100%;
+            border-radius: 8px; font-weight: 700; font-size: 1.1rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-start:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(217, 70, 239, 0.4); }
+
+        /* Loading */
+        .typing-indicator { display: none; align-items: center; gap: 5px; padding: 1rem; }
+        .dot { width: 8px; height: 8px; background: var(--primary); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        /* Export Modal (The Book) */
+        #bookModal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: white; color: black; z-index: 2000;
+            display: none; flex-direction: column;
+            overflow-y: auto; padding: 4rem 2rem;
+            font-family: 'Nanum Myeongjo', serif;
+        }
+        .book-content { max-width: 700px; margin: 0 auto; line-height: 2.0; font-size: 1.15rem; }
+        .book-content h1 { text-align: center; margin-bottom: 3rem; font-family: 'Outfit', sans-serif; }
+        .book-content p { margin-bottom: 1.5rem; text-indent: 10px; }
+        .close-book { position: fixed; top: 20px; right: 20px; background: #000; color: #fff; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-family: 'Outfit', sans-serif; }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 워크스페이스</a>
+        <div class="title"><i class="fa-solid fa-book-journal-whills"></i> 무한의 AI 소설</div>
+        <a href="#" onclick="exportBook()" style="color:var(--primary);" title="소설책으로 만들기"><i class="fa-solid fa-book-open"></i> 출판</a>
+    </nav>
+
+    <!-- Setup Modal -->
+    <div id="setupModal">
+        <div class="modal-content">
+            <h2>나만의 서사 만들기</h2>
+            <div class="setup-group">
+                <label>어떤 장르의 소설인가요?</label>
+                <input type="text" id="setupGenre" placeholder="예: 정통 무협, 호러 스릴러, 사이버펑크..." value="정통 판타지">
+            </div>
+            <div class="setup-group">
+                <label>당신(주인공)의 캐릭터는?</label>
+                <input type="text" id="setupChar" placeholder="예: 기억을 잃은 암살자, 돈이 궁한 탐정..." value="평범한 시골 검사">
+            </div>
+            <div class="setup-group">
+                <label>이 소설의 최종 목표나 시작 배경은?</label>
+                <input type="text" id="setupGoal" placeholder="예: 전설의 검을 찾기 위한 여정" value="세상을 멸망시키려는 마왕을 물리쳐야 한다">
+            </div>
+            <button class="btn-start" onclick="startGame()">세계 생성하기</button>
+        </div>
+    </div>
+
+    <!-- Export Book Modal -->
+    <div id="bookModal">
+        <button class="close-book" onclick="document.getElementById('bookModal').style.display='none'">닫기</button>
+        <div class="book-content" id="bookHtml">
+            <!-- Book content rendered here -->
+        </div>
+    </div>
+
+    <!-- Main Game Area -->
+    <div class="main-container">
+        <div class="chat-area" id="chatbox">
+            <!-- Messages go here -->
+            <div class="typing-indicator" id="typing">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                <span style="color:var(--text-muted);font-size:0.9rem;margin-left:10px;">마스터가 다음 이야기를 구상 중입니다...</span>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="당신의 행동을 묘사하거나 대답하세요. (예: 문을 벌컥 열어젖힌다)" onkeypress="if(event.key==='Enter') sendTurn()">
+            <button id="sendBtn" onclick="sendTurn()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        let messageHistory = [];
+        let storyTurns = 0;
+
+        function appendMessage(role, content) {
+            let chatbox = document.getElementById('chatbox');
+            let typingIndicator = document.getElementById('typing');
+            
+            let div = document.createElement('div');
+            div.className = role === 'user' ? 'msg msg-user' : 'msg msg-ai';
+            
+            if (role === 'ai') {
+                div.innerHTML = marked.parse(content);
+            } else {
+                div.textContent = content;
+            }
+
+            chatbox.insertBefore(div, typingIndicator);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        async function startGame() {
+            let genre = document.getElementById('setupGenre').value.trim() || '소설';
+            let char = document.getElementById('setupChar').value.trim() || '주인공';
+            let goal = document.getElementById('setupGoal').value.trim() || '모험';
+
+            document.getElementById('setupModal').style.display = 'none';
+
+            let firstPrompt = `[설정 시작] 이 소설의 장르는 '${genre}'입니다. 주인공은 '${char}'이며, 주요 상황/목표는 '${goal}'입니다. 
+당신은 이 세계의 마스터입니다. 흥미진진한 프롤로그(1막)를 묘사해주시고, 마지막에 주인공이 어떤 행동을 취할 것인지 물어봐주세요.`;
+            
+            // System prompt injection handled in backend
+            messageHistory.push({"role": "user", "content": firstPrompt});
+            await fetchAI();
+        }
+
+        async function sendTurn() {
+            let inputTag = document.getElementById('userInput');
+            let btn = document.getElementById('sendBtn');
+            let text = inputTag.value.trim();
+            if(!text) return;
+
+            inputTag.value = '';
+            inputTag.disabled = true;
+            btn.disabled = true;
+
+            appendMessage('user', text);
+            messageHistory.push({"role": "user", "content": text});
+            
+            storyTurns++;
+
+            await fetchAI();
+
+            inputTag.disabled = false;
+            btn.disabled = false;
+            inputTag.focus();
+        }
+
+        async function fetchAI() {
+            let typingIndicator = document.getElementById('typing');
+            typingIndicator.style.display = 'flex';
+            document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+
+            try {
+                let res = await fetch('/api/novel/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({messages: messageHistory})
+                });
+                let data = await res.json();
+                
+                typingIndicator.style.display = 'none';
+
+                if(data.success) {
+                    let aiReply = data.reply;
+                    messageHistory.push({"role": "assistant", "content": aiReply});
+                    appendMessage('ai', aiReply);
+                } else {
+                    alert('마스터 오류: ' + data.error);
+                    messageHistory.pop(); // Revert user message on fail
+                }
+            } catch(e) {
+                typingIndicator.style.display = 'none';
+                messageHistory.pop();
+                alert('통신 오류가 발생했습니다.');
+            }
+        }
+
+        function exportBook() {
+            if(messageHistory.length < 2) {
+                return alert("아직 소설이 충분히 진행되지 않았습니다.");
+            }
+
+            let title = document.getElementById('setupGenre').value + "의 기억";
+            let html = `<h1>${title}</h1>`;
+            
+            messageHistory.forEach((msg, index) => {
+                if(msg.role === 'assistant') {
+                    html += marked.parse(msg.content);
+                    html += `<hr style="border:none; border-bottom:1px dashed #ccc; margin: 2rem 0;">`;
+                } else if(msg.role === 'user' && index > 0) { // skip first setup prompt
+                    html += `<p style="text-align:right; font-weight:bold; color:#555;">> ${msg.content}</p>`;
+                }
+            });
+
+            document.getElementById('bookHtml').innerHTML = html;
+            document.getElementById('bookModal').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>
