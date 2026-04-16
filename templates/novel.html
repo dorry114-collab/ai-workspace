@@ -211,7 +211,10 @@
     <nav class="navbar">
         <a href="/"><i class="fa-solid fa-arrow-left"></i> 워크스페이스</a>
         <div class="title"><i class="fa-solid fa-book-journal-whills"></i> 무한의 AI 소설</div>
-        <a href="#" onclick="exportBook()" style="color:var(--primary);" title="소설책으로 만들기"><i class="fa-solid fa-book-open"></i> 출판</a>
+        <div>
+            <a href="#" onclick="renameWord()" style="color:#8b5cf6; margin-right:15px;" title="이름/명사 강제 변경"><i class="fa-solid fa-pen-to-square"></i> 단어변경</a>
+            <a href="#" onclick="exportBook()" style="color:var(--primary);" title="소설책으로 만들기"><i class="fa-solid fa-book-open"></i> 출판</a>
+        </div>
     </nav>
 
     <!-- Setup Modal -->
@@ -365,6 +368,49 @@
 
             document.getElementById('bookHtml').innerHTML = html;
             document.getElementById('bookModal').style.display = 'flex';
+        }
+
+        function renameWord() {
+            if (messageHistory.length === 0) return alert("아직 소설이 시작되지 않았습니다.");
+            let oldWord = prompt("소설 전체에서 수정하고 싶은 단어(또는 이름)를 입력하세요.\n(예: 에린)");
+            if (!oldWord) return;
+            let newWord = prompt("'" + oldWord + "'를 어떤 단어로 바꾸시겠습니까?\n(예: 철수)");
+            if (!newWord) return;
+            
+            let count = 0;
+            let regex = new RegExp(oldWord, "g");
+            for (let i = 0; i < messageHistory.length; i++) {
+                let current = messageHistory[i].content;
+                let replaced = current.replace(regex, newWord);
+                if (current !== replaced) {
+                    messageHistory[i].content = replaced;
+                    count++;
+                }
+            }
+            if (count > 0) {
+                // Re-render chatbox completely
+                let chatbox = document.getElementById('chatbox');
+                let typingIndicator = document.getElementById('typing');
+                chatbox.innerHTML = '';
+                
+                messageHistory.forEach((msg, idx) => {
+                    if(idx === 0 && msg.role === 'user') return; // skip system setup message visual
+                    let div = document.createElement('div');
+                    div.className = msg.role === 'user' ? 'msg msg-user' : 'msg msg-ai';
+                    
+                    if (msg.role === 'assistant') {
+                        div.innerHTML = marked.parse(msg.content);
+                    } else {
+                        div.textContent = msg.content;
+                    }
+                    chatbox.appendChild(div);
+                });
+                chatbox.appendChild(typingIndicator);
+                chatbox.scrollTop = chatbox.scrollHeight;
+                alert(`성공적으로 '${oldWord}'(을)를 '${newWord}'(으)로 모두 변경했습니다!`);
+            } else {
+                alert("해당 단어를 찾을 수 없습니다.");
+            }
         }
     </script>
 </body>
