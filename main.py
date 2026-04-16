@@ -1882,6 +1882,30 @@ def shorts_script_ask():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+def _fetch_korean_news(query):
+    import urllib.request
+    import urllib.parse
+    import xml.etree.ElementTree as ET
+    import ssl
+    try:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        
+        safe_q = urllib.parse.quote(query)
+        url = f'https://news.google.com/rss/search?q={safe_q}&hl=ko&gl=KR&ceid=KR:ko'
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        resp = urllib.request.urlopen(req, context=ctx, timeout=4)
+        root = ET.fromstring(resp.read())
+        news_list = []
+        for item in root.findall('.//item')[:3]:
+            title = item.find('title')
+            if title is not None and title.text:
+                news_list.append(title.text)
+        return "\n".join([f"- {n}" for n in news_list]) if news_list else "최신 기사 없음"
+    except Exception:
+        return "최신 기사 없음"
+
 @app.route('/api/shorts/script/generate', methods=['POST'])
 def shorts_script_generate():
     data = request.json
@@ -1898,11 +1922,17 @@ def shorts_script_generate():
             
         history_text = "\n".join([f"Q: {ans['question']}\nA: {ans['answer']}" for ans in answers])
         
+        news_context = _fetch_korean_news(idea)
+        
         sys_prompt = f"""당신은 100만 구독자를 지닌 천재 쇼츠 기획출신 유튜버입니다. 
 당신의 임무는 아래 [유저의 기획안]과 [진행된 5번의 심층 문답]을 모두 종합하여, 유튜브 쇼츠(Shorts) 영상에서 성우가 직접 읽을 **'나레이션 대본 텍스트'**만을 완성해서 출력하는 것입니다.
 
 [기획안]
 {idea}
+
+[구글 뉴스 실시간 최신 기사 헤드라인 (참고용)]
+{news_context}
+(위 최신 뉴스/이슈를 대본 도입부의 후킹 멘트나 실제 근거 사례로 적극 녹여내어 '요즘 뜨는 이야기'처럼 아주 트렌디하고 흥미진진하게 만드세요. 지루하지 않고 자극적인 재미가 돋보여야 합니다!)
 
 [심층 문답]
 {history_text}
