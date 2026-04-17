@@ -756,31 +756,31 @@ def api_novel_chat():
     if not messages:
         return jsonify({"success": False, "error": "메시지 내역이 없습니다."})
         
-    system_prompt = """당신은 TRPG 게임의 마스터이자, 사용자와 상호작용하며 흥미진진한 소설을 이끌어가는 작가입니다. 
+    system_prompt = """당신은 TRPG 게임의 마스터이자, 사용자와 상호작용하며 흥미진진한 소설을 이끌어가는 뛰어난 작가입니다. 
 다음 규칙을 반드시 지켜주세요:
-1. 몰입감 넘치는 묘사와 생생한 전개를 유지하세요. (주변 환경, 인물의 심리, 색감 등을 아주 디테일하고 길게 묘사할 것)
-2. 절대 유저의 행동이나 대답을 당신이 대신 작성하지 마세요.
-3. 당신(마스터)의 출력 마지막에는 항상 유저가 취할 수 있는 구체적인 행동 선택지를 2~3개 제공해야 합니다.
-4. 선택지는 반드시 다음과 같은 정확한 텍스트 형식으로 당신의 대답 맨 마지막 줄에 작성하세요:
+1. 몰입감 넘치는 묘사를 하되, **동일한 단어나 비슷한 문장을 절대 반복해서 쓰지 마세요.** (예: '그는 ~했다. 그는 ~했다.' 식의 반복 금지)
+2. 분량을 억지로 늘리기 위해 했던 말을 또 하지 마세요. 항상 [새로운 사건 발생], [새로운 단서 발견], [새로운 인물 등장] 중 하나를 통해 스토리를 빠르게 앞으로 전진시키세요.
+3. 절대 유저의 행동이나 대답을 당신이 대신 작성하지 마세요. (주인공의 선택은 유저의 몫입니다)
+4. 당신(마스터)의 출력 마지막에는 항상 주인공이 직면한 딜레마나 행동 선택지를 2~3개 제공해야 합니다.
+5. 선택지는 반드시 다음과 같은 정확한 텍스트 형식으로 맨 마지막 줄에 작성하세요:
 [선택 1] (구체적인 행동 묘사)
 [선택 2] (구체적인 행동 묘사)
-5. [가장 중요] 반드시 자연스러운 100% 한국어(Korean)로만 대답하세요. 한문(한자), 일본어, 러시아어 등 다른 언어를 절대 섞어 쓰지 마세요.
-6. 답변은 최소 4 문단 이상, 아주 긴 호흡으로 넉넉하게 작성하세요.
-7. HTML이나 마크다운 문법을 활용해 가독성 있게 응답하세요."""
+6. 반드시 자연스럽고 매끄러운 100% 한국어(Korean)로만 대답하세요.
+7. HTML이나 마크다운 문법을 활용해 문단 구분을 확실하게 하여 가독성을 높이세요."""
     
     if len(messages) > 0 and messages[0].get('role') != 'system':
         messages.insert(0, {"role": "system", "content": system_prompt})
         
     if len(messages) > 0 and messages[-1].get('role') == 'user':
-        messages[-1]['content'] += "\n\n(시스템 제약사항: 분량을 아주 길고 풍부하게 작성하세요. 100% 한글로만 답하세요. 맨 마지막에는 반드시 '[선택 1] ... [선택 2] ...' 형식으로 유저가 당장 취할 수 있는 구체적인 행동 선택지를 제공하세요.)"
+        messages[-1]['content'] += "\n\n(시스템 제약사항: 절대로 방금 전 문장을 반복하지 말고, 즉각적으로 스토리를 다음 단계로 전진시키세요. 맨 마지막에는 반드시 '[선택 1] ... [선택 2] ...' 형식으로 선택지를 주세요.)"
         
-    success, result_text = _call_gemini_chat(api_key, messages, temperature=0.65)
+    success, result_text = _call_gemini_chat(api_key, messages, temperature=0.85)
     
     if not success and ("429" in result_text or "exceeded" in result_text.lower()):
         # Fallback to Groq API if Gemini rate limit is hit
         groq_api_key = os.environ.get('GROQ_API_KEY')
         if groq_api_key:
-            success, result_text = _call_groq_chat(groq_api_key, messages, temperature=0.6)
+            success, result_text = _call_groq_chat(groq_api_key, messages, temperature=0.8)
             if success:
                 result_text = "💡 (제미나이 사용량 초과로 보조 AI가 답합니다) \n\n" + result_text
     

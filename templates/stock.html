@@ -454,15 +454,15 @@
                     if (diff > 0) {
                         changeEl.innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 상승 예상`;
                         changeEl.className = 'stat-sub positive';
-                        if (delta_percent > 3) {
+                        if (pct > 3) {
                             trendEl.innerHTML = '<span class="positive">강한 상승 추세</span>';
                         } else {
                             trendEl.innerHTML = '<span class="positive">상승 추세</span>';
                         }
                     } else if (diff < 0) {
-                        changeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 하락 예상`;
+                        changeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${formatCurrency(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%) 하락 예상`;
                         changeEl.className = 'stat-sub negative';
-                        if (delta_percent < -3) {
+                        if (pct < -3) {
                             trendEl.innerHTML = '<span class="negative">강한 하락 추세</span>';
                         } else {
                             trendEl.innerHTML = '<span class="negative">하락 추세</span>';
