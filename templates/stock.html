@@ -331,7 +331,7 @@
                 <div class="stat-sub" id="backtestSub">1달 전 예측 vs 현재가 비교</div>
             </div>
             <div class="stat-card" id="aiStopLossCard" style="display: none; border-color: rgba(255, 0, 85, 0.3); box-shadow: 0 0 15px rgba(255, 0, 85, 0.1);">
-                <div class="stat-title">AI 제안 손절가 (Stop-Loss) <i class="fa-solid fa-shield-halved"></i></div>
+                <div class="stat-title">AI 제안 위험관리 선 <i class="fa-solid fa-shield-halved"></i></div>
                 <div class="stat-value" id="aiStopLossValue" style="color: #ff0055; font-size: 1.4rem; padding-top: 5px;">--</div>
                 <div class="stat-sub" style="display: flex; justify-content: space-between; align-items: center;">
                     <span id="aiStopLossSub">주요 지지선 붕괴 방어선</span>
@@ -454,15 +454,23 @@
                     if (diff > 0) {
                         changeEl.innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 상승 예상`;
                         changeEl.className = 'stat-sub positive';
-                        trendEl.innerHTML = '<span class="positive">상향 추세 (Bullish)</span>';
+                        if (delta_percent > 3) {
+                            trendEl.innerHTML = '<span class="positive">강한 상승 추세</span>';
+                        } else {
+                            trendEl.innerHTML = '<span class="positive">상승 추세</span>';
+                        }
                     } else if (diff < 0) {
                         changeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 하락 예상`;
                         changeEl.className = 'stat-sub negative';
-                        trendEl.innerHTML = '<span class="negative">하향 추세 (Bearish)</span>';
+                        if (delta_percent < -3) {
+                            trendEl.innerHTML = '<span class="negative">강한 하락 추세</span>';
+                        } else {
+                            trendEl.innerHTML = '<span class="negative">하락 추세</span>';
+                        }
                     } else {
                         changeEl.innerHTML = `변동 없음`;
                         changeEl.className = 'stat-sub neutral';
-                        trendEl.innerHTML = '<span class="neutral">횡보 (Sideways)</span>';
+                        trendEl.innerHTML = '<span class="neutral">횡보</span>';
                     }
                 }
                 
