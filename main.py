@@ -526,10 +526,10 @@ def prompt_ask():
     
     if not idea:
         return jsonify({"success": False, "error": "아이디어를 입력해주세요."})
-        
-    api_key = os.environ.get('GROQ_API_KEY')
-    if not api_key:
-        return jsonify({"success": False, "error": "[필수] Groq API 키가 없습니다. Render Environment에 GROQ_API_KEY를 등록해주세요."})
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    groq_api_key = os.environ.get('GROQ_API_KEY')
+    if not gemini_api_key and not groq_api_key:
+        return jsonify({"success": False, "error": "[필수] API 키가 없습니다. Render Environment에 API_KEY를 등록해주세요."})
         
     try:
         if history:
@@ -551,7 +551,16 @@ def prompt_ask():
   "question": "핵심 질문 내용...",
   "example": "예: ... 와 같이 적어주세요."
 }}"""
-        success, text = _call_groq(api_key, sys_prompt)
+        
+        # 엔진 이중화: 제미나이 우선, 한도 초과 시 Groq으로 폴백
+        success = False
+        text = ""
+        if gemini_api_key:
+            success, text = _call_gemini_chat(gemini_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+            if not success and ("429" in text or "exceeded" in text.lower()) and groq_api_key:
+                success, text = _call_groq(groq_api_key, sys_prompt)
+        elif groq_api_key:
+            success, text = _call_groq(groq_api_key, sys_prompt)
         
         if not success:
             return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {text}"})
@@ -572,9 +581,9 @@ def prompt_generate():
     data = request.json
     idea = data.get('idea', '')
     answers = data.get('answers', [])
-    
-    api_key = os.environ.get('GROQ_API_KEY')
-    if not api_key:
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    groq_api_key = os.environ.get('GROQ_API_KEY')
+    if not gemini_api_key and not groq_api_key:
         return jsonify({"success": False, "error": "API 키가 없습니다."})
         
     try:
@@ -586,9 +595,16 @@ def prompt_generate():
 {answers_text}
 
 위 내용을 바탕으로 사용자가 ChatGPT나 Claude 등에 그대로 복사해서 붙여넣기만 하면 최고의 결과가 나올 수 있는 '궁극의 마스터 프롬프트'를 마크다운 형태의 코드 블록(```) 영역 안에 작성해주세요.
-[역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 작성해주세요."""
+[역할 지정], [구체적 목적], [세부 규칙], [출력 양식] 등 최신 프롬프트 가이드라인을 잘 지켜서 풍성하고 디테일하게 오직 100% 한국어로만 작성해주세요."""
 
-        success, final_text = _call_groq(api_key, sys_prompt)
+        success = False
+        final_text = ""
+        if gemini_api_key:
+            success, final_text = _call_gemini_chat(gemini_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+            if not success and ("429" in final_text or "exceeded" in final_text.lower()) and groq_api_key:
+                success, final_text = _call_groq(groq_api_key, sys_prompt)
+        elif groq_api_key:
+            success, final_text = _call_groq(groq_api_key, sys_prompt)
         
         if not success:
             return jsonify({"success": False, "error": f"모든 AI 모델 통신 실패 (최종 오류): {final_text}"})

@@ -250,7 +250,10 @@
 <body>
 
     <nav class="navbar">
-        <a href="/"><i class="fa-solid fa-arrow-left"></i> 워크스페이스</a>
+        <div>
+            <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈</a>
+            <a href="#" onclick="resetGame()" style="margin-left: 15px; color:#ef4444;"><i class="fa-solid fa-rotate-right"></i> 새게임</a>
+        </div>
         <div class="title"><i class="fa-solid fa-book-journal-whills"></i> 무한의 AI 소설</div>
         <div>
             <a href="#" onclick="renameWord()" style="color:#8b5cf6; margin-right:15px;" title="이름/명사 강제 변경"><i class="fa-solid fa-pen-to-square"></i> 단어변경</a>
@@ -433,13 +436,16 @@
                     let aiReply = data.reply;
                     messageHistory.push({"role": "assistant", "content": aiReply});
                     appendMessage('ai', aiReply);
+                    saveLocalHistory();
                 } else {
                     alert('마스터 오류: ' + data.error);
                     messageHistory.pop(); // Revert user message on fail
+                    saveLocalHistory();
                 }
             } catch(e) {
                 typingIndicator.style.display = 'none';
                 messageHistory.pop();
+                saveLocalHistory();
                 alert('통신 오류가 발생했습니다.');
             }
         }
@@ -490,23 +496,56 @@
                 
                 messageHistory.forEach((msg, idx) => {
                     if(idx === 0 && msg.role === 'user') return; // skip system setup message visual
-                    let div = document.createElement('div');
-                    div.className = msg.role === 'user' ? 'msg msg-user' : 'msg msg-ai';
-                    
-                    if (msg.role === 'assistant') {
-                        div.innerHTML = marked.parse(msg.content);
-                    } else {
-                        div.textContent = msg.content;
-                    }
-                    chatbox.appendChild(div);
+                    appendMessage(msg.role === 'assistant' ? 'ai' : msg.role, msg.content);
                 });
                 chatbox.appendChild(typingIndicator);
                 chatbox.scrollTop = chatbox.scrollHeight;
+                saveLocalHistory();
                 alert(`성공적으로 '${oldWord}'(을)를 '${newWord}'(으)로 모두 변경했습니다!`);
             } else {
                 alert("해당 단어를 찾을 수 없습니다.");
             }
         }
+
+        // --- Local Storage Management ---
+        function saveLocalHistory() {
+            localStorage.setItem('trpg_history', JSON.stringify(messageHistory));
+        }
+
+        function restoreLocalHistory() {
+            let saved = localStorage.getItem('trpg_history');
+            if (saved) {
+                try {
+                    let parsed = JSON.parse(saved);
+                    if (parsed && parsed.length > 0) {
+                        messageHistory = parsed;
+                        document.getElementById('setupModal').style.display = 'none';
+                        
+                        let typingIndicator = document.getElementById('typing');
+                        
+                        messageHistory.forEach((msg, idx) => {
+                            if (idx === 0 && msg.role === 'system') return; // Backwards compatible check
+                            if (idx === 0 && msg.role === 'user' && msg.content.startsWith('[설정 시작]')) return;
+                            appendMessage(msg.role === 'assistant' ? 'ai' : msg.role, msg.content);
+                        });
+                        
+                        document.getElementById('chatbox').appendChild(typingIndicator);
+                        document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+                    }
+                } catch(e) {
+                    console.error("Local storage load failed", e);
+                }
+            }
+        }
+
+        function resetGame() {
+            if (confirm("정말 현재 소설을 초기화하고 새 게임을 시작하시겠습니까?")) {
+                localStorage.removeItem('trpg_history');
+                location.reload();
+            }
+        }
+
+        window.onload = restoreLocalHistory;
     </script>
 </body>
 </html>
