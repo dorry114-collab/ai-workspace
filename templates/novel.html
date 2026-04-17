@@ -213,28 +213,54 @@
         .close-book { position: fixed; top: 20px; right: 20px; background: #000; color: #fff; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-family: 'Outfit', sans-serif; }
         
         /* Interactive Choice Buttons */
+        .choices-wrapper {
+            margin-top: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+        
         .choice-btn {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(217, 70, 239, 0.4);
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+            border: 2px solid rgba(217, 70, 239, 0.3);
             color: #fff;
-            padding: 0.8rem 1.2rem;
-            border-radius: 8px;
-            text-align: left;
+            padding: 1.5rem 1.2rem;
+            border-radius: 16px;
+            text-align: center;
             font-family: 'Nanum Myeongjo', serif;
-            font-size: 1.05rem;
+            font-size: 1.15rem;
+            font-weight: bold;
             cursor: pointer;
-            transition: all 0.2s;
-            display: block;
-            width: 100%;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .choice-btn i {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 5px;
+            transition: transform 0.3s;
         }
         .choice-btn:hover {
-            background: rgba(217, 70, 239, 0.2);
+            background: linear-gradient(145deg, rgba(217, 70, 239, 0.2), rgba(192, 38, 211, 0.1));
             border-color: var(--primary);
-            transform: translateX(5px);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(217, 70, 239, 0.4);
         }
-
+        .choice-btn:hover i {
+            transform: scale(1.2);
+        }
+        
         /* Mobile UI Optimization */
         @media (max-width: 600px) {
+            .choices-wrapper { list-style: column; grid-template-columns: 1fr; }
+
             .navbar { padding: 1rem; flex-wrap: wrap; gap: 10px; }
             .navbar > div { width: 100%; display: flex; justify-content: space-between; margin-top: 10px; }
             .msg { max-width: 100%; padding: 1rem; font-size: 1rem; }
@@ -340,10 +366,10 @@
             div.className = role === 'user' ? 'msg msg-user' : 'msg msg-ai';
             
             if (role === 'ai') {
-                // 파싱: [선택 1] 등 객관식 텍스트를 추출하여 버튼으로 변환
+                // 파싱: [선택 A] 등 객관식 텍스트를 추출하여 버튼으로 변환
                 let choices = [];
-                // 매치 패턴: [선택 1], **[선택 1]**, [선택 1]: 등 유연하게 포착
-                let cleanContent = content.replace(/(?:\*\*)?\[선택\s*\d+\](?:\*\*)?\s*:?\s*(.*)/g, (match, choiceText) => {
+                // 매치 패턴: [선택 1], **[선택 A]**, [선택 B]: 등 알파벳과 숫자 모두 유연하게 포착
+                let cleanContent = content.replace(/(?:\*\*)?\[선택\s*[A-Z0-9가-힣]+\](?:\*\*)?\s*:?\s*(.*)/gi, (match, choiceText) => {
                     let text = choiceText.trim().replace(/[*_]/g, '');
                     if(text) choices.push(text);
                     return ''; // 원본 텍스트에서는 숨김
@@ -351,18 +377,18 @@
                 
                 div.innerHTML = marked.parse(cleanContent.trim());
                 
-                // 선택지 버튼들 동적 추가
+                // 선택지 버튼들 동적 추가 (그래 결심했어 스타일!)
                 if (choices.length > 0) {
                     let choicesContainer = document.createElement('div');
-                    choicesContainer.style.marginTop = '1.5rem';
-                    choicesContainer.style.display = 'flex';
-                    choicesContainer.style.flexDirection = 'column';
-                    choicesContainer.style.gap = '0.8rem';
+                    choicesContainer.className = 'choices-wrapper';
                     
-                    choices.forEach((choiceText) => {
+                    choices.forEach((choiceText, idx) => {
                         let btn = document.createElement('button');
                         btn.className = 'choice-btn';
-                        btn.innerHTML = `<i class="fa-solid fa-arrow-right" style="color:var(--primary); margin-right:8px;"></i> ${choiceText}`;
+                        let icon = idx === 0 ? 'fa-check-circle' : 'fa-times-circle'; // A/B 느낌
+                        let color = idx === 0 ? '#10b981' : '#f43f5e';
+                        
+                        btn.innerHTML = `<i class="fa-solid ${icon}" style="color:${color};"></i> <span>${choiceText}</span>`;
                         btn.onclick = () => {
                             document.getElementById('userInput').value = choiceText;
                             sendTurn();

@@ -746,13 +746,14 @@ def api_youtube_summary():
         
         transcript_text = []
         for t in t_data:
-            start_sec = int(t['start'])
+            start_sec = int(getattr(t, 'start', 0) if not isinstance(t, dict) else t.get('start', 0))
+            text_content = getattr(t, 'text', '') if not isinstance(t, dict) else t.get('text', '')
             m, s = divmod(start_sec, 60)
             time_str = f"[{m:02d}:{s:02d}]"
-            transcript_text.append(f"{time_str} {t['text']}")
+            transcript_text.append(f"{time_str} {text_content}")
         full_transcript = " ".join(transcript_text)
         transcript_available = True
-    except Exception:
+    except Exception as e:
         transcript_available = False
         
     p_prompt_tail = """
@@ -788,27 +789,48 @@ def api_youtube_summary():
             clean_url = f"https://www.youtube.com/watch?v={video_id}"
             # yt-dlp download (audio only) via python module to avoid path issues
             dl_result = subprocess.run([sys.executable, '-m', 'yt_dlp', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', f'{audio_base_path}.%(ext)s', clean_url], capture_output=True, text=True)
-            if dl_result.returncode != 0:
-                raise Exception(f"오디오 추출 실패: {dl_result.stderr}")
             
-            # find the downloaded mp3
-            audio_files = glob.glob(f"{audio_base_path}.*")
-            if not audio_files:
-                raise Exception("오디오 파일 다운로드에 실패했습니다.")
-            audio_file_path = audio_files[0]
-            
-            # Upload to gemini
-            genai_file = genai.upload_file(audio_file_path, mime_type="audio/mp3")
-            while genai_file.state.name == 'PROCESSING':
-                time.sleep(2)
-                genai_file = genai.get_file(genai_file.name)
-                if genai_file.state.name == 'FAILED':
-                    raise Exception("제미나이 오디오 분석 처리에 실패했습니다.")
-            
-            p_prompt = "다음은 자막이 제공되지 않는 유튜브 영상의 원본 오디오 파일입니다. 오디오를 직접 청취하고 내용을 이해해주세요.\n" + p_prompt_tail
-            response = model.generate_content([genai_file, p_prompt], generation_config=genai.types.GenerationConfig(temperature=0.7))
-            result_text = response.text
-            full_transcript = "(해당 영상은 자막이 제공되지 않아, AI가 원본 오디오를 직접 청취하여 분석한 결과입니다.)"
+            if dl_result.returncode == 0:
+                # find the downloaded mp3
+                audio_files = glob.glob(f"{audio_base_path}.*")
+                if not audio_files:
+                    raise Exception("오디오 파일 다운로드에 실패했습니다.")
+                audio_file_path = audio_files[0]
+                
+                # Upload to gemini
+                genai_file = genai.upload_file(audio_file_path, mime_type="audio/mp3")
+                while genai_file.state.name == 'PROCESSING':
+                    time.sleep(2)
+                    genai_file = genai.get_file(genai_file.name)
+                    if genai_file.state.name == 'FAILED':
+                        raise Exception("제미나이 오디오 분석 처리에 실패했습니다.")
+                
+                p_prompt = "다음은 자막이 제공되지 않는 유튜브 영상의 원본 오디오 파일입니다. 오디오를 직접 청취하고 내용을 이해해주세요.\n" + p_prompt_tail
+                response = model.generate_content([genai_file, p_prompt], generation_config=genai.types.GenerationConfig(temperature=0.7))
+                result_text = response.text
+                full_transcript = "(해당 영상은 자막이 제공되지 않아, AI가 원본 오디오를 직접 청취하여 분석한 결과입니다.)"
+            else:
+                # Youtube Bot Blocked -> Fallback to parsing Title and Description using requests and bs4
+                import requests
+                from bs4 import BeautifulSoup
+                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+                req_response = requests.get(clean_url, headers=headers, timeout=10)
+                soup = BeautifulSoup(req_response.text, 'html.parser')
+                
+                title_tag = soup.find('title')
+                title_text = title_tag.text if title_tag else "제목 알 수 없음"
+                
+                # Strip "- YouTube" if exists
+                if title_text.endswith(" - YouTube"):
+                    title_text = title_text[:-10]
+                
+                desc_tag = soup.find('meta', {'name': 'description'})
+                desc_text = desc_tag['content'] if desc_tag and 'content' in desc_tag.attrs else "설명 알 수 없음"
+                
+                p_prompt = f"[안내] 유튜브 봇 차단 등으로 오디오 다운로드에 실패했습니다.\n대안으로 이 유튜브 영상의 '제목'과 '설명란' 내용만을 제공합니다.\n이 제한된 정보를 바탕으로 아래 형식에 맞춰 작성해 주세요:\n\n영상 제목: {title_text}\n영상 설명: {desc_text}\n\n" + p_prompt_tail
+                response = model.generate_content(p_prompt, generation_config=genai.types.GenerationConfig(temperature=0.7))
+                result_text = response.text
+                full_transcript = "(해당 영상은 유튜브 봇 차단으로 인해 오디오마저 가져오지 못했습니다. 유튜브 페이지에 적혀있는 '제목'과 '설명란'만을 토대로 AI가 유추한 제한적 요약입니다.)"
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 분석 중 오류 발생: {str(e)}"})
     finally:
@@ -941,21 +963,21 @@ def api_novel_chat():
         
     system_prompt = """당신은 TRPG 게임의 마스터이자, 사용자와 상호작용하며 흥미진진한 소설을 이끌어가는 뛰어난 작가입니다. 
 다음 규칙을 반드시 지켜주세요:
-1. 몰입감 넘치는 묘사를 하되, **동일한 단어나 비슷한 문장을 절대 반복해서 쓰지 마세요.** (예: '그는 ~했다. 그는 ~했다.' 식의 반복 금지)
-2. 분량을 억지로 늘리기 위해 했던 말을 또 하지 마세요. 항상 [새로운 사건 발생], [새로운 단서 발견], [새로운 인물 등장] 중 하나를 통해 스토리를 빠르게 앞으로 전진시키세요.
-3. 절대 유저의 행동이나 대답을 당신이 대신 작성하지 마세요. (주인공의 선택은 유저의 몫입니다)
-4. 당신(마스터)의 출력 마지막에는 항상 주인공이 직면한 딜레마나 행동 선택지를 2~3개 제공해야 합니다.
+1. 분량을 풍부하게 작성하세요. 매 턴마다 최소 3~4개의 밀도 있는 문단(최소 500자 이상)으로 몰입감 넘치는 묘사와 스토리 진행을 해주세요. (내용이 너무 적으면 안 됩니다).
+2. 동일한 단어나 비슷한 문장을 절대 반복하지 마세요. (예: '그는 ~했다. 그는 ~했다.' 식의 반복 금지)
+3. 항상 [새로운 사건 발생], [새로운 단서 발견], [새로운 인물 등장] 중 하나를 통해 스토리를 빠르게 앞으로 전진시키세요.
+4. 당신의 출력 마지막에는 옛날 TV 예능 '인생극장 (그래 결심했어!)' 처럼 주인공이 직면한 **명확하고 극단적인 두 가지 갈림길(A or B, O or X 형태)**을 제공해야 합니다.
 5. 선택지는 반드시 다음과 같은 정확한 텍스트 형식으로 맨 마지막 줄에 작성하세요:
-[선택 1] (구체적인 행동 묘사)
-[선택 2] (구체적인 행동 묘사)
-6. 반드시 자연스럽고 매끄러운 100% 한국어(Korean)로만 대답하세요.
+[선택 A] (가장 첫 번째 운명의 선택 행동 묘사)
+[선택 B] (완전히 반대되거나 다른 방향의 운명의 선택 행동 묘사)
+6. 반드시 자연스럽고 매끄러운 100% 한국어(Korean)로 대답하세요.
 7. HTML이나 마크다운 문법을 활용해 문단 구분을 확실하게 하여 가독성을 높이세요."""
     
     if len(messages) > 0 and messages[0].get('role') != 'system':
         messages.insert(0, {"role": "system", "content": system_prompt})
         
     if len(messages) > 0 and messages[-1].get('role') == 'user':
-        messages[-1]['content'] += "\n\n(시스템 제약사항: 절대로 방금 전 문장을 반복하지 말고, 즉각적으로 스토리를 다음 단계로 전진시키세요. 맨 마지막에는 반드시 '[선택 1] ... [선택 2] ...' 형식으로 선택지를 주세요.)"
+        messages[-1]['content'] += "\n\n(시스템 제약사항: 절대로 방금 전 문장을 반복하지 말고, 즉각적으로 스토리를 다음 단계로 전진시키세요. 엄청나게 구체적이고 긴 분량(최소 3문단)의 소설을 작성하세요. 맨 마지막에는 반드시 '[선택 A] ... [선택 B] ...' 형식으로 정확히 2개의 극단적인 선택지만 주세요.)"
         
     success, result_text = _call_gemini_chat(api_key, messages, temperature=0.85)
     
