@@ -725,48 +725,106 @@ def api_youtube_summary():
     video_id = match.group(1)
     
     from youtube_transcript_api import YouTubeTranscriptApi
+    import google.generativeai as genai
+    import tempfile, glob, subprocess, time
+    
+    transcript_available = False
+    full_transcript = ""
+    audio_file_path = None
+    genai_file = None
+    result_text = ""
+    
     try:
-        # Get Korean or English transcript
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko', 'en'])
+        api = YouTubeTranscriptApi()
+        transcript_list = api.list(video_id)
+        transcript = transcript_list.find_transcript(['ko', 'en'])
+        t_data = transcript.fetch()
+        
         transcript_text = []
-        for t in transcript_list:
+        for t in t_data:
             start_sec = int(t['start'])
             m, s = divmod(start_sec, 60)
             time_str = f"[{m:02d}:{s:02d}]"
             transcript_text.append(f"{time_str} {t['text']}")
         full_transcript = " ".join(transcript_text)
-    except Exception as e:
-        return jsonify({"success": False, "error": f"이 영상은 자막을 제공하지 않거나 추출할 수 없습니다. ({str(e)})"})
+        transcript_available = True
+    except Exception:
+        transcript_available = False
         
-    p_prompt = f"""다음은 어느 유튜브 영상의 전체 텍스트 스크립트 (타임스탬프 포함) 입니다:
-
-{full_transcript[:25000]}
-
+    p_prompt_tail = """
 위 내용을 바탕으로 다음 정보를 작성해주세요. 전문 용어는 초보자 기준 일상 비유로 풀어서, Mermaid 차트는 아주 심플한 graph TD 구조로만 작성하세요. 반드시 JSON 형식으로만 응답해야 합니다.
 
-{{
+{
   "sentiment_emoji": "영상 전반의 분위기를 나타내는 이모지 1개 (예: ☀️, 🌋, 🌩️, 📚, 💡)",
   "sentiment_label": "분위기 한줄 요약 (예: 열정적이고 공격적인 경고)",
   "timeline_summary": [
-    {{ "time": "12:34", "sec": 754, "title": "구간 핵심 주제", "desc": "해당 구간 짧은 요약 (4~5개 구간 도출할 것)" }}
+    { "time": "12:34", "sec": 754, "title": "구간 핵심 주제", "desc": "해당 구간 짧은 요약 (4~5개 구간 도출할 것)" }
   ],
   "summary": "영상 핵심 내용을 3~4문단으로 깔끔하고 한눈에 들어오게 요약한 본문",
   "glossary": [
-    {{ "term": "어려운 용어 1", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }},
-    {{ "term": "어려운 용어 2", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }}
+    { "term": "어려운 용어 1", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }
   ],
   "mermaid_code": "graph TD\\n  A[최상단 제목] --> B[핵심주장1]\\n  A --> C[핵심주장2] 처럼 작성. 백틱(```) 없이 줄바꿈 문법(\\\\n)을 사용한 순수 텍스트열로 응답."
-}}"""
-    
+}"""
+
     try:
-        messages = [{"role": "user", "content": p_prompt}]
-        success, result_text = _call_gemini_chat(api_key, messages, temperature=0.7)
-        if success:
-            if "```json" in result_text: result_text = result_text.split("```json")[1].split("```")[0].strip()
-            elif "```" in result_text: result_text = result_text.split("```")[1].split("```")[0].strip()
-            import json
-            ai_data = json.loads(result_text)
-            return jsonify({
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        if transcript_available:
+            p_prompt = f"다음은 유튜브 영상의 텍스트 스크립트(타임스탬프 포함)입니다:\n{full_transcript[:25000]}\n" + p_prompt_tail
+            response = model.generate_content(p_prompt, generation_config=genai.types.GenerationConfig(temperature=0.7))
+            result_text = response.text
+        else:
+            # Fallback to audio download
+            temp_dir = tempfile.gettempdir()
+            audio_base_path = os.path.join(temp_dir, f"yt_audio_{video_id}")
+            
+            # yt-dlp download (audio only)
+            subprocess.run(['yt-dlp', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', f'{audio_base_path}.%(ext)s', video_url], check=True, capture_output=True)
+            
+            # find the downloaded mp3
+            audio_files = glob.glob(f"{audio_base_path}.*")
+            if not audio_files:
+                raise Exception("오디오 파일 다운로드에 실패했습니다.")
+            audio_file_path = audio_files[0]
+            
+            # Upload to gemini
+            genai_file = genai.upload_file(audio_file_path, mime_type="audio/mp3")
+            while genai_file.state.name == 'PROCESSING':
+                time.sleep(2)
+                genai_file = genai.get_file(genai_file.name)
+                if genai_file.state.name == 'FAILED':
+                    raise Exception("제미나이 오디오 분석 처리에 실패했습니다.")
+            
+            p_prompt = "다음은 자막이 제공되지 않는 유튜브 영상의 원본 오디오 파일입니다. 오디오를 직접 청취하고 내용을 이해해주세요.\n" + p_prompt_tail
+            response = model.generate_content([genai_file, p_prompt], generation_config=genai.types.GenerationConfig(temperature=0.7))
+            result_text = response.text
+            full_transcript = "(해당 영상은 자막이 제공되지 않아, AI가 원본 오디오를 직접 청취하여 분석한 결과입니다.)"
+    except Exception as e:
+        return jsonify({"success": False, "error": f"AI 분석 중 오류 발생: {str(e)}"})
+    finally:
+        if genai_file:
+            try:
+                genai.delete_file(genai_file.name)
+            except:
+                pass
+        if audio_file_path and os.path.exists(audio_file_path):
+            try:
+                os.remove(audio_file_path)
+            except:
+                pass
+
+    if "```json" in result_text: result_text = result_text.split("```json")[1].split("```")[0].strip()
+    elif "```" in result_text: result_text = result_text.split("```")[1].split("```")[0].strip()
+    
+    import json
+    try:
+        ai_data = json.loads(result_text)
+    except json.JSONDecodeError:
+        return jsonify({"success": False, "error": "AI가 올바른 JSON 데이터를 반환하지 않았습니다."})
+        
+    return jsonify({
                 "success": True,
                 "video_id": video_id,
                 "sentiment_emoji": ai_data.get('sentiment_emoji', '💡'),
@@ -777,10 +835,7 @@ def api_youtube_summary():
                 "mermaid_code": ai_data.get('mermaid_code', ''),
                 "full_transcript": full_transcript
             })
-        else:
-            return jsonify({"success": False, "error": result_text})
-    except Exception as e:
-        return jsonify({"success": False, "error": f"AI 분석 중 오류 발생: {str(e)}"})
+
 
 @app.route('/api/youtube/chat', methods=['POST'])
 def api_youtube_chat():
@@ -794,10 +849,13 @@ def api_youtube_chat():
         
     from youtube_transcript_api import YouTubeTranscriptApi
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko', 'en'])
-        full_transcript = " ".join([t['text'] for t in transcript_list])
+        api = YouTubeTranscriptApi()
+        transcript_list = api.list(video_id)
+        transcript = transcript_list.find_transcript(['ko', 'en'])
+        t_data = transcript.fetch()
+        full_transcript = " ".join([t['text'] for t in t_data])
     except Exception:
-        full_transcript = "자막 정보를 불러오지 못했습니다."
+        full_transcript = "(본 영상은 자막 데이터가 제공되지 않아, 세부 내용에 대한 챗봇 답변이 제한될 수 있습니다.)"
         
     sys_role = f"""이 사용자는 유튜브 영상을 시청 중이며, 당신은 이 영상과 관련된 질의응답을 수행하는 챗봇입니다.
 다음은 영상의 텍스트 스크립트입니다:
