@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Vault Pro</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    </script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --primary-color: #ec4899;
+            --primary-hover: #db2777;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border-radius: 16px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-color), #2e1065);
+            color: var(--text-primary);
+            min-height: 100vh;
+            margin: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            animation: fadeInDown 0.8s ease-out;
+            padding-top: 1rem;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            margin: 0 0 1rem 0;
+            background: linear-gradient(to right, #fb7185, #c084fc, #818cf8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            font-weight: 400;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 3rem;
+        }
+
+        .tab-btn {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-secondary);
+            padding: 0.8rem 2rem;
+            border-radius: 100px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            background: rgba(30, 41, 59, 0.8);
+            color: var(--text-primary);
+        }
+
+        .tab-btn.active {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Inputs */
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            background: var(--surface-color);
+            padding: 1.2rem;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        input {
+            flex: 1;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.2);
+            background: rgba(15, 23, 42, 0.8);
+        }
+
+        button.primary-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            padding: 0 2.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        button.primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(236, 72, 153, 0.4);
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-top: 4rem;
+        }
+
+        /* Video Card */
+        .video-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .thumbnail-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .thumbnail {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .video-card:hover .thumbnail {
+            transform: scale(1.05);
+        }
+
+        .video-info {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .video-title {
+            margin: 0 0 1.5rem 0;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .video-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .watch-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+        
+        .watch-link:hover {
+            color: var(--primary-color);
+        }
+
+        .btn-remove {
+            background: transparent;
+            color: rgba(239, 68, 68, 0.7);
+            font-size: 0.9rem;
+            padding: 0.4rem 1rem;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-remove:hover {
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        /* Extraction Panel */
+        .extract-panel {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+        
+        .extract-panel.show {
+            display: block;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .extract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .extract-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .btn-copy {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-copy:hover {
+            background: var(--success-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .text-area-result {
+            width: 100%;
+            height: 300px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            padding: 1.5rem;
+            font-family: monospace;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+            white-space: pre;
+            overflow-y: auto;
+        }
+
+        .loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        .loading-state {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .loading-state.show {
+            display: block;
+        }
+        
+        .big-loader {
+            width: 50px;
+            height: 50px;
+            border-width: 4px;
+            border-top-color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(15, 23, 42, 0.9);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            h1 { font-size: 2rem; }
+            p.subtitle { font-size: 0.95rem; }
+            header { padding-top: 0; margin-bottom: 1rem; }
+            
+            .input-group { flex-direction: column; padding: 1rem; }
+            input { width: 100%; box-sizing: border-box; text-align: center; }
+            button.primary-btn { width: 100%; padding: 1rem; }
+            
+            .limit-options { flex-wrap: wrap; gap: 8px; }
+            .btn-limit { flex: 1; min-width: 30%; text-align: center; font-size: 0.85rem; padding: 8px; }
+            
+            .extract-panel { padding: 1rem; }
+            .extract-header { flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; }
+            .btn-copy { justify-content: center; }
+            .text-area-result { font-size: 0.85rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <a href="/" style="color: #8b949e; font-size: 1.2rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
+                <h2 style="text-align: center; color: white; margin-bottom: 30px; font-weight: 600;">
+            YouTube <span style="background: linear-gradient(135deg, #ec4899, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI 내용 요약기</span>
+        </h2>
+            </div>
+            <p style="text-align: center; color: rgba(255, 255, 255, 0.7); margin-bottom: 20px;">
+            유튜브 영상 URL을 입력하면 제미나이가 전체 대본이나 음성을 분석하여 단숨에 요약, 타임라인, 마인드맵을 제공합니다.
+        </p>
+        </header>
+
+                <div class="loader big-loader"></div>
+                <h2 style="margin:0; font-weight: 500;">유튜브 데이터를 긁어오는 중입니다...</h2>
+                <p style="color: var(--text-secondary);">인기 동영상 상위 50개를 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)</p>
+            </div>
+
+            <div id="extractPanel" class="extract-panel">
+                <div class="extract-header">
+                    <h3 id="extractTitle">추출 완료!</h3>
+                    <button class="btn-copy" onclick="copyResult()">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        결과 복사하기
+                    </button>
+                </div>
+                <textarea id="resultText" class="text-area-result" readonly></textarea>
+            </div>
+        </div>
+
+        <div id="tab-summary" style="display: block;">
+            <form id="summaryForm" class="input-group">
+                <input type="text" id="videoInput" placeholder="유튜브 영상 URL (예: https://youtube.com/watch?v=...)" autocomplete="off">
+                <button type="submit" class="primary-btn" id="summaryBtn">AI 요약하기</button>
+            </form>
+            
+            <div id="summaryLoadingState" class="loading-state">
+                <div class="loader big-loader"></div>
+                <h2 style="margin:0; font-weight: 500;">AI가 영상을 시청하고 있습니다...</h2>
+                <p style="color: var(--text-secondary);">대본을 읽거나(Text) 귀로 직접 청취(Audio)하며 분석 중입니다.<br>영상 길이나 자막 유무에 따라 15초 ~ 1분 정도 소요될 수 있습니다.</p>
+            </div>
+
+            <div id="summaryPanel" class="extract-panel" style="background: rgba(15, 23, 42, 0.4);">
+                
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div id="sentimentBadge" style="background: rgba(255, 255, 255, 0.1); padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 1.1rem; border: 1px solid rgba(255, 255, 255, 0.2);">
+                        <!-- sentiment goes here -->
+                    </div>
+                    <button class="btn-copy" onclick="copyMarkdown()" style="border-color: #a855f7; color: #a855f7;">
+                        <i class="fa-solid fa-copy"></i> 마크다운으로 복사
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; align-items: start;">
+                    <!-- LEFT COLUMN: Video, Timeline, Chat -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
+                        
+                        <!-- Video Player Container -->
+                        <div style="width: 100%; padding-top: 56.25%; position: relative; background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                            <div id="ytplayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+                        </div>
+
+                        <!-- Timeline Summary -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 1.5rem;">
+                            <h3 style="margin-top: 0; color: #34d399; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-regular fa-clock"></i> 타임스탬프 요약 (클릭 시 재생)
+                            </h3>
+                            <div id="aiTimelineList" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- populated by js -->
+                            </div>
+                        </div>
+
+                        <!-- Interactive Chat -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; height: 400px;">
+                            <h3 style="margin-top: 0; color: #fbbf24; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-comments"></i> 영상과 대화하기
+                            </h3>
+                            <div id="chatHistory" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; padding-right: 5px;">
+                                <div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; max-width: 85%; line-height: 1.5; font-size: 0.95rem;">
+                                    영상에 대해 궁금한 점을 물어보세요! 핵심 내용이나 놓친 정보를 모두 답해드립니다.
+                                </div>
+                            </div>
+                            <form id="chatForm" style="display: flex; gap: 10px;">
+                                <input type="text" id="chatInput" placeholder="이 영상의 3가지 결론이 뭐야?" style="padding: 0.8rem; border-radius: 8px; font-size: 0.95rem;" autocomplete="off">
+                                <button type="submit" class="primary-btn" style="padding: 0 1.5rem; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
+                            </form>
+                        </div>
+
+                    </div>
+
+                    <!-- RIGHT COLUMN: Summary, Mindmap, Glossary -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
+                        
+                        <!-- AI Summary -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                            <h3 style="margin-top: 0; color: #f472b6; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-bolt"></i> 핵심 내용 요약
+                            </h3>
+                            <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap;"></div>
+                        </div>
+
+                        <!-- Mindmap -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 1.5rem; overflow-x: auto;">
+                            <h3 style="margin-top: 0; color: #38bdf8; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-network-wired"></i> 시각화 마인드맵
+                            </h3>
+                            <div id="aiMindmap" class="mermaid" style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <!-- mermaid rendered here -->
+                            </div>
+                        </div>
+
+                        <!-- Glossary -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 1.5rem;">
+                            <h3 style="margin-top: 0; color: #c084fc; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-book-open"></i> 다정한 용어 사전
+                            </h3>
+                            <div id="aiGlossaryList" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <!-- populated by js -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Transcript Toggle -->
+                <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                    <button type="button" onclick="toggleTranscript()" style="background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif;">
+                        <i class="fa-solid fa-chevron-down" id="transcriptIcon"></i> 전체 스크립트 대본 보기
+                    </button>
+                    <textarea id="fullTranscriptText" class="text-area-result" readonly style="display: none; margin-top: 1rem; height: 200px; font-size: 0.9rem; background: rgba(0,0,0,0.3);"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span id="toastMessage">알림 메시지</span>
+    </div>
+
+    <script>
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+
+
+        // --- Video Summary & Premium Features Logic ---
+        let currentYoutubeId = "";
+        let ytPlayer = null;
+        let currentSummaryData = null;
+
+        function onYouTubeIframeAPIReady() {
+            // API loaded
+        }
+
+        function loadYoutubeVideo(videoId) {
+            if(ytPlayer) {
+                ytPlayer.loadVideoById(videoId);
+            } else {
+                ytPlayer = new YT.Player('ytplayer', {
+                    videoId: videoId,
+                    playerVars: { 'autoplay': 0, 'playsinline': 1 }
+                });
+            }
+        }
+
+        function seekToTime(seconds) {
+            if(ytPlayer && ytPlayer.seekTo) {
+                ytPlayer.seekTo(seconds, true);
+                ytPlayer.playVideo();
+            }
+        }
+
+        window.copyMarkdown = function() {
+            if(!currentSummaryData) return;
+            let md = `# [영상 분위기: ${currentSummaryData.sentiment_emoji}] ${currentSummaryData.sentiment_label}\n\n`;
+            md += `## 💡 핵심 요약\n${currentSummaryData.summary}\n\n`;
+            if(currentSummaryData.timeline_summary && currentSummaryData.timeline_summary.length > 0) {
+                md += `## ⏱️ 타임라인\n`;
+                currentSummaryData.timeline_summary.forEach(t => {
+                    md += `- **[${t.time}] ${t.title}**: ${t.desc}\n`;
+                });
+                md += `\n`;
+            }
+            if(currentSummaryData.glossary && currentSummaryData.glossary.length > 0) {
+                md += `## 📚 용어 사전\n`;
+                currentSummaryData.glossary.forEach(g => {
+                    md += `- **${g.term}**: ${g.explanation}\n`;
+                });
+            }
+            navigator.clipboard.writeText(md).then(() => showToast("마크다운이 깔끔하게 복사되었습니다!"));
+        }
+
+        document.getElementById('summaryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const videoUrl = document.getElementById('videoInput').value.trim();
+            if (!videoUrl) {
+                showToast("유튜브 웹 주소를 입력해주세요.");
+                document.getElementById('videoInput').focus();
+                return;
+            }
+
+            const summaryBtn = document.getElementById('summaryBtn');
+            const loadingState = document.getElementById('summaryLoadingState');
+            const summaryPanel = document.getElementById('summaryPanel');
+
+            summaryBtn.innerHTML = '<span class="loader"></span> 요약중';
+            summaryBtn.disabled = true;
+            loadingState.classList.add('show');
+            summaryPanel.classList.remove('show');
+            document.getElementById('fullTranscriptText').style.display = 'none';
+            document.getElementById('transcriptIcon').className = 'fa-solid fa-chevron-down';
+
+            try {
+                const response = await fetch('/api/youtube/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    currentSummaryData = data;
+                    currentYoutubeId = data.video_id;
+
+                    // 1. Load Video
+                    loadYoutubeVideo(currentYoutubeId);
+
+                    // 2. Sentiment Badge
+                    document.getElementById('sentimentBadge').innerHTML = `${data.sentiment_emoji} ${data.sentiment_label}`;
+
+                    // 3. AI Summary Text
+                    document.getElementById('aiSummaryText').textContent = data.summary;
+                    document.getElementById('fullTranscriptText').value = data.full_transcript;
+                    
+                    // 4. Timeline list
+                    const timelineList = document.getElementById('aiTimelineList');
+                    timelineList.innerHTML = '';
+                    if (data.timeline_summary && data.timeline_summary.length > 0) {
+                        data.timeline_summary.forEach(t => {
+                            const btn = document.createElement('button');
+                            btn.style.cssText = "text-align: left; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; color: white; cursor: pointer; transition: all 0.2s; display: flex; gap: 15px; align-items: start;";
+                            btn.innerHTML = `<span style="color: #34d399; font-weight: 600; min-width: 50px;">[${t.time}]</span><div><div style="font-weight: 600; margin-bottom: 5px;">${t.title}</div><div style="font-size: 0.9rem; color: #94a3b8; line-height: 1.4;">${t.desc}</div></div>`;
+                            btn.onclick = () => seekToTime(t.sec);
+                            btn.onmouseover = () => btn.style.background = 'rgba(16, 185, 129, 0.2)';
+                            btn.onmouseout = () => btn.style.background = 'rgba(0,0,0,0.2)';
+                            timelineList.appendChild(btn);
+                        });
+                    }
+
+                    // 5. Mindmap Mermaid
+                    const mindmapBox = document.getElementById('aiMindmap');
+                    mindmapBox.removeAttribute('data-processed');
+                    mindmapBox.innerHTML = ''; // clear 
+                    if(data.mermaid_code) {
+                        mindmapBox.innerHTML = data.mermaid_code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+                        try {
+                            mermaid.init(undefined, mindmapBox);
+                        } catch(e) {
+                            console.error(e);
+                            mindmapBox.innerHTML = "마인드맵 렌더링에 실패했습니다.";
+                        }
+                    }
+
+                    // 6. Glossary
+                    const glossaryList = document.getElementById('aiGlossaryList');
+                    glossaryList.innerHTML = '';
+                    if (data.glossary && data.glossary.length > 0) {
+                        data.glossary.forEach(g => {
+                            const item = document.createElement('div');
+                            item.style.background = 'rgba(0,0,0,0.2)';
+                            item.style.padding = '1rem';
+                            item.style.borderRadius = '8px';
+                            item.innerHTML = `
+                                <div style="font-weight: 600; color: #a78bfa; margin-bottom: 4px;">🔖 ${g.term}</div>
+                                <div style="color: var(--text-secondary); line-height: 1.5; font-size: 0.95rem;">${g.explanation}</div>
+                            `;
+                            glossaryList.appendChild(item);
+                        });
+                    } else {
+                        glossaryList.innerHTML = '<div style="color: var(--text-secondary);">어려운 전문 용어가 발견되지 않았습니다.</div>';
+                    }
+
+                    summaryPanel.classList.add('show');
+                    showToast('AI 분석이 완료되었습니다!');
+                } else {
+                    showToast(data.error || '요약 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                showToast('서버 연결 오류! 백그라운드 파이썬 서버 상태를 확인하세요.');
+            } finally {
+                summaryBtn.innerHTML = 'AI 요약하기';
+                summaryBtn.disabled = false;
+                loadingState.classList.remove('show');
+            }
+        });
+
+        // --- Chat Bot Logic ---
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const chatInput = document.getElementById('chatInput');
+            const text = chatInput.value.trim();
+            if(!text || !currentYoutubeId) return;
+
+            const historyDiv = document.getElementById('chatHistory');
+            // Append User message
+            historyDiv.innerHTML += `<div style="background: rgba(236, 72, 153, 0.2); border: 1px solid rgba(236,72,153,0.3); padding: 10px 15px; border-radius: 15px 15px 2px 15px; align-self: flex-end; max-width: 85%; font-size: 0.95rem;">${text}</div>`;
+            chatInput.value = '';
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+
+            try {
+                const resp = await fetch('/api/youtube/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ video_id: currentYoutubeId, prompt: text })
+                });
+                const d = await resp.json();
+                
+                if(d.success) {
+                    historyDiv.innerHTML += `<div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; max-width: 85%; line-height: 1.5; font-size: 0.95rem;">${d.reply.replace(/\n/g, '<br>')}</div>`;
+                } else {
+                    historyDiv.innerHTML += `<div style="color: #ef4444; font-size: 0.9rem;">오류발생: ${d.error}</div>`;
+                }
+            } catch(e) {
+                historyDiv.innerHTML += `<div style="color: #ef4444; font-size: 0.9rem;">통신 오류</div>`;
+            }
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        });
+    </script>
+</body>
+</html>

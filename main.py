@@ -703,6 +703,10 @@ def restaurant():
 def youtube():
     return render_template('youtube.html')
 
+@app.route('/youtube_summary')
+def youtube_summary():
+    return render_template('youtube_summary.html')
+
 @app.route('/api/youtube/summary', methods=['POST'])
 def api_youtube_summary():
     data = request.json
@@ -780,8 +784,9 @@ def api_youtube_summary():
             temp_dir = tempfile.gettempdir()
             audio_base_path = os.path.join(temp_dir, f"yt_audio_{video_id}")
             
-            # yt-dlp download (audio only)
-            subprocess.run(['yt-dlp', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', f'{audio_base_path}.%(ext)s', video_url], check=True, capture_output=True)
+            import sys
+            # yt-dlp download (audio only) via python module to avoid path issues
+            subprocess.run([sys.executable, '-m', 'yt_dlp', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', f'{audio_base_path}.%(ext)s', video_url], check=True, capture_output=True)
             
             # find the downloaded mp3
             audio_files = glob.glob(f"{audio_base_path}.*")
