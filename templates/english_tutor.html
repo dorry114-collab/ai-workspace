@@ -243,14 +243,100 @@
         </div>
 
         <div class="input-area" id="inputArea">
+            <button id="micBtn" onclick="toggleDictation()" style="background:var(--secondary); color:#000;" title="음성 인식 켜기/끄기"><i class="fa-solid fa-microphone"></i></button>
             <input type="text" id="userInput" placeholder="영어로 답변해 보세요..." onkeypress="if(event.key==='Enter') sendTurn()">
             <button id="sendBtn" onclick="sendTurn()"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
 
-    <script>
         let messageHistory = [];
         let selectedSituation = "";
+        let recognition = null;
+        let isDictating = false;
+
+        function initSpeechRecognition() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                return false; // 지원 안함
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            recognition = new SpeechRecognition();
+            recognition.continuous = false; // 말 멈추면 종료
+            recognition.interimResults = true; // 중간 결과도 보여줌
+            recognition.lang = 'en-US'; // 영어 인식 모드
+            
+            recognition.onstart = function() {
+                isDictating = true;
+                let micBtn = document.getElementById('micBtn');
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone-slash"></i>';
+                micBtn.style.background = 'var(--error-color)';
+                micBtn.style.color = '#fff';
+                document.getElementById('userInput').placeholder = "듣고 있습니다... 말을 마치면 전송을 누르세요.";
+            };
+            
+            recognition.onresult = function(event) {
+                let finalTranscript = '';
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                
+                if (finalTranscript) {
+                    let oldVal = document.getElementById('userInput').value;
+                    document.getElementById('userInput').value = oldVal ? oldVal + ' ' + finalTranscript : finalTranscript;
+                } else if (interimTranscript) {
+                    // 이미 입력된 값(isFinal까지)을 유지하고 중간결과를 뒤에 덧붙여 보여줄 수 있으나
+                    // 간단하게 현재는 value를 완전히 덮어씌움 (단발성 문장에 적합)
+                    document.getElementById('userInput').value = interimTranscript;
+                }
+            };
+            
+            recognition.onend = function() {
+                isDictating = false;
+                let micBtn = document.getElementById('micBtn');
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+                micBtn.style.background = 'var(--secondary)';
+                micBtn.style.color = '#000';
+                document.getElementById('userInput').placeholder = "영어로 답변해 보세요...";
+            };
+            
+            recognition.onerror = function(event) {
+                console.error("음성 인식 에러", event.error);
+                isDictating = false;
+                let micBtn = document.getElementById('micBtn');
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>';
+                micBtn.style.background = 'var(--secondary)';
+                micBtn.style.color = '#000';
+                document.getElementById('userInput').placeholder = "영어로 답변해 보세요...";
+                
+                if (event.error === 'not-allowed') {
+                    alert("마이크 권한이 거부되었습니다. 브라우저 주소창 왼쪽의 자물쇠 아이콘을 눌러 마이크 권한을 허용해주세요!");
+                }
+            };
+            return true;
+        }
+
+        function toggleDictation() {
+            if (!recognition && !initSpeechRecognition()) {
+                alert("현재 크롬/사파리/엣지 등 최신 브라우저에서만 음성 인식을 지원합니다.");
+                return;
+            }
+            
+            if (isDictating) {
+                recognition.stop();
+            } else {
+                document.getElementById('userInput').value = ''; // 새로 말할 땐 기존 입력 날림
+                try {
+                    recognition.start();
+                } catch(e) {
+                    console.log("마이크 시작 오류 (이미 실행중일 수 있음)", e);
+                }
+            }
+        }
 
         function selectPreset(btn, text) {
             document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
