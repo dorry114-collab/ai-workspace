@@ -703,6 +703,68 @@ def restaurant():
 def youtube():
     return render_template('youtube.html')
 
+@app.route('/api/youtube/summary', methods=['POST'])
+def api_youtube_summary():
+    data = request.json
+    video_url = data.get('url', '').strip()
+    
+    if not video_url:
+        return jsonify({"success": False, "error": "유튜브 웹 주소를 입력해주세요."})
+        
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GEMINI_API_KEY가 없습니다."})
+        
+    import re
+    # Extract video ID from URL
+    # Matches: v=XXXX, or youtu.be/XXXX
+    match = re.search(r"(?:v=|\/)([0-9A-Za-z_-]{11}).*", video_url)
+    if not match:
+        return jsonify({"success": False, "error": "유효하지 않은 유튜브 URL입니다."})
+        
+    video_id = match.group(1)
+    
+    from youtube_transcript_api import YouTubeTranscriptApi
+    try:
+        # Get Korean or English transcript
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko', 'en'])
+        full_transcript = " ".join([t['text'] for t in transcript_list])
+    except Exception as e:
+        return jsonify({"success": False, "error": f"이 영상은 자막을 제공하지 않거나 추출할 수 없습니다. ({str(e)})"})
+        
+    p_prompt = f"""다음은 어느 유튜브 영상의 전체 텍스트 스크립트입니다:
+
+{full_transcript[:15000]}
+
+위 내용을 바탕으로 다음 두 가지를 작성해주세요. 전문 용어는 초보자 눈높이에서 해석해야 합니다. JSON 형식으로만 응답하세요.
+
+{{
+  "summary": "영상 핵심 내용을 3~4문단으로 깔끔하고 한눈에 들어오게 요약한 본문",
+  "glossary": [
+    {{ "term": "어려운 용어 1", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }},
+    {{ "term": "어려운 용어 2", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }}
+  ]
+}}"""
+    
+    try:
+        messages = [{"role": "user", "content": p_prompt}]
+        success, result_text = _call_gemini_chat(api_key, messages, temperature=0.7)
+        if success:
+            if "```json" in result_text: result_text = result_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in result_text: result_text = result_text.split("```")[1].split("```")[0].strip()
+            import json
+            ai_data = json.loads(result_text)
+            return jsonify({
+                "success": True,
+                "summary": ai_data.get('summary', '요약 실패'),
+                "glossary": ai_data.get('glossary', []),
+                "full_transcript": full_transcript
+            })
+        else:
+            return jsonify({"success": False, "error": result_text})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"AI 분석 중 오류 발생: {str(e)}"})
+
 @app.route('/stock')
 def stock():
     return render_template('stock.html')

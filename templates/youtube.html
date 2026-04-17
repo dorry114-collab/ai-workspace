@@ -405,6 +405,11 @@
             <p class="subtitle">채널 URL/핸들을 입력하여 인기 영상을 뽑거나, <b>특정 검색어</b>(예: 파이썬 기초)를 입력해 관련 영상 URL을 한 번에 추출합니다.</p>
         </header>
 
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('tab-extract')"><i class="fa-solid fa-list-ol"></i> 영상 대량 추출기</button>
+            <button class="tab-btn" onclick="switchTab('tab-summary')"><i class="fa-solid fa-brain"></i> AI 내용 요약기</button>
+        </div>
+
         <!-- Channel Extractor -->
         <div id="tab-extract" class="tab-content active">
             <form id="extractForm" class="input-group">
@@ -435,6 +440,51 @@
                 <textarea id="resultText" class="text-area-result" readonly></textarea>
             </div>
         </div>
+
+        <!-- Single Video Summary -->
+        <div id="tab-summary" class="tab-content">
+            <form id="summaryForm" class="input-group">
+                <input type="text" id="videoInput" placeholder="유튜브 영상 URL (예: https://youtube.com/watch?v=...)" autocomplete="off">
+                <button type="submit" class="primary-btn" id="summaryBtn">AI 요약하기</button>
+            </form>
+            
+            <div id="summaryLoadingState" class="loading-state">
+                <div class="loader big-loader"></div>
+                <h2 style="margin:0; font-weight: 500;">AI가 영상을 시청하고 있습니다...</h2>
+                <p style="color: var(--text-secondary);">전체 대본을 읽고 요약과 전문 용어 해석을 작성 중입니다. (약 10~20초 소요)</p>
+            </div>
+
+            <div id="summaryPanel" class="extract-panel" style="background: rgba(15, 23, 42, 0.4);">
+                
+                <div style="display: grid; gap: 2rem;">
+                    <!-- AI Summary -->
+                    <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                        <h3 style="margin-top: 0; color: #f472b6; dsiplay: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-bolt"></i> 핵심 내용 요약
+                        </h3>
+                        <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap;"></div>
+                    </div>
+
+                    <!-- Glossary -->
+                    <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 1.5rem;">
+                        <h3 style="margin-top: 0; color: #c084fc; display: flex; align-items: center; gap: 10px;">
+                            <i class="fa-solid fa-book-open"></i> 다정한 용어 사전
+                        </h3>
+                        <div id="aiGlossaryList" style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- populated by js -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Transcript Toggle -->
+                <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                    <button type="button" onclick="toggleTranscript()" style="background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-family: 'Inter', sans-serif;">
+                        <i class="fa-solid fa-chevron-down" id="transcriptIcon"></i> 전체 스크립트 대본 보기
+                    </button>
+                    <textarea id="fullTranscriptText" class="text-area-result" readonly style="display: none; margin-top: 1rem; height: 200px; font-size: 0.9rem; background: rgba(0,0,0,0.3);"></textarea>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="toast" class="toast">
@@ -447,6 +497,26 @@
             document.getElementById('toastMessage').textContent = message;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        function toggleTranscript() {
+            const ta = document.getElementById('fullTranscriptText');
+            const icon = document.getElementById('transcriptIcon');
+            if (ta.style.display === 'none') {
+                ta.style.display = 'block';
+                icon.className = 'fa-solid fa-chevron-up';
+            } else {
+                ta.style.display = 'none';
+                icon.className = 'fa-solid fa-chevron-down';
+            }
         }
 
         // --- Limit Selection Logic ---
@@ -537,6 +607,73 @@
                 showToast(`상위 ${currentLimit}개 URL만 클립보드에 깔끔하게 복사되었습니다!`);
             });
         }
+
+        // --- Video Summary Logic ---
+        document.getElementById('summaryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const videoUrl = document.getElementById('videoInput').value.trim();
+            if (!videoUrl) {
+                showToast("유튜브 웹 주소를 입력해주세요.");
+                document.getElementById('videoInput').focus();
+                return;
+            }
+
+            const summaryBtn = document.getElementById('summaryBtn');
+            const loadingState = document.getElementById('summaryLoadingState');
+            const summaryPanel = document.getElementById('summaryPanel');
+
+            summaryBtn.innerHTML = '<span class="loader"></span> 요약중';
+            summaryBtn.disabled = true;
+            loadingState.classList.add('show');
+            summaryPanel.classList.remove('show');
+            document.getElementById('fullTranscriptText').style.display = 'none';
+            document.getElementById('transcriptIcon').className = 'fa-solid fa-chevron-down';
+
+            try {
+                const response = await fetch('/api/youtube/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('aiSummaryText').textContent = data.summary;
+                    document.getElementById('fullTranscriptText').value = data.full_transcript;
+                    
+                    const glossaryList = document.getElementById('aiGlossaryList');
+                    glossaryList.innerHTML = '';
+                    
+                    if (data.glossary && data.glossary.length > 0) {
+                        data.glossary.forEach(g => {
+                            const item = document.createElement('div');
+                            item.style.background = 'rgba(0,0,0,0.2)';
+                            item.style.padding = '1rem';
+                            item.style.borderRadius = '8px';
+                            item.innerHTML = `
+                                <div style="font-weight: 600; color: #a78bfa; margin-bottom: 4px;">🔖 ${g.term}</div>
+                                <div style="color: var(--text-secondary); line-height: 1.5; font-size: 0.95rem;">${g.explanation}</div>
+                            `;
+                            glossaryList.appendChild(item);
+                        });
+                    } else {
+                        glossaryList.innerHTML = '<div style="color: var(--text-secondary);">어려운 전문 용어가 발견되지 않았습니다.</div>';
+                    }
+
+                    summaryPanel.classList.add('show');
+                    showToast('AI 분석이 완료되었습니다!');
+                } else {
+                    showToast(data.error || '요약 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                showToast('서버 연결 오류! 백그라운드 파이썬 서버 상태를 확인하세요.');
+            } finally {
+                summaryBtn.innerHTML = 'AI 요약하기';
+                summaryBtn.disabled = false;
+                loadingState.classList.remove('show');
+            }
+        });
     </script>
 </body>
 </html>
