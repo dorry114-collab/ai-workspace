@@ -783,10 +783,13 @@ def api_youtube_summary():
             # Fallback to audio download
             temp_dir = tempfile.gettempdir()
             audio_base_path = os.path.join(temp_dir, f"yt_audio_{video_id}")
-            
             import sys
+            # Clean URL to avoid yt-dlp parsing errrors from parameters like '?si='
+            clean_url = f"https://www.youtube.com/watch?v={video_id}"
             # yt-dlp download (audio only) via python module to avoid path issues
-            subprocess.run([sys.executable, '-m', 'yt_dlp', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', f'{audio_base_path}.%(ext)s', video_url], check=True, capture_output=True)
+            dl_result = subprocess.run([sys.executable, '-m', 'yt_dlp', '-f', 'bestaudio', '-x', '--audio-format', 'mp3', '-o', f'{audio_base_path}.%(ext)s', clean_url], capture_output=True, text=True)
+            if dl_result.returncode != 0:
+                raise Exception(f"오디오 추출 실패: {dl_result.stderr}")
             
             # find the downloaded mp3
             audio_files = glob.glob(f"{audio_base_path}.*")
