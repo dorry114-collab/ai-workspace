@@ -93,6 +93,32 @@
             font-size: 0.95rem; color: #991b1b;
         }
 
+        .options-container { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .option-btn {
+            background: #fff; border: 1px solid var(--border-color);
+            padding: 12px; border-radius: 8px; text-align: left; cursor: pointer;
+            transition: all 0.2s; font-size: 0.95rem; font-weight: 500;
+        }
+        .option-btn:hover { border-color: var(--primary); background: #f0fdf4; color: var(--primary); transform: translateY(-1px); }
+        .emotion-avatar {
+            font-size: 2.2rem; background: #fff; border-radius: 50%;
+            height: 45px; width: 45px; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid var(--border-color);
+            flex-shrink: 0; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .xp-bar-container {
+            background: var(--panel-bg); padding: 12px 20px; border-bottom: 1px solid var(--border-color);
+            display: flex; flex-direction: column; gap: 5px;
+        }
+        .xp-track { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; width:100%;}
+        .xp-fill { height: 100%; background: var(--primary); width: 0%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .floating-xp {
+            position: absolute; color: var(--primary); font-weight: bold; font-size: 1.2rem;
+            animation: floatUp 1.5s ease-out forwards; pointer-events: none; z-index: 100;
+        }
+        @keyframes floatUp { 0%{opacity:1; transform:translateY(0);} 100%{opacity:0; transform:translateY(-30px);} }
+        @keyframes popIn { 0%{transform:scale(0);} 100%{transform:scale(1);} }
+
         .msg-user {
             background: var(--user-bubble);
             border-bottom-right-radius: 4px;
@@ -236,8 +262,19 @@
         </div>
     </div>
 
+    <!-- XP Bar -->
+    <div class="xp-bar-container">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span id="levelDisplay" style="font-weight:800; color:var(--primary); font-size:1.05rem;">Lv. 1 Learner</span>
+            <span id="xpDisplay" style="font-size:0.85rem; color:var(--text-muted); font-weight:600;">0 / 100 XP</span>
+        </div>
+        <div class="xp-track">
+            <div class="xp-fill" id="xpFill"></div>
+        </div>
+    </div>
+
     <!-- Main Game Area -->
-    <div class="main-container">
+    <div class="main-container" style="position:relative;">
         <div class="chat-area" id="chatbox">
             <!-- Messages go here -->
             <div class="typing-indicator" id="typing">
@@ -258,6 +295,42 @@
         let selectedSituation = "";
         let recognition = null;
         let isDictating = false;
+        
+        let currentXP = 0;
+        let currentLevel = 1;
+
+        // --- Gamification Logic ---
+        function loadGamification() {
+            let savedXP = localStorage.getItem('english_tutor_xp');
+            if (savedXP) {
+                currentXP = parseInt(savedXP);
+                currentLevel = Math.floor(currentXP / 100) + 1;
+            }
+            updateXPUI();
+        }
+
+        function gainXP(amount, x, y) {
+            currentXP += amount;
+            currentLevel = Math.floor(currentXP / 100) + 1;
+            localStorage.setItem('english_tutor_xp', currentXP);
+            updateXPUI();
+            
+            if (x && y) {
+                let floater = document.createElement('div');
+                floater.className = 'floating-xp';
+                floater.style.left = x + 'px';
+                floater.style.top = y + 'px';
+                floater.textContent = '+' + amount + ' XP';
+                document.querySelector('.main-container').appendChild(floater);
+                setTimeout(() => floater.remove(), 1500);
+            }
+        }
+
+        function updateXPUI() {
+            document.getElementById('levelDisplay').textContent = 'Lv. ' + currentLevel + ' Learner';
+            document.getElementById('xpDisplay').textContent = (currentXP % 100) + ' / 100 XP';
+            document.getElementById('xpFill').style.width = (currentXP % 100) + '%';
+        }
 
         // TTS (Text-to-Speech) Functionality
         function speakEnglish(text) {
@@ -385,18 +458,29 @@
             if (status === 'good') {
                 // 이스케이프 처리(따옴표)하여 다시듣기 버튼에 넣음
                 let safeText = data.reply.replace(/'/g, "\\'").replace(/"/g, '&quot;');
-                let html = `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-                                <div style="flex:1;">${data.reply}</div>
-                                <button onclick="speakEnglish('${safeText}')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
+                let emojiHtml = data.emotion ? `<div class="emotion-avatar">${data.emotion}</div>` : '';
+                
+                let html = `<div style="display:flex; justify-content:flex-start; align-items:flex-start; gap:10px;">
+                                ${emojiHtml}
+                                <div style="flex:1;">
+                                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                                        <div style="flex:1;">${data.reply}</div>
+                                        <button onclick="speakEnglish('${safeText}')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
+                                    </div>
+                                    ${data.translation ? `<div class="translation" onclick="this.classList.add('revealed')" title="클릭해서 한글 뜻 확인하기">🔍 [클릭해서 번역 보기] ${data.translation}</div>` : ''}
+                                </div>
                             </div>`;
-                if (data.translation) {
-                    html += `<div class="translation" onclick="this.classList.add('revealed')" title="클릭해서 한글 뜻 확인하기">🔍 [클릭해서 번역 보기] ${data.translation}</div>`;
-                }
                 div.innerHTML = html;
                 
                 // 복구된 내용이 아닌, 방금 새로 받은 내용이면 바로 음성 송출!
                 if(!isRestore) {
                     speakEnglish(data.reply);
+                    // XP 획득 연출
+                    setTimeout(() => {
+                        let rect = div.getBoundingClientRect();
+                        let containerRect = document.querySelector('.main-container').getBoundingClientRect();
+                        gainXP(10, rect.left - containerRect.left + 50, rect.top - containerRect.top + 20);
+                    }, 500);
                 }
             } else if (status === 'poor') {
                 let html = `<div style="font-weight:600; margin-bottom:5px;">⚠️ 부자연스러운 표현입니다.</div>`;
@@ -435,10 +519,15 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        function showEvaluation(strengths, weaknesses) {
+        function showEvaluation(strengths, weaknesses, isRestore=false) {
             document.getElementById('evalStrengths').textContent = strengths || "잘한 점 데이터 없음";
             document.getElementById('evalWeaknesses').textContent = weaknesses || "보완할 점 데이터 없음";
             document.getElementById('evalModal').style.display = 'flex';
+            
+            if(!isRestore) {
+                 let containerRect = document.querySelector('.main-container').getBoundingClientRect();
+                 gainXP(50, containerRect.width / 2 - 20, 50);
+            }
         }
 
         async function startGame() {
@@ -539,7 +628,11 @@
                             } else if (msg.role === 'assistant') {
                                 try {
                                     let obj = JSON.parse(msg.content);
-                                    appendMessageAI(obj, true);
+                                    if(obj.status === 'end') {
+                                        showEvaluation(obj.strengths, obj.weaknesses, true);
+                                    } else {
+                                        appendMessageAI(obj, true);
+                                    }
                                 } catch(e) {
                                     console.error("AI 렌더링 파싱 오류", e);
                                 }
@@ -562,7 +655,10 @@
             }
         }
 
-        window.onload = restoreLocalHistory;
+        window.onload = function() {
+            loadGamification();
+            restoreLocalHistory();
+        };
     </script>
 </body>
 </html>
