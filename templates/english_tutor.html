@@ -277,18 +277,19 @@
             let div = document.createElement('div');
             div.className = 'msg msg-ai';
             
-            let html = "";
             let status = data.status || 'good';
 
             if (status === 'good') {
-                html += `<div>${data.reply}</div>`;
+                let html = `<div>${data.reply}</div>`;
                 if (data.translation) {
                     html += `<div class="translation">${data.translation}</div>`;
                 }
+                div.innerHTML = html;
             } else if (status === 'poor') {
-                html += `<div style="font-weight:600; margin-bottom:5px;">⚠️ 부자연스러운 표현입니다.</div>`;
+                let html = `<div style="font-weight:600; margin-bottom:5px;">⚠️ 부자연스러운 표현입니다.</div>`;
                 html += `<div class="correction-box">${data.correction}</div>`;
                 html += `<div style="margin-top:15px; font-size:0.95rem; font-weight:600;">💡 다음 중 더 자연스러운 표현을 선택해 보세요:</div>`;
+                div.innerHTML = html;
                 
                 let optContainer = document.createElement('div');
                 optContainer.className = 'options-container';
@@ -299,7 +300,6 @@
                     btn.textContent = opt;
                     btn.onclick = function() {
                         document.getElementById('userInput').value = opt;
-                        // 입력창 활성화 후 클릭한 내용 바로 전송
                         document.getElementById('userInput').disabled = false;
                         document.getElementById('sendBtn').disabled = false;
                         sendTurn();
@@ -307,7 +307,6 @@
                     optContainer.appendChild(btn);
                 });
                 
-                div.innerHTML = html;
                 div.appendChild(optContainer);
 
                 // Disable main input so user MUST pick an option
@@ -319,10 +318,7 @@
                 return; // 끝났으므로 채팅창에는 안 붙임
             }
             
-            if (status !== 'end') {
-                div.innerHTML = div.innerHTML || html; // If we didn't use appendChild
-                chatbox.insertBefore(div, typingIndicator);
-            }
+            chatbox.insertBefore(div, typingIndicator);
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
