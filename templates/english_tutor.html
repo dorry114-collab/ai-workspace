@@ -93,13 +93,34 @@
             font-size: 0.95rem; color: #991b1b;
         }
 
-        .options-container { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; }
-        .option-btn {
-            background: #fff; border: 1px solid var(--border-color);
-            padding: 12px; border-radius: 8px; text-align: left; cursor: pointer;
-            transition: all 0.2s; font-size: 0.95rem; font-weight: 500;
+        .preset-grid {
+            display: grid; grid-template-columns: 1fr; gap: 10px;
+            margin-bottom: 20px;
         }
-        .option-btn:hover { border-color: var(--primary); background: #f0fdf4; color: var(--primary); transform: translateY(-1px); }
+        .preset-btn {
+            background: #fff; border: 2px solid #e5e7eb; border-radius: 12px;
+            padding: 12px; cursor: pointer; text-align: left; font-weight: bold;
+            transition: all 0.2s; font-size: 1rem; color: #4b5563;
+        }
+        .preset-btn:hover { border-color: #d1d5db; background: #f9fafb; }
+        .preset-btn.active { border-color: var(--primary); background: #f0fdf4; color: var(--primary); }
+        
+        .diff-grid { display: flex; gap: 8px; justify-content: space-between; margin-bottom: 20px; }
+        .diff-btn { 
+            flex:1; background: #fff; border: 2px solid #e5e7eb; border-radius: 12px;
+            padding: 10px 0; cursor: pointer; text-align: center; font-weight: bold; font-size: 1rem; color: #4b5563; transition: all 0.2s;
+        }
+        .diff-btn small { display: block; font-size: 0.75rem; font-weight: normal; color: #6b7280; margin-top:3px; }
+        .diff-btn:hover { border-color: #d1d5db; }
+        .diff-btn.active { border-color: var(--primary); background: #f0fdf4; color: var(--primary); }
+        .diff-btn.active small { color: var(--primary); }
+
+        .custom-input {
+            width: 100%; box-sizing: border-box; padding: 1rem; border-radius: 12px;
+            border: 2px solid var(--border-color); outline: none; font-size: 1rem; margin-bottom: 2rem;
+        }
+        .custom-input:focus { border-color: var(--primary); }
+
         .emotion-avatar {
             font-size: 2.2rem; background: #fff; border-radius: 50%;
             height: 45px; width: 45px; display: flex; align-items: center; justify-content: center;
@@ -239,6 +260,15 @@
                 <button class="preset-btn" onclick="selectPreset(this, '길을 잃어서 행인에게 길 묻기')">🗺️ 길을 잃어서 행인에게 길 묻기</button>
             </div>
             
+            <p style="text-align:left; font-weight:bold; margin-bottom:10px; color:#374151;">난이도를 선택해주세요.</p>
+            <div class="diff-grid">
+                <button class="diff-btn" data-level="1" data-label="왕초보" onclick="setDiff(this)">Lv.1<br><small>단어 위주</small></button>
+                <button class="diff-btn" data-level="2" data-label="기초" onclick="setDiff(this)">Lv.2<br><small>짧은 문장</small></button>
+                <button class="diff-btn active" data-level="3" data-label="중급" onclick="setDiff(this)">Lv.3<br><small>표준 회화</small></button>
+                <button class="diff-btn" data-level="4" data-label="고급" onclick="setDiff(this)">Lv.4<br><small>복잡한 숙어</small></button>
+                <button class="diff-btn" data-level="5" data-label="원어민" onclick="setDiff(this)">🔥<br><small>실전 속도</small></button>
+            </div>
+            
             <input type="text" id="customSituation" class="custom-input" placeholder="또는 직접 입력 (예: 레스토랑 불만 제기)">
             <button class="btn-start" onclick="startGame()">대화 시작하기 <i class="fa-solid fa-play"></i></button>
         </div>
@@ -246,9 +276,10 @@
 
     <!-- Evaluation Modal -->
     <div id="evalModal" style="display:none;">
-        <div class="modal-content">
-            <h2>🎉 롤플레잉 완료!</h2>
-            <p>모든 상황이 종료되었습니다. 피드백을 확인하세요.</p>
+        <div class="modal-content" style="position:relative;">
+            <button onclick="document.getElementById('evalModal').style.display='none'" style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+            <h2>🎉 롤플레잉 피드백</h2>
+            <p>현재까지의 롤플레잉 리포트입니다.</p>
             
             <div class="eval-box">
                 <div class="eval-title" style="color: #16a34a;"><i class="fa-solid fa-thumbs-up"></i> 잘한 점 (Strengths)</div>
@@ -258,7 +289,10 @@
                 <div class="eval-content" id="evalWeaknesses">...</div>
             </div>
             
-            <button class="btn-start" onclick="resetGame()" style="background:var(--secondary); color:#000;">새로운 상황 도전하기 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button class="btn-start" onclick="document.getElementById('evalModal').style.display='none'" style="background:var(--user-bubble); color:#166534; flex:1;">이어서 대화하기 <i class="fa-solid fa-comment-dots"></i></button>
+                <button class="btn-start" onclick="resetGame()" style="background:var(--secondary); color:#000; flex:1;">새로운 상황 도전 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+            </div>
         </div>
     </div>
 
@@ -332,21 +366,45 @@
             document.getElementById('xpFill').style.width = (currentXP % 100) + '%';
         }
 
-        // TTS (Text-to-Speech) Functionality
-        function speakEnglish(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // 겹침 방지
+        let currentAudio = null;
+
+        // TTS (Text-to-Speech) Functionality using Edge-TTS Backend
+        async function speakEnglish(text, btnElement=null) {
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel(); // 혹시 모를 로컬 TTS 정지
+            
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            
+            let originalIcon = "";
+            if (btnElement) {
+                originalIcon = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            }
+
+            try {
+                let res = await fetch('/api/english/tts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text, voice: 'en-US-AriaNeural'}) // 선명하고 자연스러운 여성 목소리
+                });
                 
-                let utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'en-US';
-                
-                let voices = window.speechSynthesis.getVoices();
-                let enVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || 
-                              voices.find(v => v.lang.startsWith('en-'));
-                if (enVoice) utterance.voice = enVoice;
-                
-                utterance.rate = 0.95; // 약간 느리게 또박또박
-                window.speechSynthesis.speak(utterance);
+                if (res.ok) {
+                    let blob = await res.blob();
+                    let url = URL.createObjectURL(blob);
+                    currentAudio = new Audio(url);
+                    currentAudio.onended = () => {
+                        if (btnElement) btnElement.innerHTML = originalIcon;
+                    };
+                    currentAudio.play();
+                } else {
+                    console.error("Neural TTS 실패");
+                    if (btnElement) btnElement.innerHTML = originalIcon;
+                }
+            } catch(e) {
+                console.error("TTS 통신 에러", e);
+                if (btnElement) btnElement.innerHTML = originalIcon;
             }
         }
 
@@ -434,6 +492,14 @@
             document.getElementById('customSituation').value = text;
         }
 
+        let selectedDifficulty = "Lv.3 (중급)";
+        
+        function setDiff(btn) {
+            document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            selectedDifficulty = btn.querySelector('small').textContent + ' (레벨 ' + btn.getAttribute('data-level') + ')';
+        }
+
         function appendMessageUser(text) {
             let chatbox = document.getElementById('chatbox');
             let typingIndicator = document.getElementById('typing');
@@ -465,7 +531,7 @@
                                 <div style="flex:1;">
                                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
                                         <div style="flex:1;">${data.reply}</div>
-                                        <button onclick="speakEnglish('${safeText}')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
+                                        <button onclick="speakEnglish('${safeText}', this)" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem; width:25px;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
                                     </div>
                                     ${data.translation ? `<div class="translation" onclick="this.classList.add('revealed')" title="클릭해서 한글 뜻 확인하기">🔍 [클릭해서 번역 보기] ${data.translation}</div>` : ''}
                                 </div>
@@ -474,7 +540,8 @@
                 
                 // 복구된 내용이 아닌, 방금 새로 받은 내용이면 바로 음성 송출!
                 if(!isRestore) {
-                    speakEnglish(data.reply);
+                    let audioBtn = div.querySelector('button');
+                    speakEnglish(data.reply, audioBtn);
                     // XP 획득 연출
                     setTimeout(() => {
                         let rect = div.getBoundingClientRect();
@@ -540,7 +607,9 @@
             document.getElementById('setupModal').style.display = 'none';
 
             let firstPrompt = `[시작 상황]: ${selectedSituation}
-지금부터 이 상황에 맞는 롤플레잉을 영어로 시작해 줘. 네가 먼저 말을 걸어 줘. (엄격한 JSON 형식 준수 요망)`;
+[난이도 설정]: ${selectedDifficulty}
+이 난이도를 반드시 고려하여 어휘 수준, 문장 길이, 말하는 속도 및 표현력을 완벽히 조절해 줘. (Lv.1은 매우 쉬운 핵심 단어들만 짧게, Lv.5는 빠르고 은유법과 슬랭이 가득한 원어민 스타일)
+지금부터 이 상황과 난이도에 맞는 롤플레잉을 영어로 먼저 말을 걸어 줘. (엄격한 JSON 형식 준수 요망)`;
             
             messageHistory.push({"role": "user", "content": firstPrompt});
             await fetchAI();

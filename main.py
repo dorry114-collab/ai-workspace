@@ -850,6 +850,44 @@ Your job is to strictly adhere to the following rules:
     else:
         return jsonify({"success": False, "error": result_text})
 
+@app.route('/api/english/tts', methods=['POST'])
+def api_english_tts():
+    data = request.json
+    text = data.get('text', '')
+    voice = data.get('voice', 'en-US-AriaNeural')
+    
+    if not text:
+        return jsonify({"success": False, "error": "No text provided"}), 400
+        
+    try:
+        import edge_tts
+        import asyncio
+        import tempfile
+        import os
+        from flask import Response
+        
+        async def _generate_audio(txt, vc, path):
+            communicate = edge_tts.Communicate(txt, vc)
+            await communicate.save(path)
+            
+        fd, path = tempfile.mkstemp(suffix='.mp3')
+        os.close(fd)
+        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(_generate_audio(text, voice, path))
+        loop.close()
+        
+        with open(path, 'rb') as f:
+            audio_data = f.read()
+        os.remove(path)
+        
+        return Response(audio_data, mimetype="audio/mpeg")
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/shorts/prompts', methods=['POST'])
 def generate_shorts_prompts():
     data = request.json
