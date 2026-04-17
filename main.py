@@ -189,8 +189,8 @@ def get_stock_data():
         ai_data = None
         vol_trend_str = "데이터 부족"
         vol_ratio = 100
-        if len(recent_data) > 30 and os.environ.get('GROQ_API_KEY'):
-            api_key = os.environ.get('GROQ_API_KEY')
+        if len(recent_data) > 30 and os.environ.get('GEMINI_API_KEY'):
+            api_key = os.environ.get('GEMINI_API_KEY')
             current_p = recent_data['Close'].iloc[-1]
             high_1m = recent_data['High'].tail(21).max() if 'High' in recent_data else current_p
             low_1m = recent_data['Low'].tail(21).min() if 'Low' in recent_data else current_p
@@ -241,7 +241,11 @@ def get_stock_data():
 }}"""
             try:
                 sys_role = "당신은 어려운 주식 차트를 일상생활 비유를 들어 아주 쉽게 풀어서 설명해주는 다정한 멘토입니다. 오직 자연스러운 한국어(Korean)로만 대답하며, 한자나 외국어는 절대 쓰지 않습니다."
-                success, text = _call_groq(api_key, p_prompt, system_role=sys_role)
+                messages = [
+                    {"role": "system", "content": sys_role},
+                    {"role": "user", "content": p_prompt}
+                ]
+                success, text = _call_gemini_chat(api_key, messages, temperature=0.7)
                 if success:
                     if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
                     elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
