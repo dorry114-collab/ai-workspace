@@ -786,6 +786,69 @@ def api_novel_chat():
     else:
         return jsonify({"success": False, "error": result_text})
 
+# --- ENGLISH TUTOR LOGIC ---
+@app.route('/english')
+def english_tutor():
+    return render_template('english_tutor.html')
+
+@app.route('/api/english/chat', methods=['POST'])
+def api_english_chat():
+    data = request.json
+    messages = data.get('messages', [])
+    
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    groq_api_key = os.environ.get('GROQ_API_KEY')
+    if not gemini_api_key and not groq_api_key:
+        return jsonify({"success": False, "error": "[필수] API 키가 없습니다."})
+        
+    if not messages:
+        return jsonify({"success": False, "error": "메시지 내역이 없습니다."})
+        
+    system_prompt = """You are an interactive AI English Tutor playing a role in a conversational roleplay.
+Your job is to strictly adhere to the following rules:
+1. Always output ONLY valid JSON format. Do not use Markdown JSON wrappers like ```json.
+2. Evaluate the user's latest English message (unless this is the very first turn to start the conversation).
+3. If this is the start of the conversation, output in this format:
+   {"status": "good", "reply": "(Start the roleplay naturally in English based on the situation)", "translation": "(Korean translation)"}
+4. If the user's message is too short, grammatically very incorrect, awkward, or written in Korean, return a 'poor' status WITH 3 better English options they can choose to say instead. Use this format:
+   {"status": "poor", "correction": "(Explain in Korean why it was awkward)", "options": ["Option 1", "Option 2", "Option 3"]}
+5. If the user's message is acceptable or good English, continue the roleplay naturally. Use this format:
+   {"status": "good", "reply": "(Your next roleplay response in English)", "translation": "(Korean translation of your reply)"}
+6. If the conversation has reached a natural conclusion (around 5-6 turns) or the user says goodbye/end, evaluate their overall performance. Use this format:
+   {"status": "end", "strengths": "(Explain their strengths in Korean)", "weaknesses": "(Explain their weaknesses and areas to improve in Korean)"}
+"""
+
+    if len(messages) > 0 and messages[0].get('role') != 'system':
+        messages.insert(0, {"role": "system", "content": system_prompt})
+        
+    if len(messages) > 0 and messages[-1].get('role') == 'user':
+        messages[-1]['content'] += "\n\n(System Constraint: Evaluate my message and reply ONLY in the specified valid JSON format.)"
+        
+    success = False
+    result_text = ""
+    if gemini_api_key:
+        success, result_text = _call_gemini_chat(gemini_api_key, messages, temperature=0.7)
+        if not success and ("429" in result_text or "exceeded" in result_text.lower()) and groq_api_key:
+            success, result_text = _call_groq_chat(groq_api_key, messages, temperature=0.6)
+    elif groq_api_key:
+        success, result_text = _call_groq_chat(groq_api_key, messages, temperature=0.6)
+    
+    if success:
+        # Strip markdown json block if any
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
+            
+        try:
+            import json
+            parsed = json.loads(result_text)
+            return jsonify({"success": True, "reply": parsed})
+        except Exception as e:
+            return jsonify({"success": False, "error": f"JSON 파싱 실패: {str(e)} | 원본: {result_text}"})
+    else:
+        return jsonify({"success": False, "error": result_text})
+
 @app.route('/api/shorts/prompts', methods=['POST'])
 def generate_shorts_prompts():
     data = request.json

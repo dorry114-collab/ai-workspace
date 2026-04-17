@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 영어 공부 튜터</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #f0fdf4; /* 듀오링고 스타일의 밝은 초록 배경 */
+            --panel-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --primary: #22c55e;
+            --primary-hover: #16a34a;
+            --secondary: #eab308;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --error-color: #ef4444;
+            --ai-bubble: #f3f4f6;
+            --user-bubble: #dcfce7;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Noto Sans KR', 'Outfit', sans-serif;
+            display: flex; flex-direction: column;
+            height: 100vh; overflow: hidden;
+        }
+
+        /* Navbar */
+        .navbar {
+            padding: 1rem 2rem;
+            background: var(--panel-bg);
+            border-bottom: 2px solid var(--border-color);
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            z-index: 10;
+        }
+        .navbar a, .navbar button {
+            color: var(--text-muted);
+            text-decoration: none; font-weight: 600; font-size: 1rem;
+            background: none; border: none; cursor: pointer; transition: 0.2s;
+        }
+        .navbar a:hover, .navbar button:hover { color: var(--primary); }
+        .title { font-weight: 700; color: var(--primary); font-size: 1.3rem; }
+
+        /* Layout */
+        .main-container {
+            flex: 1; display: flex; flex-direction: column;
+            max-width: 800px; margin: 0 auto; width: 100%;
+            padding: 1rem; box-sizing: border-box; min-height: 0;
+        }
+
+        .chat-area {
+            flex: 1; overflow-y: auto; padding: 1rem;
+            display: flex; flex-direction: column; gap: 1.5rem; scroll-behavior: smooth;
+        }
+        .chat-area::-webkit-scrollbar { width: 8px; }
+        .chat-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+
+        /* Bubbles */
+        .msg {
+            max-width: 85%; padding: 1.2rem;
+            border-radius: 20px; line-height: 1.6;
+            font-size: 1.1rem; position: relative;
+            animation: fadeIn 0.4s ease;
+        }
+        @keyframes fadeIn { from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+
+        .msg-ai {
+            background: var(--ai-bubble);
+            border-bottom-left-radius: 4px; border: 1px solid var(--border-color);
+            align-self: flex-start; color: var(--text-main);
+        }
+        .translation {
+            display: block; font-size: 0.9rem; color: var(--text-muted);
+            margin-top: 8px; border-top: 1px dashed #d1d5db; padding-top: 8px;
+        }
+        .correction-box {
+            background: #fee2e2; border-left: 4px solid var(--error-color);
+            padding: 1rem; margin-top: 10px; border-radius: 8px;
+            font-size: 0.95rem; color: #991b1b;
+        }
+
+        .msg-user {
+            background: var(--user-bubble);
+            border-bottom-right-radius: 4px;
+            align-self: flex-end; text-align: left;
+            color: #166534; font-weight: 500;
+        }
+
+        /* Input Widget */
+        .input-area {
+            display: flex; gap: 0.8rem;
+            background: var(--panel-bg); border: 2px solid var(--border-color);
+            padding: 0.8rem; border-radius: 24px; margin-top: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .input-area input {
+            flex: 1; background: transparent; border: none;
+            color: var(--text-main); font-family: inherit; font-size: 1.1rem;
+            outline: none; padding: 0.5rem;
+        }
+        .input-area button {
+            background: var(--primary); color: #fff;
+            border: none; border-radius: 18px; padding: 0.8rem 1.5rem;
+            font-weight: 700; cursor: pointer; transition: 0.2s;
+        }
+        .input-area button:hover:not(:disabled) { background: var(--primary-hover); transform: scale(1.05); }
+        .input-area button:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        /* Choice Buttons */
+        .options-container { margin-top: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .option-btn {
+            background: #fff; border: 2px solid var(--primary); color: var(--primary);
+            padding: 1rem; border-radius: 12px; font-weight: 600; font-size: 1.05rem;
+            text-align: left; cursor: pointer; transition: all 0.2s;
+        }
+        .option-btn:hover { background: var(--primary); color: #fff; transform: translateY(-2px); }
+
+        /* Setup Modal */
+        #setupModal, #evalModal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px);
+            z-index: 1000; display: flex; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: var(--panel-bg); border-radius: 24px;
+            padding: 2.5rem; width: 90%; max-width: 500px; text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .modal-content h2 { margin-top: 0; color: var(--text-main); margin-bottom: 0.5rem; }
+        .modal-content p { color: var(--text-muted); margin-bottom: 2rem; }
+
+        .preset-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 1.5rem; }
+        .preset-btn {
+            background: #f3f4f6; border: 2px solid transparent; padding: 1rem;
+            border-radius: 12px; font-weight: 600; color: var(--text-main);
+            cursor: pointer; transition: 0.2s; font-size: 1rem;
+        }
+        .preset-btn:hover { background: #e5e7eb; }
+        .preset-btn.active { border-color: var(--primary); background: #dcfce7; color: #166534; }
+        
+        .custom-input {
+            width: 100%; box-sizing: border-box; padding: 1rem; border-radius: 12px;
+            border: 2px solid var(--border-color); outline: none; font-size: 1rem; margin-bottom: 2rem;
+        }
+        .custom-input:focus { border-color: var(--primary); }
+
+        .btn-start {
+            background: var(--primary); color: #fff; border:none; padding: 1.2rem; width: 100%;
+            border-radius: 16px; font-weight: 700; font-size: 1.2rem; cursor: pointer; transition: 0.2s;
+        }
+        .btn-start:hover { box-shadow: 0 10px 15px rgba(34, 197, 94, 0.4); transform: translateY(-2px); }
+
+        /* Loader */
+        .typing-indicator { display: none; align-items: center; gap: 6px; padding: 1rem; }
+        .dot { width: 10px; height: 10px; background: var(--primary); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0.5); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
+
+        /* Evaluation UI */
+        .eval-box { text-align: left; margin: 1.5rem 0; background: #f8fafc; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; }
+        .eval-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 8px; }
+        .eval-content { font-size: 0.95rem; color: #475569; line-height: 1.5; margin-bottom: 1.5rem; }
+
+        @media (max-width: 600px) {
+            .navbar { padding: 1rem; flex-wrap: wrap; gap: 10px; }
+            .navbar > div { display: flex; gap: 15px; }
+            .msg { max-width: 95%; padding: 1rem; }
+            .modal-content { padding: 1.5rem; width: 95%; }
+            .input-area { flex-direction: column; border-radius: 16px; }
+            .input-area button { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <div>
+            <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈</a>
+            <button onclick="resetGame()" style="margin-left: 15px; color: var(--error-color);"><i class="fa-solid fa-rotate-right"></i> 초기화</button>
+        </div>
+        <div class="title"><i class="fa-solid fa-graduation-cap"></i> AI 영어 회화</div>
+        <div>
+            <button onclick="document.getElementById('evalModal').style.display='flex'" style="color: var(--secondary);" title="종합 리뷰창 임시로 열기"><i class="fa-solid fa-chart-pie"></i> 리포트</button>
+        </div>
+    </nav>
+
+    <!-- Setup Modal -->
+    <div id="setupModal">
+        <div class="modal-content">
+            <h2>대화 상황 선택하기</h2>
+            <p>오늘 배우고 싶은 롤플레잉 상황을 골라주세요.</p>
+            
+            <div class="preset-grid">
+                <button class="preset-btn" onclick="selectPreset(this, '스타벅스에서 커피 주문하기')">☕ 스타벅스에서 커피 주문하기</button>
+                <button class="preset-btn" onclick="selectPreset(this, '해외 공항 임국심사 받기')">✈️ 해외 공항 입국심사 받기</button>
+                <button class="preset-btn" onclick="selectPreset(this, '호텔 카운터에서 체크인하기')">🏨 호텔 카운터에서 체크인하기</button>
+                <button class="preset-btn" onclick="selectPreset(this, '외국인 친구와 어색한 첫 인사')">👋 외국인 친구와 인사하기</button>
+                <button class="preset-btn" onclick="selectPreset(this, '길을 잃어서 행인에게 길 묻기')">🗺️ 길을 잃어서 행인에게 길 묻기</button>
+            </div>
+            
+            <input type="text" id="customSituation" class="custom-input" placeholder="또는 직접 입력 (예: 레스토랑 불만 제기)">
+            <button class="btn-start" onclick="startGame()">대화 시작하기 <i class="fa-solid fa-play"></i></button>
+        </div>
+    </div>
+
+    <!-- Evaluation Modal -->
+    <div id="evalModal" style="display:none;">
+        <div class="modal-content">
+            <h2>🎉 롤플레잉 완료!</h2>
+            <p>모든 상황이 종료되었습니다. 피드백을 확인하세요.</p>
+            
+            <div class="eval-box">
+                <div class="eval-title" style="color: #16a34a;"><i class="fa-solid fa-thumbs-up"></i> 잘한 점 (Strengths)</div>
+                <div class="eval-content" id="evalStrengths">...</div>
+                
+                <div class="eval-title" style="color: #ea580c;"><i class="fa-solid fa-hammer"></i> 보완할 점 (Weaknesses)</div>
+                <div class="eval-content" id="evalWeaknesses">...</div>
+            </div>
+            
+            <button class="btn-start" onclick="resetGame()" style="background:var(--secondary); color:#000;">새로운 상황 도전하기 <i class="fa-solid fa-arrow-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <!-- Main Game Area -->
+    <div class="main-container">
+        <div class="chat-area" id="chatbox">
+            <!-- Messages go here -->
+            <div class="typing-indicator" id="typing">
+                <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+                <span style="color:var(--text-muted);font-size:0.9rem;margin-left:10px;">튜터가 답변을 작성 중입니다...</span>
+            </div>
+        </div>
+
+        <div class="input-area" id="inputArea">
+            <input type="text" id="userInput" placeholder="영어로 답변해 보세요..." onkeypress="if(event.key==='Enter') sendTurn()">
+            <button id="sendBtn" onclick="sendTurn()"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <script>
+        let messageHistory = [];
+        let selectedSituation = "";
+
+        function selectPreset(btn, text) {
+            document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('customSituation').value = text;
+        }
+
+        function appendMessageUser(text) {
+            let chatbox = document.getElementById('chatbox');
+            let typingIndicator = document.getElementById('typing');
+            
+            let div = document.createElement('div');
+            div.className = 'msg msg-user';
+            div.textContent = text;
+            
+            chatbox.insertBefore(div, typingIndicator);
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        function appendMessageAI(data) {
+            let chatbox = document.getElementById('chatbox');
+            let typingIndicator = document.getElementById('typing');
+            
+            let div = document.createElement('div');
+            div.className = 'msg msg-ai';
+            
+            let html = "";
+            let status = data.status || 'good';
+
+            if (status === 'good') {
+                html += `<div>${data.reply}</div>`;
+                if (data.translation) {
+                    html += `<div class="translation">${data.translation}</div>`;
+                }
+            } else if (status === 'poor') {
+                html += `<div style="font-weight:600; margin-bottom:5px;">⚠️ 부자연스러운 표현입니다.</div>`;
+                html += `<div class="correction-box">${data.correction}</div>`;
+                html += `<div style="margin-top:15px; font-size:0.95rem; font-weight:600;">💡 다음 중 더 자연스러운 표현을 선택해 보세요:</div>`;
+                
+                let optContainer = document.createElement('div');
+                optContainer.className = 'options-container';
+                
+                (data.options || []).forEach(opt => {
+                    let btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.textContent = opt;
+                    btn.onclick = function() {
+                        document.getElementById('userInput').value = opt;
+                        // 입력창 활성화 후 클릭한 내용 바로 전송
+                        document.getElementById('userInput').disabled = false;
+                        document.getElementById('sendBtn').disabled = false;
+                        sendTurn();
+                    };
+                    optContainer.appendChild(btn);
+                });
+                
+                div.innerHTML = html;
+                div.appendChild(optContainer);
+
+                // Disable main input so user MUST pick an option
+                document.getElementById('userInput').disabled = true;
+                document.getElementById('sendBtn').disabled = true;
+
+            } else if (status === 'end') {
+                showEvaluation(data.strengths, data.weaknesses);
+                return; // 끝났으므로 채팅창에는 안 붙임
+            }
+            
+            if (status !== 'end') {
+                div.innerHTML = div.innerHTML || html; // If we didn't use appendChild
+                chatbox.insertBefore(div, typingIndicator);
+            }
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+
+        function showEvaluation(strengths, weaknesses) {
+            document.getElementById('evalStrengths').textContent = strengths || "잘한 점 데이터 없음";
+            document.getElementById('evalWeaknesses').textContent = weaknesses || "보완할 점 데이터 없음";
+            document.getElementById('evalModal').style.display = 'flex';
+        }
+
+        async function startGame() {
+            let val = document.getElementById('customSituation').value.trim();
+            if (!val) {
+                alert("상황을 선택하거나 직접 입력해 주세요!");
+                return;
+            }
+            selectedSituation = val;
+            document.getElementById('setupModal').style.display = 'none';
+
+            let firstPrompt = `[시작 상황]: ${selectedSituation}
+지금부터 이 상황에 맞는 롤플레잉을 영어로 시작해 줘. 네가 먼저 말을 걸어 줘. (엄격한 JSON 형식 준수 요망)`;
+            
+            messageHistory.push({"role": "user", "content": firstPrompt});
+            await fetchAI();
+        }
+
+        async function sendTurn() {
+            let inputTag = document.getElementById('userInput');
+            let btn = document.getElementById('sendBtn');
+            let text = inputTag.value.trim();
+            if(!text) return;
+
+            inputTag.value = '';
+            inputTag.disabled = true;
+            btn.disabled = true;
+
+            appendMessageUser(text);
+            messageHistory.push({"role": "user", "content": text});
+            
+            await fetchAI();
+
+            inputTag.disabled = false;
+            btn.disabled = false;
+            inputTag.focus();
+        }
+
+        async function fetchAI() {
+            let typingIndicator = document.getElementById('typing');
+            typingIndicator.style.display = 'flex';
+            document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+
+            try {
+                let res = await fetch('/api/english/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({messages: messageHistory})
+                });
+                let data = await res.json();
+                
+                typingIndicator.style.display = 'none';
+
+                if(data.success) {
+                    let aiReplyObj = data.reply;
+                    
+                    // JSON 객체를 string화해서 history에 저장해야 나중에 context유지됨
+                    messageHistory.push({"role": "assistant", "content": JSON.stringify(aiReplyObj)});
+                    appendMessageAI(aiReplyObj);
+                    saveLocalHistory();
+                } else {
+                    alert('튜터 오류: ' + data.error);
+                    messageHistory.pop();
+                    document.getElementById('userInput').disabled = false;
+                    document.getElementById('sendBtn').disabled = false;
+                }
+            } catch(e) {
+                typingIndicator.style.display = 'none';
+                messageHistory.pop();
+                document.getElementById('userInput').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+                alert('통신 오류가 발생했습니다.');
+            }
+        }
+
+        // --- Local Storage Management ---
+        function saveLocalHistory() {
+            localStorage.setItem('english_history', JSON.stringify(messageHistory));
+        }
+
+        function restoreLocalHistory() {
+            let saved = localStorage.getItem('english_history');
+            if (saved) {
+                try {
+                    let parsed = JSON.parse(saved);
+                    if (parsed && parsed.length > 0) {
+                        messageHistory = parsed;
+                        document.getElementById('setupModal').style.display = 'none';
+                        
+                        let typingIndicator = document.getElementById('typing');
+                        
+                        messageHistory.forEach((msg, idx) => {
+                            if (msg.role === 'system') return;
+                            if (msg.role === 'user' && msg.content.startsWith('[시작 상황]')) return;
+                            
+                            if (msg.role === 'user') {
+                                appendMessageUser(msg.content);
+                            } else if (msg.role === 'assistant') {
+                                try {
+                                    let obj = JSON.parse(msg.content);
+                                    appendMessageAI(obj);
+                                } catch(e) {
+                                    console.error("AI 렌더링 파싱 오류", e);
+                                }
+                            }
+                        });
+                        
+                        document.getElementById('chatbox').appendChild(typingIndicator);
+                        document.getElementById('chatbox').scrollTop = document.getElementById('chatbox').scrollHeight;
+                    }
+                } catch(e) {
+                    console.error("로컬 스토리지 복구 실패", e);
+                }
+            }
+        }
+
+        function resetGame() {
+            if (confirm("이 대화를 모두 삭제하고 새로운 튜터링을 시작하시겠습니까?")) {
+                localStorage.removeItem('english_history');
+                location.reload();
+            }
+        }
+
+        window.onload = restoreLocalHistory;
+    </script>
+</body>
+</html>
