@@ -219,7 +219,7 @@ def get_stock_data():
             elif vol_ratio <= 90: vol_trend_str = "거래량 감소 추세 🔻"
             else: vol_trend_str = "평균 수준의 거래량"
             
-            p_prompt = f"""당신은 주식을 전혀 모르는 초보자에게 친절하게 설명해주는 다정한 멘토입니다. 오직 100% 한국어(Korean)만 사용해서 대답해야 합니다. 한자는 절대 사용하지 마세요.
+            p_prompt = f"""당신은 냉철하고 분석력이 뛰어난 월스트리트의 탑 티어 주식 애널리스트입니다. 오직 100% 자연스러운 한국어(Korean)로만 대답하세요.
 
 종목: {ticker} ({raw_ticker})
 현재가: {current_p:.2f}
@@ -231,21 +231,21 @@ def get_stock_data():
 종합 상승/하락 에너지: {macd_str} (기준치 {macd_sig_str} 이상이면 상승 에너지 강함)
 최근 거래량: {vol_trend_str} (평소 대비 {vol_ratio:.1f}%)
 
-위 상황(지표)들을 하나씩 빼놓지 말고, 각각이 무엇을 뜻하는지 '날씨'나 '운전' 같은 아주 일상적인 비유를 들어 상세하고 쉽게 풀어서 설명해 주세요. 전문 용어(RSI, MACD 등)는 절대로 쓰지 마세요.
+위 기술적 지표들을 종합하여, 현재 주가 흐름에 대한 날카롭고 전문적인 차트 분석을 제공해 주세요. 단, 초보자도 쉽게 이해할 수 있도록 어려운 전문 용어가 들어간다면 이 분석글 하단에 '용어 해설표'를 반드시 별도로 마련하여 짧고 명확하게 뜻을 풀이해 주세요.
 
 반드시 아래 JSON 형식으로만 응답해야 합니다.
 {{
-  "analysis": "현재 상황의 장단점을 초보자가 깊이 이해할 수 있도록, 일상적인 비유를 활용해 아주 다정하고 세심한 말투로 작성한 차트 분석 (5~6문장에 걸쳐 풍성하게 작성할 것).",
-  "target_price": 1개월 뒤 현실적인 목표가격(숫자만 입력),
-  "stop_loss": 손해를 끊어내야 할 위험관리 가격(숫자만 입력)
+  "analysis": "현재 상황의 장단점 및 기술적 분석을 5~7문장 분량으로 전문가적인 톤으로 작성한 차트 분석. (단, 하단에 '\\n\\n[용어 해설]\\n- MACD: ...\\n- RSI: ...' 식으로 덧붙일 것)",
+  "target_price": 1개월 뒤 합리적인 목표가격(숫자만 입력),
+  "stop_loss": 손절매(위험관리) 목표 가격(숫자만 입력)
 }}"""
             try:
-                sys_role = "당신은 어려운 주식 차트를 일상생활 비유를 들어 아주 쉽게 풀어서 설명해주는 다정한 멘토입니다. 오직 자연스러운 한국어(Korean)로만 대답하며, 한자나 외국어는 절대 쓰지 않습니다."
+                sys_role = "당신은 냉철하고 전문적인 주식 애널리스트입니다. 분석은 깊이 있게 하되, 어려운 용어는 하단에 별도로 쉽게 풀이해줍니다."
                 messages = [
                     {"role": "system", "content": sys_role},
                     {"role": "user", "content": p_prompt}
                 ]
-                success, text = _call_gemini_chat(api_key, messages, temperature=0.7)
+                success, text = _call_gemini_chat(api_key, messages, temperature=0.5)
                 if success:
                     if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
                     elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
