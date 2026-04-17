@@ -211,6 +211,40 @@
         .book-content h1 { text-align: center; margin-bottom: 3rem; font-family: 'Outfit', sans-serif; }
         .book-content p { margin-bottom: 1.5rem; text-indent: 10px; }
         .close-book { position: fixed; top: 20px; right: 20px; background: #000; color: #fff; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-family: 'Outfit', sans-serif; }
+        
+        /* Interactive Choice Buttons */
+        .choice-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(217, 70, 239, 0.4);
+            color: #fff;
+            padding: 0.8rem 1.2rem;
+            border-radius: 8px;
+            text-align: left;
+            font-family: 'Nanum Myeongjo', serif;
+            font-size: 1.05rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: block;
+            width: 100%;
+        }
+        .choice-btn:hover {
+            background: rgba(217, 70, 239, 0.2);
+            border-color: var(--primary);
+            transform: translateX(5px);
+        }
+
+        /* Mobile UI Optimization */
+        @media (max-width: 600px) {
+            .navbar { padding: 1rem; flex-wrap: wrap; gap: 10px; }
+            .navbar > div { width: 100%; display: flex; justify-content: space-between; margin-top: 10px; }
+            .msg { max-width: 100%; padding: 1rem; font-size: 1rem; }
+            .modal-content { padding: 1.5rem; width: 95%; }
+            .main-container { padding: 0.5rem; }
+            .chat-area { padding: 0.5rem; gap: 1rem; }
+            .input-area { flex-direction: column; gap: 0.5rem; padding: 0.8rem; border-radius: 12px; margin-top: 5px; }
+            .input-area input { padding: 0.5rem; font-size: 1rem; text-align: center; }
+            .input-area button { padding: 0.8rem; width: 100%; }
+        }
     </style>
 </head>
 <body>
@@ -303,7 +337,38 @@
             div.className = role === 'user' ? 'msg msg-user' : 'msg msg-ai';
             
             if (role === 'ai') {
-                div.innerHTML = marked.parse(content);
+                // 파싱: [선택 1] 등 객관식 텍스트를 추출하여 버튼으로 변환
+                let choices = [];
+                // 매치 패턴: [선택 1], **[선택 1]**, [선택 1]: 등 유연하게 포착
+                let cleanContent = content.replace(/(?:\*\*)?\[선택\s*\d+\](?:\*\*)?\s*:?\s*(.*)/g, (match, choiceText) => {
+                    let text = choiceText.trim().replace(/[*_]/g, '');
+                    if(text) choices.push(text);
+                    return ''; // 원본 텍스트에서는 숨김
+                });
+                
+                div.innerHTML = marked.parse(cleanContent.trim());
+                
+                // 선택지 버튼들 동적 추가
+                if (choices.length > 0) {
+                    let choicesContainer = document.createElement('div');
+                    choicesContainer.style.marginTop = '1.5rem';
+                    choicesContainer.style.display = 'flex';
+                    choicesContainer.style.flexDirection = 'column';
+                    choicesContainer.style.gap = '0.8rem';
+                    
+                    choices.forEach((choiceText) => {
+                        let btn = document.createElement('button');
+                        btn.className = 'choice-btn';
+                        btn.innerHTML = `<i class="fa-solid fa-arrow-right" style="color:var(--primary); margin-right:8px;"></i> ${choiceText}`;
+                        btn.onclick = () => {
+                            document.getElementById('userInput').value = choiceText;
+                            sendTurn();
+                        };
+                        choicesContainer.appendChild(btn);
+                    });
+                    
+                    div.appendChild(choicesContainer);
+                }
             } else {
                 div.textContent = content;
             }
