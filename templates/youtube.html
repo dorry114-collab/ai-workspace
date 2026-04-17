@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Vault Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    </script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -456,22 +461,81 @@
 
             <div id="summaryPanel" class="extract-panel" style="background: rgba(15, 23, 42, 0.4);">
                 
-                <div style="display: grid; gap: 2rem;">
-                    <!-- AI Summary -->
-                    <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
-                        <h3 style="margin-top: 0; color: #f472b6; dsiplay: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-bolt"></i> 핵심 내용 요약
-                        </h3>
-                        <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap;"></div>
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div id="sentimentBadge" style="background: rgba(255, 255, 255, 0.1); padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 1.1rem; border: 1px solid rgba(255, 255, 255, 0.2);">
+                        <!-- sentiment goes here -->
+                    </div>
+                    <button class="btn-copy" onclick="copyMarkdown()" style="border-color: #a855f7; color: #a855f7;">
+                        <i class="fa-solid fa-copy"></i> 마크다운으로 복사
+                    </button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; align-items: start;">
+                    <!-- LEFT COLUMN: Video, Timeline, Chat -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
+                        
+                        <!-- Video Player Container -->
+                        <div style="width: 100%; padding-top: 56.25%; position: relative; background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                            <div id="ytplayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+                        </div>
+
+                        <!-- Timeline Summary -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 16px; padding: 1.5rem;">
+                            <h3 style="margin-top: 0; color: #34d399; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-regular fa-clock"></i> 타임스탬프 요약 (클릭 시 재생)
+                            </h3>
+                            <div id="aiTimelineList" style="display: flex; flex-direction: column; gap: 10px;">
+                                <!-- populated by js -->
+                            </div>
+                        </div>
+
+                        <!-- Interactive Chat -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(251, 191, 36, 0.3); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; height: 400px;">
+                            <h3 style="margin-top: 0; color: #fbbf24; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-comments"></i> 영상과 대화하기
+                            </h3>
+                            <div id="chatHistory" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; padding-right: 5px;">
+                                <div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; max-width: 85%; line-height: 1.5; font-size: 0.95rem;">
+                                    영상에 대해 궁금한 점을 물어보세요! 핵심 내용이나 놓친 정보를 모두 답해드립니다.
+                                </div>
+                            </div>
+                            <form id="chatForm" style="display: flex; gap: 10px;">
+                                <input type="text" id="chatInput" placeholder="이 영상의 3가지 결론이 뭐야?" style="padding: 0.8rem; border-radius: 8px; font-size: 0.95rem;" autocomplete="off">
+                                <button type="submit" class="primary-btn" style="padding: 0 1.5rem; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
+                            </form>
+                        </div>
+
                     </div>
 
-                    <!-- Glossary -->
-                    <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 1.5rem;">
-                        <h3 style="margin-top: 0; color: #c084fc; display: flex; align-items: center; gap: 10px;">
-                            <i class="fa-solid fa-book-open"></i> 다정한 용어 사전
-                        </h3>
-                        <div id="aiGlossaryList" style="display: flex; flex-direction: column; gap: 1rem;">
-                            <!-- populated by js -->
+                    <!-- RIGHT COLUMN: Summary, Mindmap, Glossary -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
+                        
+                        <!-- AI Summary -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                            <h3 style="margin-top: 0; color: #f472b6; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-bolt"></i> 핵심 내용 요약
+                            </h3>
+                            <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap;"></div>
+                        </div>
+
+                        <!-- Mindmap -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 16px; padding: 1.5rem; overflow-x: auto;">
+                            <h3 style="margin-top: 0; color: #38bdf8; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-network-wired"></i> 시각화 마인드맵
+                            </h3>
+                            <div id="aiMindmap" class="mermaid" style="background: rgba(15, 23, 42, 0.6); padding: 1rem; border-radius: 8px; text-align: center;">
+                                <!-- mermaid rendered here -->
+                            </div>
+                        </div>
+
+                        <!-- Glossary -->
+                        <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 1.5rem;">
+                            <h3 style="margin-top: 0; color: #c084fc; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-book-open"></i> 다정한 용어 사전
+                            </h3>
+                            <div id="aiGlossaryList" style="display: flex; flex-direction: column; gap: 1rem;">
+                                <!-- populated by js -->
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -608,7 +672,53 @@
             });
         }
 
-        // --- Video Summary Logic ---
+        // --- Video Summary & Premium Features Logic ---
+        let currentYoutubeId = "";
+        let ytPlayer = null;
+        let currentSummaryData = null;
+
+        function onYouTubeIframeAPIReady() {
+            // API loaded
+        }
+
+        function loadYoutubeVideo(videoId) {
+            if(ytPlayer) {
+                ytPlayer.loadVideoById(videoId);
+            } else {
+                ytPlayer = new YT.Player('ytplayer', {
+                    videoId: videoId,
+                    playerVars: { 'autoplay': 0, 'playsinline': 1 }
+                });
+            }
+        }
+
+        function seekToTime(seconds) {
+            if(ytPlayer && ytPlayer.seekTo) {
+                ytPlayer.seekTo(seconds, true);
+                ytPlayer.playVideo();
+            }
+        }
+
+        window.copyMarkdown = function() {
+            if(!currentSummaryData) return;
+            let md = `# [영상 분위기: ${currentSummaryData.sentiment_emoji}] ${currentSummaryData.sentiment_label}\n\n`;
+            md += `## 💡 핵심 요약\n${currentSummaryData.summary}\n\n`;
+            if(currentSummaryData.timeline_summary && currentSummaryData.timeline_summary.length > 0) {
+                md += `## ⏱️ 타임라인\n`;
+                currentSummaryData.timeline_summary.forEach(t => {
+                    md += `- **[${t.time}] ${t.title}**: ${t.desc}\n`;
+                });
+                md += `\n`;
+            }
+            if(currentSummaryData.glossary && currentSummaryData.glossary.length > 0) {
+                md += `## 📚 용어 사전\n`;
+                currentSummaryData.glossary.forEach(g => {
+                    md += `- **${g.term}**: ${g.explanation}\n`;
+                });
+            }
+            navigator.clipboard.writeText(md).then(() => showToast("마크다운이 깔끔하게 복사되었습니다!"));
+        }
+
         document.getElementById('summaryForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const videoUrl = document.getElementById('videoInput').value.trim();
@@ -639,12 +749,51 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    currentSummaryData = data;
+                    currentYoutubeId = data.video_id;
+
+                    // 1. Load Video
+                    loadYoutubeVideo(currentYoutubeId);
+
+                    // 2. Sentiment Badge
+                    document.getElementById('sentimentBadge').innerHTML = `${data.sentiment_emoji} ${data.sentiment_label}`;
+
+                    // 3. AI Summary Text
                     document.getElementById('aiSummaryText').textContent = data.summary;
                     document.getElementById('fullTranscriptText').value = data.full_transcript;
                     
+                    // 4. Timeline list
+                    const timelineList = document.getElementById('aiTimelineList');
+                    timelineList.innerHTML = '';
+                    if (data.timeline_summary && data.timeline_summary.length > 0) {
+                        data.timeline_summary.forEach(t => {
+                            const btn = document.createElement('button');
+                            btn.style.cssText = "text-align: left; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; color: white; cursor: pointer; transition: all 0.2s; display: flex; gap: 15px; align-items: start;";
+                            btn.innerHTML = `<span style="color: #34d399; font-weight: 600; min-width: 50px;">[${t.time}]</span><div><div style="font-weight: 600; margin-bottom: 5px;">${t.title}</div><div style="font-size: 0.9rem; color: #94a3b8; line-height: 1.4;">${t.desc}</div></div>`;
+                            btn.onclick = () => seekToTime(t.sec);
+                            btn.onmouseover = () => btn.style.background = 'rgba(16, 185, 129, 0.2)';
+                            btn.onmouseout = () => btn.style.background = 'rgba(0,0,0,0.2)';
+                            timelineList.appendChild(btn);
+                        });
+                    }
+
+                    // 5. Mindmap Mermaid
+                    const mindmapBox = document.getElementById('aiMindmap');
+                    mindmapBox.removeAttribute('data-processed');
+                    mindmapBox.innerHTML = ''; // clear 
+                    if(data.mermaid_code) {
+                        mindmapBox.innerHTML = data.mermaid_code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+                        try {
+                            mermaid.init(undefined, mindmapBox);
+                        } catch(e) {
+                            console.error(e);
+                            mindmapBox.innerHTML = "마인드맵 렌더링에 실패했습니다.";
+                        }
+                    }
+
+                    // 6. Glossary
                     const glossaryList = document.getElementById('aiGlossaryList');
                     glossaryList.innerHTML = '';
-                    
                     if (data.glossary && data.glossary.length > 0) {
                         data.glossary.forEach(g => {
                             const item = document.createElement('div');
@@ -673,6 +822,38 @@
                 summaryBtn.disabled = false;
                 loadingState.classList.remove('show');
             }
+        });
+
+        // --- Chat Bot Logic ---
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const chatInput = document.getElementById('chatInput');
+            const text = chatInput.value.trim();
+            if(!text || !currentYoutubeId) return;
+
+            const historyDiv = document.getElementById('chatHistory');
+            // Append User message
+            historyDiv.innerHTML += `<div style="background: rgba(236, 72, 153, 0.2); border: 1px solid rgba(236,72,153,0.3); padding: 10px 15px; border-radius: 15px 15px 2px 15px; align-self: flex-end; max-width: 85%; font-size: 0.95rem;">${text}</div>`;
+            chatInput.value = '';
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+
+            try {
+                const resp = await fetch('/api/youtube/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ video_id: currentYoutubeId, prompt: text })
+                });
+                const d = await resp.json();
+                
+                if(d.success) {
+                    historyDiv.innerHTML += `<div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; max-width: 85%; line-height: 1.5; font-size: 0.95rem;">${d.reply.replace(/\n/g, '<br>')}</div>`;
+                } else {
+                    historyDiv.innerHTML += `<div style="color: #ef4444; font-size: 0.9rem;">오류발생: ${d.error}</div>`;
+                }
+            } catch(e) {
+                historyDiv.innerHTML += `<div style="color: #ef4444; font-size: 0.9rem;">통신 오류</div>`;
+            }
+            historyDiv.scrollTop = historyDiv.scrollHeight;
         });
     </script>
 </body>

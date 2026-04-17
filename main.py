@@ -728,22 +728,34 @@ def api_youtube_summary():
     try:
         # Get Korean or English transcript
         transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko', 'en'])
-        full_transcript = " ".join([t['text'] for t in transcript_list])
+        transcript_text = []
+        for t in transcript_list:
+            start_sec = int(t['start'])
+            m, s = divmod(start_sec, 60)
+            time_str = f"[{m:02d}:{s:02d}]"
+            transcript_text.append(f"{time_str} {t['text']}")
+        full_transcript = " ".join(transcript_text)
     except Exception as e:
         return jsonify({"success": False, "error": f"이 영상은 자막을 제공하지 않거나 추출할 수 없습니다. ({str(e)})"})
         
-    p_prompt = f"""다음은 어느 유튜브 영상의 전체 텍스트 스크립트입니다:
+    p_prompt = f"""다음은 어느 유튜브 영상의 전체 텍스트 스크립트 (타임스탬프 포함) 입니다:
 
-{full_transcript[:15000]}
+{full_transcript[:25000]}
 
-위 내용을 바탕으로 다음 두 가지를 작성해주세요. 전문 용어는 초보자 눈높이에서 해석해야 합니다. JSON 형식으로만 응답하세요.
+위 내용을 바탕으로 다음 정보를 작성해주세요. 전문 용어는 초보자 기준 일상 비유로 풀어서, Mermaid 차트는 아주 심플한 graph TD 구조로만 작성하세요. 반드시 JSON 형식으로만 응답해야 합니다.
 
 {{
+  "sentiment_emoji": "영상 전반의 분위기를 나타내는 이모지 1개 (예: ☀️, 🌋, 🌩️, 📚, 💡)",
+  "sentiment_label": "분위기 한줄 요약 (예: 열정적이고 공격적인 경고)",
+  "timeline_summary": [
+    {{ "time": "12:34", "sec": 754, "title": "구간 핵심 주제", "desc": "해당 구간 짧은 요약 (4~5개 구간 도출할 것)" }}
+  ],
   "summary": "영상 핵심 내용을 3~4문단으로 깔끔하고 한눈에 들어오게 요약한 본문",
   "glossary": [
     {{ "term": "어려운 용어 1", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }},
     {{ "term": "어려운 용어 2", "explanation": "초보자를 위한 아주 쉬운 뜻풀이와 일상생활 예시" }}
-  ]
+  ],
+  "mermaid_code": "graph TD\\n  A[최상단 제목] --> B[핵심주장1]\\n  A --> C[핵심주장2] 처럼 작성. 백틱(```) 없이 줄바꿈 문법(\\\\n)을 사용한 순수 텍스트열로 응답."
 }}"""
     
     try:
@@ -756,14 +768,52 @@ def api_youtube_summary():
             ai_data = json.loads(result_text)
             return jsonify({
                 "success": True,
+                "video_id": video_id,
+                "sentiment_emoji": ai_data.get('sentiment_emoji', '💡'),
+                "sentiment_label": ai_data.get('sentiment_label', '중립적 정보 전달'),
+                "timeline_summary": ai_data.get('timeline_summary', []),
                 "summary": ai_data.get('summary', '요약 실패'),
                 "glossary": ai_data.get('glossary', []),
+                "mermaid_code": ai_data.get('mermaid_code', ''),
                 "full_transcript": full_transcript
             })
         else:
             return jsonify({"success": False, "error": result_text})
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 분석 중 오류 발생: {str(e)}"})
+
+@app.route('/api/youtube/chat', methods=['POST'])
+def api_youtube_chat():
+    data = request.json
+    video_id = data.get('video_id', '')
+    prompt = data.get('prompt', '')
+    
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GEMINI_API_KEY가 설정되지 않았습니다."})
+        
+    from youtube_transcript_api import YouTubeTranscriptApi
+    try:
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko', 'en'])
+        full_transcript = " ".join([t['text'] for t in transcript_list])
+    except Exception:
+        full_transcript = "자막 정보를 불러오지 못했습니다."
+        
+    sys_role = f"""이 사용자는 유튜브 영상을 시청 중이며, 당신은 이 영상과 관련된 질의응답을 수행하는 챗봇입니다.
+다음은 영상의 텍스트 스크립트입니다:
+{full_transcript[:10000]}
+위 내용을 바탕으로 사용자의 질문에 친절하고 정확하게 답해주세요. 영상에 나오지 않은 내용이라면 모른다고 답하세요."""
+    
+    messages = [
+        {"role": "system", "content": sys_role},
+        {"role": "user", "content": prompt}
+    ]
+    
+    success, result_text = _call_gemini_chat(api_key, messages, temperature=0.7)
+    if success:
+        return jsonify({"success": True, "reply": result_text})
+    else:
+        return jsonify({"success": False, "error": result_text})
 
 @app.route('/stock')
 def stock():
