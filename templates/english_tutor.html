@@ -82,7 +82,11 @@
         .translation {
             display: block; font-size: 0.9rem; color: var(--text-muted);
             margin-top: 8px; border-top: 1px dashed #d1d5db; padding-top: 8px;
+            filter: blur(4.5px); cursor: pointer; transition: filter 0.3s ease;
+            user-select: none;
         }
+        .translation:hover { filter: blur(3px); }
+        .translation.revealed { filter: blur(0); cursor: text; user-select: auto; }
         .correction-box {
             background: #fee2e2; border-left: 4px solid var(--error-color);
             padding: 1rem; margin-top: 10px; border-radius: 8px;
@@ -255,6 +259,24 @@
         let recognition = null;
         let isDictating = false;
 
+        // TTS (Text-to-Speech) Functionality
+        function speakEnglish(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // 겹침 방지
+                
+                let utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'en-US';
+                
+                let voices = window.speechSynthesis.getVoices();
+                let enVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Google')) || 
+                              voices.find(v => v.lang.startsWith('en-'));
+                if (enVoice) utterance.voice = enVoice;
+                
+                utterance.rate = 0.95; // 약간 느리게 또박또박
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
         function initSpeechRecognition() {
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
                 return false; // 지원 안함
@@ -276,24 +298,18 @@
             };
             
             recognition.onresult = function(event) {
-                let finalTranscript = '';
-                let interimTranscript = '';
+                let currentFinal = '';
+                let currentInterim = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                     if (event.results[i].isFinal) {
-                        finalTranscript += event.results[i][0].transcript;
+                        currentFinal += event.results[i][0].transcript;
                     } else {
-                        interimTranscript += event.results[i][0].transcript;
+                        currentInterim += event.results[i][0].transcript;
                     }
                 }
                 
-                if (finalTranscript) {
-                    let oldVal = document.getElementById('userInput').value;
-                    document.getElementById('userInput').value = oldVal ? oldVal + ' ' + finalTranscript : finalTranscript;
-                } else if (interimTranscript) {
-                    // 이미 입력된 값(isFinal까지)을 유지하고 중간결과를 뒤에 덧붙여 보여줄 수 있으나
-                    // 간단하게 현재는 value를 완전히 덮어씌움 (단발성 문장에 적합)
-                    document.getElementById('userInput').value = interimTranscript;
-                }
+                // 중간 결과나 최종 결과 모두 그대로 화면에 덮어씌워서 최신 상태 유지 (중복 입력 방지)
+                document.getElementById('userInput').value = currentFinal + currentInterim;
             };
             
             recognition.onend = function() {
@@ -357,7 +373,7 @@
             chatbox.scrollTop = chatbox.scrollHeight;
         }
 
-        function appendMessageAI(data) {
+        function appendMessageAI(data, isRestore=false) {
             let chatbox = document.getElementById('chatbox');
             let typingIndicator = document.getElementById('typing');
             
@@ -367,11 +383,21 @@
             let status = data.status || 'good';
 
             if (status === 'good') {
-                let html = `<div>${data.reply}</div>`;
+                // 이스케이프 처리(따옴표)하여 다시듣기 버튼에 넣음
+                let safeText = data.reply.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                let html = `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                                <div style="flex:1;">${data.reply}</div>
+                                <button onclick="speakEnglish('${safeText}')" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
+                            </div>`;
                 if (data.translation) {
-                    html += `<div class="translation">${data.translation}</div>`;
+                    html += `<div class="translation" onclick="this.classList.add('revealed')" title="클릭해서 한글 뜻 확인하기">🔍 [클릭해서 번역 보기] ${data.translation}</div>`;
                 }
                 div.innerHTML = html;
+                
+                // 복구된 내용이 아닌, 방금 새로 받은 내용이면 바로 음성 송출!
+                if(!isRestore) {
+                    speakEnglish(data.reply);
+                }
             } else if (status === 'poor') {
                 let html = `<div style="font-weight:600; margin-bottom:5px;">⚠️ 부자연스러운 표현입니다.</div>`;
                 html += `<div class="correction-box">${data.correction}</div>`;
@@ -471,7 +497,7 @@
                     
                     // JSON 객체를 string화해서 history에 저장해야 나중에 context유지됨
                     messageHistory.push({"role": "assistant", "content": JSON.stringify(aiReplyObj)});
-                    appendMessageAI(aiReplyObj);
+                    appendMessageAI(aiReplyObj, false);
                     saveLocalHistory();
                 } else {
                     alert('튜터 오류: ' + data.error);
@@ -513,7 +539,7 @@
                             } else if (msg.role === 'assistant') {
                                 try {
                                     let obj = JSON.parse(msg.content);
-                                    appendMessageAI(obj);
+                                    appendMessageAI(obj, true);
                                 } catch(e) {
                                     console.error("AI 렌더링 파싱 오류", e);
                                 }
