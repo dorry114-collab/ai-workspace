@@ -863,8 +863,10 @@ def api_youtube_summary():
                 "video_id": video_id,
                 "sentiment_emoji": ai_data.get('sentiment_emoji', '💡'),
                 "sentiment_label": ai_data.get('sentiment_label', '중립적 정보 전달'),
+                "core_summary": ai_data.get('core_summary', ''),
                 "timeline_summary": ai_data.get('timeline_summary', []),
                 "summary": ai_data.get('summary', '요약 실패'),
+                "suggested_questions": ai_data.get('suggested_questions', []),
                 "glossary": ai_data.get('glossary', []),
                 "mermaid_code": ai_data.get('mermaid_code', ''),
                 "full_transcript": full_transcript
@@ -887,7 +889,7 @@ def api_youtube_chat():
         transcript_list = api.list(video_id)
         transcript = transcript_list.find_transcript(['ko', 'en'])
         t_data = transcript.fetch()
-        full_transcript = " ".join([t['text'] for t in t_data])
+        full_transcript = " ".join([getattr(t, 'text', '') if not isinstance(t, dict) else t.get('text', '') for t in t_data])
     except Exception:
         full_transcript = "(본 영상은 자막 데이터가 제공되지 않아, 세부 내용에 대한 챗봇 답변이 제한될 수 있습니다.)"
         
