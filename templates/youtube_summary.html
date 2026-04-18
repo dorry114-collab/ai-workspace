@@ -468,6 +468,9 @@
                                     영상에 대해 궁금한 점을 물어보세요! 핵심 내용이나 놓친 정보를 모두 답해드립니다.
                                 </div>
                             </div>
+                            <div id="suggestedQuestionsCont" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;">
+                                <!-- populated by js -->
+                            </div>
                             <form id="chatForm" style="display: flex; gap: 10px;">
                                 <input type="text" id="chatInput" placeholder="이 영상의 3가지 결론이 뭐야?" style="padding: 0.8rem; border-radius: 8px; font-size: 0.95rem;" autocomplete="off">
                                 <button type="submit" class="primary-btn" style="padding: 0 1.5rem; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
@@ -482,9 +485,14 @@
                         <!-- AI Summary -->
                         <div style="background: rgba(30, 41, 59, 0.8); border: 1px solid rgba(236, 72, 153, 0.3); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
                             <h3 style="margin-top: 0; color: #f472b6; display: flex; align-items: center; gap: 10px;">
-                                <i class="fa-solid fa-bolt"></i> 핵심 내용 요약
+                                <i class="fa-solid fa-bolt"></i> 5문장 초핵심 요약
                             </h3>
-                            <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap;"></div>
+                            <div id="aiCoreSummaryText" style="line-height: 1.8; font-size: 1.1rem; font-weight: 500; white-space: pre-wrap; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px dashed rgba(255,255,255,0.1);"></div>
+
+                            <h3 style="margin-top: 0; color: #cbd5e1; display: flex; align-items: center; gap: 10px; font-size: 1.1rem;">
+                                <i class="fa-solid fa-align-left"></i> 상세 내용 요약
+                            </h3>
+                            <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap; color: var(--text-secondary);"></div>
                         </div>
 
                         <!-- Mindmap -->
@@ -564,7 +572,10 @@
         window.copyMarkdown = function() {
             if(!currentSummaryData) return;
             let md = `# [영상 분위기: ${currentSummaryData.sentiment_emoji}] ${currentSummaryData.sentiment_label}\n\n`;
-            md += `## 💡 핵심 요약\n${currentSummaryData.summary}\n\n`;
+            if (currentSummaryData.core_summary) {
+                md += `## ⚡ 5문장 초핵심 요약\n${currentSummaryData.core_summary}\n\n`;
+            }
+            md += `## 📖 상세 요약\n${currentSummaryData.summary}\n\n`;
             if(currentSummaryData.timeline_summary && currentSummaryData.timeline_summary.length > 0) {
                 md += `## ⏱️ 타임라인\n`;
                 currentSummaryData.timeline_summary.forEach(t => {
@@ -621,8 +632,29 @@
                     document.getElementById('sentimentBadge').innerHTML = `${data.sentiment_emoji} ${data.sentiment_label}`;
 
                     // 3. AI Summary Text
+                    document.getElementById('aiCoreSummaryText').textContent = data.core_summary || "초핵심 요약이 제공되지 않았습니다.";
                     document.getElementById('aiSummaryText').textContent = data.summary;
                     document.getElementById('fullTranscriptText').value = data.full_transcript;
+                    
+                    // 3.1 Suggested Questions Setup
+                    const sqCont = document.getElementById('suggestedQuestionsCont');
+                    sqCont.innerHTML = '';
+                    if (data.suggested_questions && data.suggested_questions.length > 0) {
+                        data.suggested_questions.forEach(q => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.style.cssText = "background: rgba(251, 191, 36, 0.15); border: 1px solid rgba(251, 191, 36, 0.4); color: #fbbf24; padding: 5px 12px; border-radius: 20px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s;";
+                            btn.textContent = q;
+                            btn.onmouseover = () => btn.style.background = 'rgba(251, 191, 36, 0.3)';
+                            btn.onmouseout = () => btn.style.background = 'rgba(251, 191, 36, 0.15)';
+                            btn.onclick = () => {
+                                document.getElementById('chatInput').value = q;
+                                document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+                                btn.style.display = 'none'; // hide chip after clicking
+                            };
+                            sqCont.appendChild(btn);
+                        });
+                    }
                     
                     // 4. Timeline list
                     const timelineList = document.getElementById('aiTimelineList');
