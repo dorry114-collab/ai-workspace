@@ -810,27 +810,25 @@ def api_youtube_summary():
                 result_text = response.text
                 full_transcript = "(해당 영상은 자막이 제공되지 않아, AI가 원본 오디오를 직접 청취하여 분석한 결과입니다.)"
             else:
-                # Youtube Bot Blocked -> Fallback to parsing Title and Description using requests and bs4
+                # Youtube Bot Blocked -> Fallback to parsing Title and Author using Official oEmbed API
                 import requests
-                from bs4 import BeautifulSoup
-                headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-                req_response = requests.get(clean_url, headers=headers, timeout=10)
-                soup = BeautifulSoup(req_response.text, 'html.parser')
                 
-                title_tag = soup.find('title')
-                title_text = title_tag.text if title_tag else "제목 알 수 없음"
-                
-                # Strip "- YouTube" if exists
-                if title_text.endswith(" - YouTube"):
-                    title_text = title_text[:-10]
-                
-                desc_tag = soup.find('meta', {'name': 'description'})
-                desc_text = desc_tag['content'] if desc_tag and 'content' in desc_tag.attrs else "설명 알 수 없음"
-                
-                p_prompt = f"[안내] 유튜브 봇 차단 등으로 오디오 다운로드에 실패했습니다.\n대안으로 이 유튜브 영상의 '제목'과 '설명란' 내용만을 제공합니다.\n이 제한된 정보를 바탕으로 아래 형식에 맞춰 작성해 주세요:\n\n영상 제목: {title_text}\n영상 설명: {desc_text}\n\n" + p_prompt_tail
-                response = model.generate_content(p_prompt, generation_config=genai.types.GenerationConfig(temperature=0.7))
-                result_text = response.text
-                full_transcript = "(해당 영상은 유튜브 봇 차단으로 인해 오디오마저 가져오지 못했습니다. 유튜브 페이지에 적혀있는 '제목'과 '설명란'만을 토대로 AI가 유추한 제한적 요약입니다.)"
+                oembed_url = f"https://www.youtube.com/oembed?url={clean_url}&format=json"
+                try:
+                    req_response = requests.get(oembed_url, timeout=10)
+                    if req_response.status_code == 200:
+                        data = req_response.json()
+                        title_text = data.get('title', '제목 알 수 없음')
+                        author_name = data.get('author_name', '채널 알 수 없음')
+                        
+                        p_prompt = f"[안내] 유튜브 서버 차단(Render IP Bot Block) 등으로 대본과 오디오 추출에 모두 실패했습니다.\n다만 공식 API를 통해 알아낸 다음 정보만을 바탕으로 핵심 주제를 유추해서 가상의 요약본을 작성해 주세요:\n\n영상 제목: {title_text}\n채널 이름: {author_name}\n\n" + p_prompt_tail
+                        response = model.generate_content(p_prompt, generation_config=genai.types.GenerationConfig(temperature=0.7))
+                        result_text = response.text
+                        full_transcript = "(해당 영상은 서버 IP 차단으로 대본을 가져오지 못해, 불가피하게 '영상 제목'과 '채널명'만을 토대로 AI가 제한적으로 유추한 요약입니다.)"
+                    else:
+                        raise Exception("oEmbed API도 실패했습니다.")
+                except Exception as ex:
+                    raise Exception(f"유튜브 서버가 이 서버의 접근을 완전히 차단했습니다. (IP Blocked) - {str(ex)}")
     except Exception as e:
         return jsonify({"success": False, "error": f"AI 분석 중 오류 발생: {str(e)}"})
     finally:
