@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 힐링 대나무숲</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #f0fdf4; /* Light green natural background */
+            --primary: #15803d;
+            --text-main: #334155;
+            --card-bg: rgba(255, 255, 255, 0.9);
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Nanum Myeongjo', serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 100% 100%, rgba(21, 128, 61, 0.1), transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container { max-width: 700px; margin: 0 auto; padding: 3rem 1.5rem; text-align: center; }
+
+        header h1 { font-size: 2.5rem; color: var(--primary); margin-bottom: 0.5rem; }
+        header p { font-size: 1.1rem; color: #64748b; line-height: 1.6; }
+
+        .diary-box {
+            background: var(--card-bg);
+            border: none;
+            border-radius: 20px;
+            padding: 2rem;
+            margin: 2rem 0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: left;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: transparent;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            padding: 1.5rem;
+            border-radius: 12px;
+            font-family: 'Nanum Myeongjo', serif;
+            font-size: 1.15rem;
+            resize: none;
+            box-sizing: border-box;
+            line-height: 1.8;
+        }
+        textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
+
+        .btn-submit {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1.2rem 3rem;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Nanum Myeongjo', serif;
+            width: 100%;
+            font-weight: bold;
+        }
+        .btn-submit:hover { background: #166534; box-shadow: 0 10px 20px rgba(21, 128, 61, 0.2); }
+
+        .result-panel {
+            display: none;
+            animation: fadeIn 1.5s ease-out;
+            margin-top: 2rem;
+            background: #fff;
+            padding: 3rem 2rem;
+            border-radius: 20px;
+            text-align: left;
+            border-top: 6px solid var(--primary);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+        }
+
+        .result-panel h3 { color: var(--primary); font-size: 1.5rem; margin-top: 0; }
+        .result-panel p { line-height: 2.2; font-size: 1.15rem; color: #475569; white-space: pre-wrap; }
+
+        .loader { display: none; margin: 3rem 0; color: var(--primary); }
+        .loader i { font-size: 3rem; animation: pulse 1.5s infinite alternate; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { from { transform: scale(0.9); opacity: 0.7;} to { transform: scale(1.1); opacity: 1; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align:left; margin-bottom: 2rem;">
+            <a href="/" style="color: #64748b; text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> 숲을 빠져나가기</a>
+        </div>
+        
+        <header>
+            <h1><i class="fa-solid fa-leaf"></i> 힐링 대나무숲</h1>
+            <p>오늘 하루 상사에게 치이고, 마음대로 안 되는 일들에 지치셨나요?<br>여기에 감정을 쏟아내세요. 당신은 절대 혼자가 아닙니다.</p>
+        </header>
+
+        <div class="diary-box" id="inputPanel">
+            <textarea id="diaryInput" placeholder="누구 눈치도 보지 말고 쌍욕을 섞어도 좋습니다. 오늘 속상했던 일, 서운했던 점을 편안하게 적어주세요..."></textarea>
+            <button class="btn-submit" onclick="vent()"><i class="fa-solid fa-heart"></i> 마음 내려놓기</button>
+        </div>
+
+        <div class="loader" id="loader">
+            <i class="fa-solid fa-seedling"></i>
+            <p style="margin-top:20px; font-size:1.1rem; color:#64748b;">당신의 마음을 깊이 읽고 공감하는 중입니다...</p>
+        </div>
+
+        <div class="result-panel" id="resultPanel">
+            <h3><i class="fa-solid fa-hand-holding-heart"></i> 오은영 숲지기의 위로...</h3>
+            <p id="counselText">...</p>
+            <div style="text-align:center; margin-top:3rem;">
+                <button class="btn-submit" onclick="location.reload()" style="background:#e2e8f0; color:#334155; padding: 0.8rem 2rem;">마음이 좀 진정되었어요 (초기화)</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function vent() {
+            const text = document.getElementById('diaryInput').value.trim();
+            if(!text) return alert('마음속 응어리를 조금이라도 적어주세요.');
+
+            document.getElementById('inputPanel').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+
+            try {
+                const res = await fetch('/api/therapist/counsel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    document.getElementById('counselText').textContent = data.reply;
+                    
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('resultPanel').style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert(e.message);
+                document.getElementById('inputPanel').style.display = 'block';
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 텍스트 탈곡기</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: rgba(30, 41, 59, 0.7);
+            --primary: #3b82f6;
+            --text-main: #f8fafc;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            background-image: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container { max-width: 1000px; margin: 0 auto; padding: 2rem; }
+
+        header { text-align: center; margin-bottom: 3rem; }
+        h1 { font-size: 2.5rem; color: #60a5fa; margin-bottom: 0.5rem; }
+        
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .panel-header h3 { margin: 0; color: #93c5fd; }
+
+        select {
+            background: #1e293b;
+            color: white;
+            border: 1px solid #3b82f6;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-family: inherit;
+            outline: none;
+        }
+
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            min-height: 250px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+        textarea:focus { outline: none; border-color: var(--primary); }
+
+        .btn-polisher {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1.5rem;
+            transition: 0.3s;
+        }
+        .btn-polisher:hover { background: #2563eb; transform: translateY(-2px); }
+
+        .loader { display: none; text-align: center; color: var(--primary); margin: 2rem 0; }
+        .loader i { font-size: 2rem; animation: spin 1s linear infinite; }
+        
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #60a5fa;
+            color: #60a5fa;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .copy-btn:hover { background: #60a5fa; color: #fff; }
+
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="margin-bottom: 2rem;">
+            <a href="/" style="color: #94a3b8; text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> 홈으로</a>
+        </div>
+        
+        <header>
+            <h1><i class="fa-solid fa-file-signature"></i> AI 텍스트 탈곡기</h1>
+            <p style="color: #94a3b8;">분노의 타이핑을 정갈한 비즈니스 글로, 혹은 너무 착한 글을 무자비한 내용증명으로 탈바꿈합니다.</p>
+        </header>
+
+        <div class="grid-layout">
+            <div class="panel">
+                <div class="panel-header">
+                    <h3><i class="fa-solid fa-pen"></i> 입력 텍스트 (초안)</h3>
+                </div>
+                <textarea id="inputText" placeholder="다듬어지지 않은 날것의 글을 작성하세요. (예: 아 진짜 이번 프로젝트 너무 힘들어서 못해먹겠습니다. 기한 좀 연장해주세요 제발요.)"></textarea>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">
+                    <select id="toneSelect">
+                        <option value="비즈니스 극존칭 (정중하고 프로페셔널한 톤)">👔 비즈니스 극존칭 (사과/요청)</option>
+                        <option value="법적 내용증명 (차갑고 단호한 경고조)">⚖️ 차가운 내용증명 (경고)</option>
+                        <option value="소셜 미디어 유튜버 어투 (친근하고 발랄하게)">🎉 유튜버/인플루언서 톤</option>
+                        <option value="사극 왕의 어명 (근엄하게)">👑 조선 국왕 어명 톤</option>
+                    </select>
+                    <button class="copy-btn" onclick="copyText()"><i class="fa-solid fa-copy"></i> 복사</button>
+                </div>
+                <textarea id="outputText" readonly placeholder="탈곡된 결과물이 여기에 표시됩니다." style="background: rgba(0,0,0,0.5);"></textarea>
+            </div>
+        </div>
+
+        <button class="btn-polisher" id="processBtn" onclick="polishText()"><i class="fa-solid fa-wand-magic-sparkles"></i> 톤앤매너 완벽 변환하기</button>
+
+        <div class="loader" id="loader">
+            <i class="fa-solid fa-gear"></i> 문맥분석 및 변환 중...
+        </div>
+    </div>
+
+    <script>
+        async function polishText() {
+            const text = document.getElementById('inputText').value.trim();
+            const tone = document.getElementById('toneSelect').value;
+            
+            if(!text) return alert('입력 텍스트를 작성해주세요.');
+
+            const btn = document.getElementById('processBtn');
+            const loader = document.getElementById('loader');
+            
+            btn.style.display = 'none';
+            loader.style.display = 'block';
+            document.getElementById('outputText').value = "";
+
+            try {
+                const res = await fetch('/api/polisher/convert', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text, tone })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    document.getElementById('outputText').value = data.result;
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert("변환 실패: " + e.message);
+            } finally {
+                btn.style.display = 'block';
+                loader.style.display = 'none';
+            }
+        }
+
+        function copyText() {
+            const out = document.getElementById('outputText');
+            out.select();
+            document.execCommand('copy');
+            alert('복사되었습니다.');
+        }
+    </script>
+</body>
+</html>

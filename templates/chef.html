@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 냉장고 파먹기 셰프</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Suit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #2b3a2f; /* Dark Chalkboard green */
+            --text-main: #f4f4f4;
+            --accent: #ff8c00;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Suit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: url('https://www.transparenttextures.com/patterns/black-board.png'); /* Chalkboard texture */
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container { max-width: 800px; margin: 0 auto; padding: 2rem; text-align: center; }
+
+        header { border-bottom: 2px dashed rgba(255,255,255,0.3); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+        h1 { font-family: 'Nanum Pen Script', cursive; font-size: 4rem; color: #fff; margin:0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        h1 span { color: var(--accent); }
+
+        .chalk-box {
+            border: 3px solid rgba(255,255,255,0.8);
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            background: rgba(0,0,0,0.2);
+            text-align: left;
+        }
+
+        .input-wrapper { display: flex; flex-direction: column; gap: 10px; }
+        label { font-size: 1.2rem; font-weight: bold; color: #fbbf24; }
+        
+        input[type="text"] {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #fff;
+            color: #fff;
+            font-size: 1.5rem;
+            padding: 10px;
+            font-family: 'Nanum Pen Script', cursive;
+            outline: none;
+        }
+        input[type="text"]::placeholder { color: rgba(255,255,255,0.5); }
+
+        .btn-cook {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            font-family: 'Nanum Pen Script', cursive;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: 0.3s;
+            width: 100%;
+        }
+        .btn-cook:hover { background: #ffa500; transform: scale(1.02); }
+
+        #resultPanel { display: none; animation: fadeIn 0.8s; }
+        .recipe-title { font-family: 'Nanum Pen Script', cursive; font-size: 3.5rem; color: #fbbf24; text-align: center; margin: 1rem 0; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 1rem;}
+        .recipe-text { font-size: 1.1rem; line-height: 1.8; color: #f4f4f4; white-space: pre-wrap; font-family: 'Suit', sans-serif;}
+
+        .loader { display: none; font-size: 3rem; color: var(--accent); }
+        .loader i { animation: bounce 1s infinite alternate; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-20px); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div style="text-align:left; margin-bottom: 1rem;">
+            <a href="/" style="color: #fff; text-decoration: none;"><i class="fa-solid fa-arrow-left"></i> 주방 나가기</a>
+        </div>
+        
+        <header>
+            <h1>AI <span>냉장고 파먹기</span> 셰프</h1>
+            <p style="font-family:'Nanum Pen Script', cursive; font-size:1.8rem; color:#d1d5db; margin-top:5px;">"아무거나 불러유. 기가 막히게 볶아드림돠."</p>
+        </header>
+
+        <div class="chalk-box" id="inputPanel">
+            <div class="input-wrapper">
+                <label>냉장고에 굴러다니는 재료를 다 적어보세요 (쉼표로 구분)</label>
+                <input type="text" id="ingredients" placeholder="예: 스팸 반통, 시든 파, 김치 조금, 달걀 1개...">
+            </div>
+            <button class="btn-cook" onclick="cook()"><i class="fa-solid fa-fire-burner"></i> 레시피 짜기 (불 조절 드가자~)</button>
+        </div>
+
+        <div class="loader" id="loader">
+            <i class="fa-solid fa-fire"></i>
+            <p style="font-family:'Nanum Pen Script'; font-size:2rem; margin-top:10px;">뚝딱 뚝딱 볶는 중...</p>
+        </div>
+
+        <div class="chalk-box" id="resultPanel">
+            <div class="recipe-title" id="rTitle">...</div>
+            <div class="recipe-text" id="rBody"></div>
+            <button class="btn-cook" onclick="location.reload()" style="background:#555; color:#fff; margin-top:2rem;">다른 재료로 다시 하기</button>
+        </div>
+    </div>
+
+    <script>
+        async function cook() {
+            const ing = document.getElementById('ingredients').value.trim();
+            if(!ing) return alert('재료를 하나라도 적어주세유!');
+
+            document.getElementById('inputPanel').style.display = 'none';
+            document.getElementById('loader').style.display = 'block';
+
+            try {
+                const res = await fetch('/api/chef/recipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ingredients: ing })
+                });
+                const data = await res.json();
+                
+                if(data.success) {
+                    document.getElementById('rTitle').textContent = data.data.title;
+                    document.getElementById('rBody').textContent = data.data.recipe;
+                    
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('resultPanel').style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert(e.message);
+                document.getElementById('inputPanel').style.display = 'block';
+                document.getElementById('loader').style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

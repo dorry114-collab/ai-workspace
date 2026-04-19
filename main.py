@@ -2374,6 +2374,45 @@ def api_tarot_draw():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route('/api/saju/analyze', methods=['POST'])
+def api_saju_analyze():
+    data = request.json
+    date_str = data.get('date', '')
+    time_str = data.get('time', '')
+    gender = data.get('gender', '남성')
+    
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GEMINI_API_KEY가 없습니다."})
+        
+    try:
+        sys_prompt = f"""당신은 수십 년 경력의 동양 명리학 학자이자 주역(周易)의 최고 권위자입니다.
+사용자 정보:
+- 성별: {gender}
+- 양력 생년월일: {date_str}
+- 태어난 시간: {time_str}
+
+위 생년월일시를 바탕으로 육십갑자와 오행, 주역의 괘를 짚어내어, 이 사람의 운명과 기운을 아래 4가지 항목으로 상세하고 통찰력 있게 풀이해 주세요. 
+단순한 뻔한 소리가 아니라, 마치 오랫동안 산 수행자가 조언해주듯 뼈 때리면서도 신비로운 톤을 유지하세요.
+반드시 아래 JSON 형식으로만 응답해야 합니다.
+{{
+  "today": "오늘 하루 이 사람을 감싸는 기운과 처신 방법에 대한 조언 (약 3~4문장)",
+  "month": "이번 달의 전체적인 흐름, 재물운/애정운 등 주의할 점 (약 3~4문장)",
+  "year": "올해 신년 운세와 주요 키워드, 그리고 터닝 포인트 (약 4~5문장)",
+  "life": "이 사람이 타고난 큼직한 팔자와 평생의 기운, 성격의 장단점, 그리고 인생을 관통하는 뼈 때리는 조언 (약 5~6문장)"
+}}"""
+
+        success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.6)
+        if success:
+            if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+            import json
+            j_data = json.loads(text)
+            return jsonify({"success": True, "data": j_data})
+        else:
+            return jsonify({"success": False, "error": f"통신 실패: {text}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 @app.route('/shopping')
 def shopping():
     return render_template('shopping.html')
@@ -2437,6 +2476,120 @@ def api_shopping_analyze():
             return jsonify({"success": False, "error": text})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
+
+def _call_gemini_vision(api_key, text_prompt, base64_image, temperature=0.7):
+    import google.generativeai as genai
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        response = model.generate_content(
+            [
+                {"mime_type": "image/jpeg", "data": base64_image},
+                text_prompt
+            ],
+            generation_config=genai.types.GenerationConfig(temperature=temperature)
+        )
+        return True, response.text
+    except Exception as e:
+        return False, str(e)
+
+@app.route('/dream')
+def dream_view():
+    return render_template('dream.html')
+
+@app.route('/api/dream/analyze', methods=['POST'])
+def api_dream_analyze():
+    data = request.json
+    dream = data.get('dream', '')
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key: return jsonify({"success": False, "error": "API Key missing"})
+    
+    prompt = f"""당신은 무속 신앙과 현대 심리학에 정통한 전설적인 꿈 해몽가입니다.
+사용자의 꿈: "{dream}"
+위 꿈을 해석하여 아래 JSON 형식으로 응답하세요.
+{{
+  "tradition": "전통적인 길몽/흉몽의 관점 해석 (약 3문장)",
+  "psycho": "현대 심리학 및 무의식적 스트레스 관점 해석 (약 3문장)",
+  "lotto": "우주의 기운이 담긴 로또 번호 6개 (단순히 숫자만 콤마로, 예: 4, 12, 23, 29, 33, 41)"
+}}"""
+    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":prompt}], 0.8)
+    if success:
+        if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+        import json
+        try: return jsonify({"success": True, "data": json.loads(text)})
+        except: return jsonify({"success": False, "error": "JSON 파싱 실패"})
+    return jsonify({"success": False, "error": text})
+
+@app.route('/chef')
+def chef_view(): return render_template('chef.html')
+
+@app.route('/api/chef/recipe', methods=['POST'])
+def api_chef_recipe():
+    api_key = os.environ.get('GEMINI_API_KEY')
+    ing = request.json.get('ingredients', '')
+    prompt = f"""당신은 무뚝뚝하지만 실력있는 뒷골목 식당 셰프(백종원+고든램지 스타일)입니다.
+가진 재료: {ing}
+이 재료들만 써서(또는 기본 조미료만 추가해서) 진짜 맛있고 기상천외한 자취 요리 레시피를 만들어주세요. 말투는 구수하고 친근한 사투리를 쓰거나 터프하게 하세요.
+JSON 응답 포맷:
+{{ "title": "요리 이름 (재치있게)", "recipe": "요리 순서 및 팁 (줄바꿈 포함)" }}"""
+    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":prompt}], 0.8)
+    if success:
+        if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+        import json
+        try: return jsonify({"success": True, "data": json.loads(text)})
+        except: pass
+    return jsonify({"success": False, "error": text})
+
+@app.route('/therapist')
+def therapist_view(): return render_template('therapist.html')
+
+@app.route('/api/therapist/counsel', methods=['POST'])
+def api_therapist_counsel():
+    api_key = os.environ.get('GEMINI_API_KEY')
+    txt = request.json.get('text', '')
+    prompt = f"""당신은 국민 심리상담가 오은영 박사님처럼 한없이 따뜻하고 무조건 내 편이 되어주는 대나무숲 요정입니다.
+사용자의 하소연/분노: "{txt}"
+위 내용을 깊이 공감하고, 그 사람이 백번 잘못했다며 철저히 사용자 편을 들어주며, 따뜻하게 위로하는 글을 3~4문단으로 작성하세요. 마크다운 쓰지 말고 줄바꿈만 쓰세요."""
+    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":prompt}], 0.7)
+    return jsonify({"success": success, "reply": text, "error": text if not success else ""})
+
+@app.route('/polisher')
+def polisher_view(): return render_template('polisher.html')
+
+@app.route('/api/polisher/convert', methods=['POST'])
+def api_polisher():
+    api_key = os.environ.get('GEMINI_API_KEY')
+    txt = request.json.get('text', '')
+    tone = request.json.get('tone', '')
+    prompt = f"""다음 입력된 날것의 텍스트를 목표 톤앤매너로 완벽하게 변환하세요.
+목표 톤: {tone}
+입력 텍스트: "{txt}"
+응답은 반드시 변환된 텍스트 결과물만 출력하세요. 다른 인사말이나 설명은 절대 넣지 마세요."""
+    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":prompt}], 0.5)
+    return jsonify({"success": success, "result": text, "error": text if not success else ""})
+
+@app.route('/fashion')
+def fashion_view(): return render_template('fashion.html')
+
+@app.route('/api/fashion/evaluate', methods=['POST'])
+def api_fashion():
+    mode = request.json.get('mode', 'fashion')
+    b64 = request.json.get('image', '')
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key: return jsonify({"success": False, "error": "API Key missing"})
+    
+    if mode == 'fashion':
+        sys_p = """이 사진의 패션 코디(착장)를 매의 눈으로 분석하세요. 세계 최고의 독설가 패션 디자이너처럼 잔인하고 솔직하게 평가하세요. 100점 만점 점수와 피드백을 JSON으로 주세요. {"score": "점수", "feedback": "팩트폭행 사이다 피드백"}"""
+    else:
+        sys_p = """이 사람의 얼굴상(인상/이미지)이나 분위기를 재미있게 관상/매력도 관점에서 평가하세요. 철학관 원장님 혹은 독설가 연애코치처럼 돌직구로 평가하세요. 100점 만점 점수와 피드백을 JSON으로 주세요. {"score": "점수", "feedback": "돌직구 피드백"}"""
+        
+    success, text = _call_gemini_vision(api_key, sys_p, b64)
+    if success:
+        if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+        import json
+        try: return jsonify({"success": True, "data": json.loads(text)})
+        except: return jsonify({"success": False, "error": "JSON 파싱 실패"})
+    return jsonify({"success": False, "error": text})
 
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
