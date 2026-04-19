@@ -928,10 +928,25 @@ def lotto():
 @app.route('/api/lotto', methods=['GET'])
 def api_lotto():
     import random
+    
+    # Parse query parameters for custom mix
+    try:
+        hot_cnt = int(request.args.get('hot', 3))
+        cold_cnt = int(request.args.get('cold', 3))
+    except ValueError:
+        hot_cnt, cold_cnt = 3, 3
+        
+    if hot_cnt + cold_cnt > 6:
+        return jsonify({"success": False, "error": "HOT과 COLD 개수의 합은 6을 넘을 수 없습니다."})
+
     # 역대 가장 많이 나온 10개 번호 (최근까지의 누적 통계 기준)
     top_10 = [34, 43, 12, 27, 1, 13, 17, 39, 33, 18]
     # 역대 가장 적게 나온 10개 번호
     bottom_10 = [9, 22, 29, 23, 28, 8, 30, 32, 42, 25]
+    
+    # 나머지 번호 풀 계산
+    used_numbers = set(top_10 + bottom_10)
+    remaining_pool = [i for i in range(1, 46) if i not in used_numbers]
     
     # 상위 10개에서 6개 뽑기 5조합
     top_combs = []
@@ -943,13 +958,25 @@ def api_lotto():
     for _ in range(5):
         bottom_combs.append(sorted(random.sample(bottom_10, 6)))
         
+    # 커스텀 비율로 섞기 (MIX) 5조합
+    mixed_combs = []
+    random_cnt = 6 - (hot_cnt + cold_cnt)
+    for _ in range(5):
+        mixed = []
+        if hot_cnt > 0: mixed.extend(random.sample(top_10, hot_cnt))
+        if cold_cnt > 0: mixed.extend(random.sample(bottom_10, cold_cnt))
+        if random_cnt > 0: mixed.extend(random.sample(remaining_pool, random_cnt))
+        mixed_combs.append(sorted(mixed))
+        
     return jsonify({
         "success": True,
         "top_10_pool": top_10,
         "bottom_10_pool": bottom_10,
         "top_combinations": top_combs,
-        "bottom_combinations": bottom_combs
+        "bottom_combinations": bottom_combs,
+        "mixed_combinations": mixed_combs
     })
+
 
 @app.route('/shorts')
 def shorts_maker():
