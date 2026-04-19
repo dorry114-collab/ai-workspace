@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 쇼핑 호구 방지기</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #facc15; /* Yellow */
+            --danger: #ef4444; /* Red */
+            --success: #22c55e;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Outfit', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            background-image: radial-gradient(circle at 50% 0%, rgba(250, 204, 21, 0.1), transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 1rem 0;
+            color: var(--primary);
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Input Area */
+        .input-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-weight: 600;
+            border-radius: 8px;
+            transition: 0.3s;
+        }
+
+        .tab.active {
+            color: #000;
+            background: var(--primary);
+        }
+
+        .input-group {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .input-group.active {
+            display: flex;
+            animation: fadeIn 0.5s;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        input[type="text"], textarea {
+            width: 100%;
+            box-sizing: border-box;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, var(--danger), #b91c1c);
+            color: white;
+            border: none;
+            padding: 1.2rem;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(239, 68, 68, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            background: #4b5563;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Results Area */
+        .results-panel {
+            display: none;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .summary-card {
+            background: var(--panel-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-card.danger {
+            border-color: rgba(239, 68, 68, 0.5);
+            background: linear-gradient(to bottom, rgba(239, 68, 68, 0.05), transparent);
+        }
+
+        .summary-card.success {
+            border-color: rgba(34, 197, 94, 0.5);
+        }
+
+        .summary-card h2 {
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.5rem;
+        }
+
+        .danger h2 { color: var(--danger); }
+        .success h2 { color: var(--success); }
+
+        .list-item {
+            margin-bottom: 1.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .list-item i {
+            position: absolute;
+            left: 0;
+            top: 4px;
+        }
+
+        .danger .list-item i { color: var(--danger); }
+        .success .list-item i { color: var(--success); }
+
+        .list-item h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.1rem;
+            color: #fff;
+        }
+
+        .list-item p {
+            margin: 0;
+            color: #cbd5e1;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .verdict-box {
+            background: linear-gradient(135deg, rgba(250, 204, 21, 0.1), rgba(250, 204, 21, 0.05));
+            border: 1px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .verdict-box h3 {
+            color: var(--primary);
+            font-size: 1.8rem;
+            margin: 0 0 1rem 0;
+        }
+
+        .verdict-box p {
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 3rem;
+        }
+        
+        .loader i {
+            font-size: 3rem;
+            color: var(--danger);
+            animation: pulse-danger 1s infinite alternate;
+        }
+
+        @keyframes pulse-danger {
+            from { transform: scale(1); opacity: 0.8; }
+            to { transform: scale(1.2); opacity: 1; text-shadow: 0 0 20px var(--danger); }
+        }
+
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2.2rem; }
+            .container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div style="display: flex; justify-content: center; margin-bottom: 1.5rem;">
+                <a href="/" style="color: var(--text-muted); font-size: 1.5rem; text-decoration: none;"><i class="fa-solid fa-house"></i></a>
+            </div>
+            <h1><i class="fa-solid fa-user-shield"></i> 호구 방지기</h1>
+            <p class="subtitle">허위, 과장, 알바 액션 리뷰를 거르고<br>소비자들이 분노로 작성한 <b>'진짜 치명적 단점'</b>을 AI가 찾아 선별해드립니다.</p>
+        </header>
+
+        <div class="input-panel">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('text')"><i class="fa-solid fa-paste"></i> 리뷰 직접 복붙 (권장)</div>
+                <div class="tab" onclick="switchTab('url')"><i class="fa-solid fa-link"></i> URL 자동 분석</div>
+            </div>
+
+            <div id="tab-text" class="input-group active">
+                <label>쇼핑몰(쿠팡/네이버 등) 리뷰창에서 텍스트를 쭉 긁어서(드래그) 붙여넣으세요.</label>
+                <div style="font-size:0.85rem; color:#ef4444; margin-top:-10px;">* 대부분의 쇼핑몰은 봇 차단이 심하여 '직접 복붙' 방식이 훨씬 정확합니다.</div>
+                <textarea id="reviewText" rows="8" placeholder="예: 배송은 빠른데 마감이 개판이네요... (여기에 복사한 리뷰 더미를 통째로 붙여넣으세요)"></textarea>
+            </div>
+
+            <div id="tab-url" class="input-group">
+                <label>분석할 상품의 URL 주소</label>
+                <input type="text" id="productUrl" placeholder="https://smartstore.naver.com/...">
+            </div>
+
+            <button class="analyze-btn" id="analyzeBtn" onclick="analyzeReviews()">
+                <i class="fa-solid fa-magnifying-glass-chart"></i> 결함 팩트체크 스캔 시작
+            </button>
+        </div>
+
+        <div class="loader" id="loader">
+            <i class="fa-solid fa-radar"></i>
+            <h3 style="color: var(--text-main); margin-top: 1rem;">알바 리뷰를 필터링하고 치명적 결함을 탐색 중입니다...</h3>
+        </div>
+
+        <div class="results-panel" id="resultsPanel">
+            <!-- Cons -->
+            <div class="summary-card danger">
+                <h2><i class="fa-solid fa-bomb"></i> 크리티컬 단점 Top 3</h2>
+                <div id="consList">
+                    <!-- JS injected -->
+                </div>
+            </div>
+
+            <!-- Pros -->
+            <div class="summary-card success">
+                <h2><i class="fa-solid fa-gem"></i> 진짜 장점 Top 3</h2>
+                <div id="prosList">
+                    <!-- JS injected -->
+                </div>
+            </div>
+
+            <!-- Verdict -->
+            <div class="verdict-box">
+                <h3><i class="fa-solid fa-gavel"></i> AI 최종 판결</h3>
+                <p id="verdictText">...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'text';
+
+        function switchTab(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.input-group').forEach(c => c.classList.remove('active'));
+            
+            if(mode === 'text') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('tab-text').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('tab-url').classList.add('active');
+            }
+        }
+
+        async function analyzeReviews() {
+            const btn = document.getElementById('analyzeBtn');
+            const loader = document.getElementById('loader');
+            const results = document.getElementById('resultsPanel');
+            
+            let payload = { mode: currentMode };
+            
+            if(currentMode === 'text') {
+                payload.text = document.getElementById('reviewText').value.trim();
+                if(!payload.text) { alert('리뷰 텍스트를 붙여넣어주세요.'); return; }
+            } else {
+                payload.url = document.getElementById('productUrl').value.trim();
+                if(!payload.url) { alert('상품 URL을 입력해주세요.'); return; }
+            }
+
+            btn.disabled = true;
+            loader.style.display = 'block';
+            results.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/shopping/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    renderList('consList', data.data.cons, 'fa-skull-crossbones');
+                    renderList('prosList', data.data.pros, 'fa-check');
+                    document.getElementById('verdictText').textContent = data.data.verdict;
+                    
+                    loader.style.display = 'none';
+                    results.style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert("분석 실패: " + e.message);
+                loader.style.display = 'none';
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function renderList(elementId, items, iconClass) {
+            const container = document.getElementById(elementId);
+            container.innerHTML = '';
+            
+            if(!items || items.length === 0) {
+                container.innerHTML = '<p style="color: gray;">추출된 데이터가 없습니다.</p>';
+                return;
+            }
+
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <i class="fa-solid ${iconClass}"></i>
+                    <h4>${item.title}</h4>
+                    <p>${item.desc}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>

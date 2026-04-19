@@ -2331,6 +2331,113 @@ def shorts_script_generate():
 def game_office():
     return render_template('game_office.html')
 
+@app.route('/tarot')
+def tarot():
+    return render_template('tarot.html')
+
+@app.route('/api/tarot/draw', methods=['POST'])
+def api_tarot_draw():
+    data = request.json
+    prompt = data.get('prompt', '')
+    
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GEMINI_API_KEY가 없습니다."})
+        
+    try:
+        import random
+        major_arcana = [
+            "바보(The Fool)", "마법사(The Magician)", "여사제(The High Priestess)", "여황제(The Empress)", 
+            "황제(The Emperor)", "교황(The Hierophant)", "연인(The Lovers)", "전차(The Chariot)", 
+            "힘(Strength)", "은둔자(The Hermit)", "운명의 수레바퀴(Wheel of Fortune)", "정의(Justice)", 
+            "매달린 사람(The Hanged Man)", "죽음(Death)", "절제(Temperance)", "악마(The Devil)", 
+            "탑(The Tower)", "별(The Star)", "달(The Moon)", "태양(The Sun)", "심판(Judgement)", "세계(The World)"
+        ]
+        selected_cards = random.sample(major_arcana, 3)
+        
+        sys_prompt = f"""당신은 신비롭고 영적인 통찰력을 지닌 위대한 타로 마스터입니다.
+사용자의 질문: '{prompt}'
+당신이 뽑은 운명의 카드 3장:
+- 과거의 투영: {selected_cards[0]}
+- 현재의 직면: {selected_cards[1]}
+- 미래의 계시: {selected_cards[2]}
+
+위 뽑힌 세 장의 타로 카드가 상징하는 본래의 의미들을 엮어, 사용자의 질문에 대한 심층적이고 통찰력 있는 타로 리딩을 제공하세요. 
+마음을 꿰뚫어보듯 아주 예리하면서도, 상처를 어루만져 주는 따뜻한 해설을 5~7문단의 긴 호흡으로 넉넉하게 적어주세요. 
+응답 텍스트에는 복잡한 마크다운을 쓰지 말고, 엔터(줄바꿈)를 통한 자연스러운 문단 구분만 사용하여 신비롭고 서정적인 말투로만 작성하세요."""
+
+        success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.8)
+        if success:
+            return jsonify({"success": True, "cards": selected_cards, "reading": text})
+        else:
+            return jsonify({"success": False, "error": f"통신 실패: {text}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@app.route('/shopping')
+def shopping():
+    return render_template('shopping.html')
+
+@app.route('/api/shopping/analyze', methods=['POST'])
+def api_shopping_analyze():
+    data = request.json
+    mode = data.get('mode', 'text')
+    
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GEMINI_API_KEY가 없습니다."})
+        
+    raw_text = ""
+    if mode == 'url':
+        url = data.get('url', '')
+        try:
+            import requests
+            from bs4 import BeautifulSoup
+            res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}, timeout=7)
+            soup = BeautifulSoup(res.text, 'html.parser')
+            raw_text = soup.get_text(separator=' ', strip=True)[:15000]
+        except Exception as e:
+            return jsonify({"success": False, "error": "URL 스크래핑에 실패했습니다. 해당 쇼핑몰이 봇 접근을 차단했습니다. 상단 탭에서 '직접 복붙' 방식을 이용해주세요."})
+    else:
+        raw_text = data.get('text', '')
+        if not raw_text:
+            return jsonify({"success": False, "error": "텍스트가 입력되지 않았습니다."})
+            
+    sys_prompt = f"""당신은 날카롭고 무자비한 '호구 방지' 쇼핑 애널리스트입니다. 
+당신의 목표는 허위/조작성 알바 리뷰를 걸러내고, 진짜 소비자들이 분노를 꾹꾹 눌러 담아 폭로한 **'치명적인 결함과 단점'**들을 찾아내어 팩트 폭행을 날리는 것입니다.
+
+[쇼핑몰 리뷰 원문 데이터]
+{raw_text}
+
+위 원문을 꼼꼼히 분석하여 다음 항목을 도출하세요.
+만약 원문에 리뷰가 너무 적거나 상품 정보를 파악할 수 없다면, 가진 기본 지식으로 도출하되 "원문 데이터가 부족하여 추정된 결과입니다"를 판결에 덧붙이세요.
+
+반드시 아래 JSON 형식으로만 응답해야 합니다.
+{{
+  "cons": [
+    {{"title": "치명적 단점 1 (예: 내구성 문제)", "desc": "소비자들이 무엇 때문에 분노했는지 구체적인 상황 묘사"}},
+    {{"title": "치명적 단점 2", "desc": "설명"}},
+    {{"title": "치명적 단점 3", "desc": "설명"}}
+  ],
+  "pros": [
+    {{"title": "그나마 건진 진짜 장점 1", "desc": "광고성 문구가 아닌 찐 긍정 리뷰 요약"}},
+    {{"title": "장점 2", "desc": "설명"}},
+    {{"title": "장점 3", "desc": "설명"}}
+  ],
+  "verdict": "절대 사지 마라 / 이정도면 고려해볼 만 하다 와 같은 명확한 최종 판결. (명언이나 뼈 때리는 일침 한 마디 포함)"
+}}"""
+    try:
+        success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.3)
+        if success:
+            if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+            import json
+            j_data = json.loads(text)
+            return jsonify({"success": True, "data": j_data})
+        else:
+            return jsonify({"success": False, "error": text})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
     # This block is for simple local testing via `python main.py`
