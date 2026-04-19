@@ -2595,6 +2595,54 @@ def api_fashion():
         except: return jsonify({"success": False, "error": "JSON 파싱 실패"})
     return jsonify({"success": False, "error": text})
 
+@app.route('/love')
+def love_view(): return render_template('love.html')
+
+@app.route('/api/love/analyze', methods=['POST'])
+def api_love_analyze():
+    b64 = request.json.get('image', '')
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key: return jsonify({"success": False, "error": "API Key missing"})
+    
+    sys_p = """당신은 100전 100승의 전설적인 연애 코치입니다. 사용자가 올린 카톡 대화 화면 캡처를 보고, 상대방의 답장 길이/속도, 단답 여부, 이모티콘 사용량 등을 면밀히 스캔하세요. 이것이 '그린라이트 썸'인지, '답정너 짝사랑'인지, 아니면 '위험한 어장관리'인지 무자비하게 팩트 폭행하며 알려주세요.
+반드시 아래 JSON 형식으로 반환하세요.
+{
+  "score": "그린라이트 확률 점수 (예: 85, 30 등 숫자만)",
+  "verdict": "짧은 판정 결과 (예: '완벽한 썸', '혼자만의 짝사랑', '위험한 어장관리')",
+  "analysis": "구체적인 카톡 분석 내용과 뼈 때리는 조언 (3-4문장)"
+}"""
+    success, text = _call_gemini_vision(api_key, sys_p, b64)
+    if success:
+        if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+        import json
+        try: return jsonify({"success": True, "data": json.loads(text)})
+        except: return jsonify({"success": False, "error": "JSON 파싱 실패"})
+    return jsonify({"success": False, "error": text})
+
+@app.route('/diet')
+def diet_view(): return render_template('diet.html')
+
+@app.route('/api/diet/analyze', methods=['POST'])
+def api_diet_analyze():
+    b64 = request.json.get('image', '')
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key: return jsonify({"success": False, "error": "API Key missing"})
+    
+    sys_p = """당신은 호랑이 다이어트 PT 코치(김종국 모드)입니다. 사용자가 오늘 먹은 음식 사진이나 배달 영수증을 올렸습니다. 먹은 메뉴와 사진을 스캔해서 대략적인 섭취 칼로리를 유추하고, 이런 걸 먹다니 제정신이냐며 눈물 쏙 빼게 혼나는 팩트 폭행 잔소리를 날려주세요. 그리고 내일 어떻게 속죄해야 하는지 처방해주세요.
+반드시 아래 JSON 형식으로 반환하세요.
+{
+  "calories": "예상 칼로리 (예: 1200, 800 등 숫자만)",
+  "roasts": "양심의 가책을 느끼게 하는 호통과 잔소리 (3-4문장)",
+  "workout_plan": "내일 반드시 해야 할 속죄 플랜 (예: 런닝머신 2시간, 점심은 방울토마토 3알)"
+}"""
+    success, text = _call_gemini_vision(api_key, sys_p, b64)
+    if success:
+        if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+        import json
+        try: return jsonify({"success": True, "data": json.loads(text)})
+        except: return jsonify({"success": False, "error": "JSON 파싱 실패"})
+    return jsonify({"success": False, "error": text})
+
 @app.route('/diary')
 def diary_view(): return render_template('diary.html')
 
@@ -2606,10 +2654,10 @@ def api_diary_chat():
     
     if stage == 1:
         sys_p = f"""사용자의 첫번째 대답: "{ans}"
-이 대답의 맥락을 파악하고, 일기를 풍성하게 만들기 위해 "그 일이 당신의 기분에 어떤 영향을 주었나요?" 와 같은 자연스러운 꼬리 질문을 1개만 부드러운 톤으로 물어보세요."""
+이 대답의 맥락을 파악하고, 일기를 쓸 수 있게 사용자의 '기분'이나 '속마음'에 집중하는 꼬리 질문을 1개만 친구처럼 부드럽게 물어보세요. (예: "그때 기분이 어땠어?", "어떤 점이 아쉬웠어?" 등) 너무 거창하게 묻지 마세요."""
     else:
         sys_p = f"""사용자의 두번째 대답: "{ans}"
-이제 대화를 마무리하기 위해 "내일은 어떤 하루가 되기를 바라시나요?" 와 같은 긍정적인 마무리 질문 1개만 부드럽게 물어보세요."""
+이제 대화를 마무리하기 위해 내일에 대한 가벼운 다짐이나 바램을 묻는 질문 1개만 친구처럼 부드럽게 물어보세요. (예: "내일은 어떤 하루를 보내고 싶어?")"""
         
     success, text = _call_gemini_chat(api_key, [{"role":"user", "content":sys_p}], 0.7)
     return jsonify({"success": success, "reply": text, "error": text if not success else ""})
@@ -2620,12 +2668,17 @@ def api_diary_compile():
     api_key = os.environ.get('GEMINI_API_KEY')
     ans_text = "\n".join(f"- {a}" for a in answers)
     
-    sys_p = f"""당신은 감성적인 에세이 작가입니다. 
-다음 사용자의 단답형 응답 3개를 바탕으로 기승전결이 완벽한 '오늘의 일기'를 한 편 대필해주세요. 
+    sys_p = f"""당신은 평범한 사람의 하루를 대필해주는 일기 작가입니다. 
+다음 사용자의 단답형 응답들을 바탕으로 '오늘의 일기'를 한 편 대필해주세요. 
+
 [사용자 응답 내역]
 {ans_text}
 
-너무 길지 않게 3~4문단으로 자연스러운 한국어 일기체(평어체, ~했다, ~이다)로 써주세요. 마크다운 기호 없이 순수 텍스트 줄바꿈만 사용하세요."""
+[작성 규칙 - 매우 중요]
+1. 너무 거창하고 문학적인 표현(예: 폐부 깊숙이 스며드는, 투영, 그늘을 드리웠다 등)은 절대 금지합니다.
+2. 진짜 사람이 쓴 것처럼 담백하고 캐주얼한 일상체(평어체, ~했다, ~음, ~이다)로 작성하세요. 혼잣말 하듯이 속마음과 감정이 솔직하게 드러나야 합니다.
+3. 길이는 2~3문단 정도로 짧고 간결하게 작성하세요.
+4. 마크다운 기호 없이 순수 텍스트 줄바꿈만 사용하세요."""
     success, text = _call_gemini_chat(api_key, [{"role":"user", "content":sys_p}], 0.7)
     return jsonify({"success": success, "diary": text, "error": text if not success else ""})
 
