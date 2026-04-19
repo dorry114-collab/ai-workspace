@@ -224,23 +224,24 @@ def get_stock_data():
 종목: {ticker} ({raw_ticker})
 현재가: {current_p:.2f}
 최근 1개월 최고가: {high_1m:.2f} / 최저가: {low_1m:.2f}
-장기 평균 가격선: {sma50_str}
-시장 과열점수(0~100): {rsi_str} (70 이상은 위험, 30 이하는 안전)
-정상 가격 범위(상단): {bb_upper_str}
-정상 가격 범위(하단): {bb_lower_str}
-종합 상승/하락 에너지: {macd_str} (기준치 {macd_sig_str} 이상이면 상승 에너지 강함)
+장기 평균 가격선(SMA 50): {sma50_str}
+시장 과열점수(RSI): {rsi_str} (70 이상은 위험, 30 이하는 안전)
+볼린저 밴드 상단: {bb_upper_str} / 하단: {bb_lower_str}
+MACD: {macd_str} (시그널 {macd_sig_str})
 최근 거래량: {vol_trend_str} (평소 대비 {vol_ratio:.1f}%)
 
-위 기술적 지표들을 종합하여, 현재 주가 흐름에 대한 날카롭고 전문적인 차트 분석을 제공해 주세요. 단, 초보자도 쉽게 이해할 수 있도록 어려운 전문 용어가 들어간다면 이 분석글 하단에 '용어 해설표'를 반드시 별도로 마련하여 짧고 명확하게 뜻을 풀이해 주세요.
+위 기술적 지표들을 종합하여, 현재 주가 흐름에 대한 날카롭고 전문적인 차트 분석을 제공해 주세요. 
+🔥 **[중요 필수 지침]** 분석글을 작성할 때 반드시 뭉뚱그려 말하지 말고, "현재가 82,000원은 볼린저 밴드 상단인 83,000원에 근접해 있으며...", "RSI 지수가 75.3으로 과열 구간에 진입하여..." 와 같이 제공된 **'정확한 수치'**와 **'전문 명칭(SMA, RSI, MACD 등)'**을 텍스트 문장 안에 직접적으로 빵빵하게 포함하여 작성하세요.
+단, 초보자도 쉽게 이해할 수 있도록 어려운 전문 용어가 쓰인 분석글 하단에는 '용어 해설표'를 반드시 별도로 마련하여 짧고 명확하게 뜻을 풀이해 주세요.
 
 반드시 아래 JSON 형식으로만 응답해야 합니다.
 {{
-  "analysis": "현재 상황의 장단점 및 기술적 분석을 5~7문장 분량으로 전문가적인 톤으로 작성한 차트 분석. (단, 하단에 '\\n\\n[용어 해설]\\n- MACD: ...\\n- RSI: ...' 식으로 덧붙일 것)",
+  "analysis": "제공된 가격 수치와 지표 명칭(RSI, MACD 등)을 적극적으로 본문에 인용하여 작성한 5~7문장 분량의 전문가적 차트 분석. (단, 하단에 '\\n\\n[용어 해설]\\n- MACD: ...\\n- RSI: ...' 식으로 덧붙일 것)",
   "target_price": 1개월 뒤 합리적인 목표가격(숫자만 입력),
   "stop_loss": 손절매(위험관리) 목표 가격(숫자만 입력)
 }}"""
             try:
-                sys_role = "당신은 냉철하고 전문적인 주식 애널리스트입니다. 분석은 깊이 있게 하되, 어려운 용어는 하단에 별도로 쉽게 풀이해줍니다."
+                sys_role = "당신은 냉철하고 전문적인 주식 애널리스트입니다. 구체적인 데이터 수치와 지표명을 본문에 직접 언급하며 깊이 있게 분석하되, 어려운 용어는 하단에 쉽게 풀이해줍니다."
                 messages = [
                     {"role": "system", "content": sys_role},
                     {"role": "user", "content": p_prompt}
@@ -830,7 +831,8 @@ def api_youtube_summary():
                         p_prompt = f"[안내] 유튜브 서버 차단(Render IP Bot Block) 등으로 대본과 오디오 추출에 모두 실패했습니다.\n다만 공식 API를 통해 알아낸 다음 정보만을 바탕으로 핵심 주제를 유추해서 가상의 요약본을 작성해 주세요:\n\n영상 제목: {title_text}\n채널 이름: {author_name}\n\n" + p_prompt_tail
                         response = model.generate_content(p_prompt, generation_config=genai.types.GenerationConfig(temperature=0.7))
                         result_text = response.text
-                        full_transcript = "(해당 영상은 서버 IP 차단으로 대본을 가져오지 못해, 불가피하게 '영상 제목'과 '채널명'만을 토대로 AI가 제한적으로 유추한 요약입니다.)"
+                        full_transcript = "(해당 영상은 서버 IP 차단으로 대본을 가져오지 못해, 불가피하게 '영상 제목'과 '채널명'만을 토대로 AI가 제한적으로 유추한 기사입니다.)"
+                        transcript_available = False
                     else:
                         raise Exception("oEmbed API도 실패했습니다.")
                 except Exception as ex:
@@ -869,7 +871,8 @@ def api_youtube_summary():
                 "suggested_questions": ai_data.get('suggested_questions', []),
                 "glossary": ai_data.get('glossary', []),
                 "mermaid_code": ai_data.get('mermaid_code', ''),
-                "full_transcript": full_transcript
+                "full_transcript": full_transcript,
+                "is_fallback": not transcript_available
             })
 
 
@@ -890,13 +893,14 @@ def api_youtube_chat():
         transcript = transcript_list.find_transcript(['ko', 'en'])
         t_data = transcript.fetch()
         full_transcript = " ".join([getattr(t, 'text', '') if not isinstance(t, dict) else t.get('text', '') for t in t_data])
-    except Exception:
-        full_transcript = "(본 영상은 자막 데이터가 제공되지 않아, 세부 내용에 대한 챗봇 답변이 제한될 수 있습니다.)"
-        
-    sys_role = f"""이 사용자는 유튜브 영상을 시청 중이며, 당신은 이 영상과 관련된 질의응답을 수행하는 챗봇입니다.
+        sys_role = f"""이 사용자는 유튜브 영상을 시청 중이며, 당신은 이 영상과 관련된 질의응답을 수행하는 챗봇입니다.
 다음은 영상의 텍스트 스크립트입니다:
-{full_transcript[:10000]}
-위 내용을 바탕으로 사용자의 질문에 친절하고 정확하게 답해주세요. 영상에 나오지 않은 내용이라면 모른다고 답하세요."""
+{full_transcript[:15000]}
+위 내용을 바탕으로 사용자의 질문에 친절하고 정확하게 답해주세요. 영상에 나오지 않은 내용이라면 영상에서 확인할 수 없다고 명확히 답하세요."""
+    except Exception:
+        sys_role = """이 사용자는 유튜브 영상을 시청 중이며, 당신은 이 영상과 관련된 질의응답을 수행하는 챗봇입니다.
+현재 시스템 문제나 봇 차단으로 인해 영상의 구체적인 '자막 대본(Transcript)'을 가져오지 못했습니다. 
+따라서 사용자가 영상 내용이나 관련된 주제에 대해 질문하면, 당신이 가지고 있는 '일반적인 지식과 방대한 웹 상식'을 총동원하여 최대한 친절하고 상세하게 답변해 주세요. "영상을 못 봐서 대답할 수 없다"는 식의 거절은 피하고, 최대한 지식을 활용해 유익한 대화를 이어나가세요."""
     
     messages = [
         {"role": "system", "content": sys_role},

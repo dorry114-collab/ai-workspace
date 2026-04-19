@@ -438,6 +438,10 @@
                         <i class="fa-solid fa-copy"></i> 마크다운으로 복사
                     </button>
                 </div>
+                
+                <div id="fallbackWarningBanner" style="display: none; background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.5); padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; color: #fef08a; font-size: 0.95rem; line-height: 1.6;">
+                    <strong><i class="fa-solid fa-triangle-exclamation"></i> 시스템 알림:</strong> 현재 영상의 상세 자막 데이터를 가져오지 못했습니다. 아래 요약과 챗봇 대답은 AI가 가진 고도의 방대한 기본 지식을 살려 <strong>'제목과 채널명'만을 바탕으로 재구성한 내용</strong>이므로, 실제 영상과 차이가 있을 수 있습니다.
+                </div>
 
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; align-items: start;">
                     <!-- LEFT COLUMN: Video, Timeline, Chat -->
@@ -630,6 +634,13 @@
 
                     // 2. Sentiment Badge
                     document.getElementById('sentimentBadge').innerHTML = `${data.sentiment_emoji} ${data.sentiment_label}`;
+                    
+                    // 2.5 Fallback Warning
+                    if (data.is_fallback) {
+                        document.getElementById('fallbackWarningBanner').style.display = 'block';
+                    } else {
+                        document.getElementById('fallbackWarningBanner').style.display = 'none';
+                    }
 
                     // 3. AI Summary Text
                     document.getElementById('aiCoreSummaryText').textContent = data.core_summary || "초핵심 요약이 제공되지 않았습니다.";
