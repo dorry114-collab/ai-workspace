@@ -2648,16 +2648,15 @@ def diary_view(): return render_template('diary.html')
 
 @app.route('/api/diary/chat', methods=['POST'])
 def api_diary_chat():
-    stage = request.json.get('stage', 1)
-    ans = request.json.get('current_answer', '')
+    answers = request.json.get('answers', [])
     api_key = os.environ.get('GEMINI_API_KEY')
     
-    if stage == 1:
-        sys_p = f"""사용자의 첫번째 대답: "{ans}"
-이 대답의 맥락을 파악하고, 일기를 쓸 수 있게 사용자의 '기분'이나 '속마음'에 집중하는 꼬리 질문을 1개만 친구처럼 부드럽게 물어보세요. (예: "그때 기분이 어땠어?", "어떤 점이 아쉬웠어?" 등) 너무 거창하게 묻지 마세요."""
-    else:
-        sys_p = f"""사용자의 두번째 대답: "{ans}"
-이제 대화를 마무리하기 위해 내일에 대한 가벼운 다짐이나 바램을 묻는 질문 1개만 친구처럼 부드럽게 물어보세요. (예: "내일은 어떤 하루를 보내고 싶어?")"""
+    ans_text = "\n".join(f"- {a}" for a in answers)
+    
+    sys_p = f"""사용자가 지금까지 한 대답들:
+{ans_text}
+
+이 대답들의 맥락을 파악하고, 일기를 쓸 수 있도록 '아직 말하지 않은 또 다른 특별한 일'이나 '당시의 솔직한 기분' 등을 묻는 꼬리 질문을 딱 1개만 친구처럼 편안하고 다정하게 물어보세요. 너무 거창하게 묻지 말고 대화하듯 짧게 물어보세요."""
         
     success, text = _call_gemini_chat(api_key, [{"role":"user", "content":sys_p}], 0.7)
     return jsonify({"success": success, "reply": text, "error": text if not success else ""})

@@ -98,14 +98,17 @@
         .guide-link { font-size: 0.85rem; color: var(--primary); text-decoration: underline; margin-top: 10px; display: inline-block;}
 
         /* Final Result Area */
-        .final-result { display: none; padding: 10px;}
-        .diary-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 25px; font-family: 'Gowun Dodum', sans-serif; font-size: 1.15rem; line-height: 1.8; color: #1e293b; white-space: pre-wrap; box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 20px;}
+        .final-result { display: none; padding: 10px; height: 100%; flex-direction: column;}
+        .diary-card { background: white; border: 1px solid #cbd5e1; border-radius: 12px; padding: 25px; font-family: 'Gowun Dodum', sans-serif; font-size: 1.15rem; line-height: 1.8; color: #1e293b; resize: none; width: 100%; box-sizing: border-box; min-height: 250px; flex: 1; margin-bottom: 15px;}
+        .diary-card:focus { outline: none; border-color: var(--primary); }
         .btn-notion { width: 100%; background: #1e293b; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1rem; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; font-weight: bold; display: flex; gap: 10px; align-items: center; justify-content: center; transition: 0.2s;}
         .btn-notion:hover { background: #0f172a; transform: translateY(-2px);}
 
         .loader { display: none; text-align: center; color: var(--primary); font-size: 2rem; padding: 1rem;}
         .loader i { animation: spin 1s linear infinite; }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+        
+        .btn-compile { background: #10b981; color: white; border: none; padding: 0 15px; border-radius: 25px; font-size: 0.95rem; font-weight: bold; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;}
     </style>
 </head>
 <body>
@@ -119,21 +122,23 @@
 
         <div class="chat-box" id="chatBox">
             <div class="bubble-wrapper ai">
-                <div class="bubble">안녕하세요! 오늘 하루는 어떠셨나요? 기억에 남는 멋진 일(또는 별로였던 일) 하나만 딱 말해주세요.</div>
+                <div class="bubble">안녕하세요! 오늘 하루는 어떠셨나요? 특별했던 일이나 사소한 일 하나만 딱 말해주세요.</div>
             </div>
         </div>
 
         <div class="loader" id="loader"><i class="fa-solid fa-spinner"></i></div>
 
         <div class="final-result" id="finalResult">
-            <h2 style="font-family: 'Noto Sans KR'; font-size: 1.2rem;">완성된 오늘의 일기</h2>
-            <div class="diary-card" id="diaryContent">...</div>
+            <h2 style="font-family: 'Noto Sans KR'; font-size: 1.2rem; margin-top:0;">✨ 완성된 오늘의 일기</h2>
+            <p style="font-size: 0.9rem; color: #64748b; margin-top: -10px;">자유롭게 텍스트를 수정하거나 추가한 뒤 노션으로 보낼 수 있습니다.</p>
+            <textarea class="diary-card" id="diaryContent"></textarea>
             <button class="btn-notion" id="btnNotion" onclick="sendToNotion()"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" style="width:20px; filter: grayscale(1) brightness(2);"> 내 노션으로 즉시 보내기</button>
         </div>
 
         <div class="input-area" id="inputArea">
-            <input type="text" id="userInput" placeholder="단답형으로 대충 적어도 됩니다!" onkeypress="handleEnter(event)">
+            <input type="text" id="userInput" placeholder="대충 적어도 됩니다!" onkeypress="handleEnter(event)">
             <button class="send-btn" id="sendBtn" onclick="sendMessage()"><i class="fa-solid fa-paper-plane"></i></button>
+            <button class="btn-compile" id="compileBtn" onclick="compileDiary()" style="display:none;">✨ 일기로 쓰기</button>
         </div>
     </div>
 
@@ -167,9 +172,7 @@
             alert('설정이 브라우저에 저장되었습니다!');
         }
 
-        let stage = 1; // 1: First Q answered, 2: Second Q answered, 3: Third Q answered (Done)
         let answers = [];
-        let finalDiary = "";
 
         function addBubble(text, sender) {
             const box = document.getElementById('chatBox');
@@ -193,6 +196,8 @@
             el.value = '';
             addBubble(text, 'user');
             answers.push(text);
+            
+            document.getElementById('compileBtn').style.display = 'block';
 
             const inputArea = document.getElementById('inputArea');
             const loader = document.getElementById('loader');
@@ -200,49 +205,53 @@
             inputArea.style.display = 'none';
             loader.style.display = 'block';
 
-            if (stage < 3) {
-                // Ask next question dynamically based on user response
-                try {
-                    const res = await fetch('/api/diary/chat', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ stage: stage, current_answer: text })
-                    });
-                    const data = await res.json();
-                    loader.style.display = 'none';
-                    if(data.success) {
-                        addBubble(data.reply, 'ai');
-                        inputArea.style.display = 'flex';
-                        stage++;
-                    } else { throw new Error(data.error); }
-                } catch(e) {
-                    alert('오류: ' + e.message);
+            try {
+                const res = await fetch('/api/diary/chat', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ answers: answers })
+                });
+                const data = await res.json();
+                loader.style.display = 'none';
+                if(data.success) {
+                    addBubble(data.reply, 'ai');
                     inputArea.style.display = 'flex';
-                    answers.pop();
-                    loader.style.display = 'none';
-                }
-            } else {
-                // Compile diary
-                try {
-                    const res = await fetch('/api/diary/compile', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({ answers })
-                    });
-                    const data = await res.json();
-                    loader.style.display = 'none';
-                    if(data.success) {
-                        finalDiary = data.diary;
-                        document.getElementById('diaryContent').innerText = finalDiary;
-                        document.getElementById('chatBox').style.display = 'none';
-                        document.getElementById('finalResult').style.display = 'block';
-                    } else { throw new Error(data.error); }
-                } catch(e) {
-                    alert('오류: ' + e.message);
-                    inputArea.style.display = 'flex';
-                    answers.pop();
-                    loader.style.display = 'none';
-                }
+                } else { throw new Error(data.error); }
+            } catch(e) {
+                alert('오류: ' + e.message);
+                inputArea.style.display = 'flex';
+                answers.pop();
+                loader.style.display = 'none';
+            }
+        }
+
+        async function compileDiary() {
+            if(answers.length === 0) return alert('대화를 먼저 시작해주세요!');
+            
+            const inputArea = document.getElementById('inputArea');
+            const loader = document.getElementById('loader');
+            
+            inputArea.style.display = 'none';
+            loader.style.display = 'block';
+            addBubble("지금까지의 대화를 바탕으로 일기를 쓰고 있습니다...", "ai");
+
+            try {
+                const res = await fetch('/api/diary/compile', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ answers })
+                });
+                const data = await res.json();
+                loader.style.display = 'none';
+                if(data.success) {
+                    document.getElementById('diaryContent').value = data.diary;
+                    document.getElementById('chatBox').style.display = 'none';
+                    document.getElementById('finalResult').style.display = 'flex';
+                } else { throw new Error(data.error); }
+            } catch(e) {
+                alert('오류: ' + e.message);
+                inputArea.style.display = 'flex';
+                loader.style.display = 'none';
             }
         }
 
@@ -255,6 +264,9 @@
                 return;
             }
 
+            const finalDiaryText = document.getElementById('diaryContent').value.trim();
+            if(!finalDiaryText) return alert("일기 내용이 비어있습니다.");
+
             const btn = document.getElementById('btnNotion');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 노션으로 전송 중...';
             btn.disabled = true;
@@ -265,7 +277,7 @@
                 const res = await fetch('/api/diary/notion', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ notion_key: key, db_id: db, title: `📝 ${dateStr} 일기`, content: finalDiary })
+                    body: JSON.stringify({ notion_key: key, db_id: db, title: `📝 ${dateStr} 일기`, content: finalDiaryText })
                 });
                 const data = await res.json();
                 if(data.success) {
