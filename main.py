@@ -2335,6 +2335,10 @@ def game_office():
 def tarot():
     return render_template('tarot.html')
 
+@app.route('/saju')
+def saju():
+    return render_template('saju.html')
+
 @app.route('/api/tarot/draw', methods=['POST'])
 def api_tarot_draw():
     data = request.json
@@ -2590,6 +2594,82 @@ def api_fashion():
         try: return jsonify({"success": True, "data": json.loads(text)})
         except: return jsonify({"success": False, "error": "JSON 파싱 실패"})
     return jsonify({"success": False, "error": text})
+
+@app.route('/diary')
+def diary_view(): return render_template('diary.html')
+
+@app.route('/api/diary/chat', methods=['POST'])
+def api_diary_chat():
+    stage = request.json.get('stage', 1)
+    ans = request.json.get('current_answer', '')
+    api_key = os.environ.get('GEMINI_API_KEY')
+    
+    if stage == 1:
+        sys_p = f"""사용자의 첫번째 대답: "{ans}"
+이 대답의 맥락을 파악하고, 일기를 풍성하게 만들기 위해 "그 일이 당신의 기분에 어떤 영향을 주었나요?" 와 같은 자연스러운 꼬리 질문을 1개만 부드러운 톤으로 물어보세요."""
+    else:
+        sys_p = f"""사용자의 두번째 대답: "{ans}"
+이제 대화를 마무리하기 위해 "내일은 어떤 하루가 되기를 바라시나요?" 와 같은 긍정적인 마무리 질문 1개만 부드럽게 물어보세요."""
+        
+    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":sys_p}], 0.7)
+    return jsonify({"success": success, "reply": text, "error": text if not success else ""})
+
+@app.route('/api/diary/compile', methods=['POST'])
+def api_diary_compile():
+    answers = request.json.get('answers', [])
+    api_key = os.environ.get('GEMINI_API_KEY')
+    ans_text = "\n".join(f"- {a}" for a in answers)
+    
+    sys_p = f"""당신은 감성적인 에세이 작가입니다. 
+다음 사용자의 단답형 응답 3개를 바탕으로 기승전결이 완벽한 '오늘의 일기'를 한 편 대필해주세요. 
+[사용자 응답 내역]
+{ans_text}
+
+너무 길지 않게 3~4문단으로 자연스러운 한국어 일기체(평어체, ~했다, ~이다)로 써주세요. 마크다운 기호 없이 순수 텍스트 줄바꿈만 사용하세요."""
+    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":sys_p}], 0.7)
+    return jsonify({"success": success, "diary": text, "error": text if not success else ""})
+
+@app.route('/api/diary/notion', methods=['POST'])
+def api_diary_notion():
+    data = request.json
+    notion_key = data.get('notion_key', '')
+    db_id = data.get('db_id', '')
+    title = data.get('title', '일기')
+    content = data.get('content', '')
+    
+    import requests
+    headers = {
+        "Authorization": f"Bearer {notion_key}",
+        "Content-Type": "application/json",
+        "Notion-Version": "2022-06-28"
+    }
+    
+    paragraphs = content.split('\n')
+    children = []
+    for p in paragraphs:
+        if p.strip():
+            children.append({
+                "object": "block",
+                "type": "paragraph",
+                "paragraph": { "rich_text": [ { "type": "text", "text": { "content": p.strip() } } ] }
+            })
+            
+    payload = {
+        "parent": { "database_id": db_id },
+        "properties": {
+            "title": { "title": [ { "text": { "content": title } } ] }
+        },
+        "children": children
+    }
+    
+    try:
+        res = requests.post("https://api.notion.com/v1/pages", json=payload, headers=headers)
+        if res.status_code == 200:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"success": False, "error": res.text})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
 
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 

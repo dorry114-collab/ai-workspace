@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 타로 & 사주 상담소</title>
+    <title>AI 타로 상담소</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,326 +29,78 @@
             overflow-x: hidden;
         }
 
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 2rem;
-            text-align: center;
-        }
+        .container { max-width: 900px; margin: 0 auto; padding: 2rem; text-align: center; }
 
-        header {
-            margin-bottom: 2rem;
-            animation: fadeInDown 1s ease-out;
-        }
+        header { margin-bottom: 2rem; animation: fadeInDown 1s ease-out; }
+        h1 { font-family: 'Cinzel', serif; font-size: 3rem; color: var(--tarot-gold); margin-bottom: 0.5rem; text-shadow: 0 0 20px rgba(251, 191, 36, 0.5); }
+        p.subtitle { color: #cbd5e1; font-size: 1.1rem; line-height: 1.6; }
 
-        h1 {
-            font-family: 'Cinzel', serif;
-            font-size: 3rem;
-            color: var(--tarot-gold);
-            margin-bottom: 0.5rem;
-            text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
-        }
-
-        p.subtitle {
-            color: #cbd5e1;
-            font-size: 1.1rem;
-            line-height: 1.6;
-        }
-
-        /* Input Area */
         .question-box {
-            background: rgba(30, 41, 59, 0.6);
-            border: 1px solid var(--tarot-purple);
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 3rem;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            background: rgba(30, 41, 59, 0.6); border: 1px solid var(--tarot-purple); border-radius: 16px;
+            padding: 2rem; margin-bottom: 3rem; backdrop-filter: blur(10px); box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
 
         .question-input {
-            width: 90%;
-            max-width: 600px;
-            padding: 1rem;
-            font-size: 1.1rem;
-            border: 1px solid rgba(251, 191, 36, 0.5);
-            border-radius: 12px;
-            background: rgba(0,0,0,0.4);
-            color: white;
-            font-family: 'Nanum Myeongjo', serif;
-            outline: none;
-            text-align: center;
-            margin-bottom: 1.5rem;
-            transition: all 0.3s;
+            width: 90%; max-width: 600px; padding: 1rem; font-size: 1.1rem;
+            border: 1px solid rgba(251, 191, 36, 0.5); border-radius: 12px; background: rgba(0,0,0,0.4);
+            color: white; font-family: 'Nanum Myeongjo', serif; outline: none; text-align: center; margin-bottom: 1.5rem; transition: all 0.3s;
         }
 
-        .question-input:focus {
-            border-color: var(--tarot-gold);
-            box-shadow: 0 0 15px rgba(251, 191, 36, 0.3);
-        }
+        .question-input:focus { border-color: var(--tarot-gold); box-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
 
         .draw-btn {
-            background: linear-gradient(135deg, #a855f7, #7e22ce);
-            color: white;
-            border: 2px solid var(--tarot-gold);
-            padding: 1rem 3rem;
-            border-radius: 30px;
-            font-size: 1.2rem;
-            font-family: 'Nanum Myeongjo', serif;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
+            background: linear-gradient(135deg, #a855f7, #7e22ce); color: white; border: 2px solid var(--tarot-gold);
+            padding: 1rem 3rem; border-radius: 30px; font-size: 1.2rem; font-family: 'Nanum Myeongjo', serif; font-weight: 700;
+            cursor: pointer; transition: all 0.3s; display: inline-flex; align-items: center; gap: 10px;
         }
 
-        .draw-btn:hover {
-            transform: translateY(-3px) scale(1.05);
-            box-shadow: 0 10px 25px rgba(168, 85, 247, 0.5);
-        }
+        .draw-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 25px rgba(168, 85, 247, 0.5); }
+        .draw-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
 
-        .draw-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Cards Area */
         .cards-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2rem;
-            margin-bottom: 3rem;
-            display: none;
-            animation: fadeIn 1s ease-out;
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; margin-bottom: 3rem; display: none; animation: fadeIn 1s ease-out;
         }
 
-        .card-wrapper {
-            perspective: 1000px;
-            cursor: pointer;
-        }
-
-        .card-inner {
-            position: relative;
-            width: 100%;
-            padding-bottom: 150%; /* Aspect ratio */
-            text-align: center;
-            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            transform-style: preserve-3d;
-        }
-
-        .card-wrapper.flipped .card-inner {
-            transform: rotateY(180deg);
-        }
+        .card-wrapper { perspective: 1000px; cursor: pointer; }
+        .card-inner { position: relative; width: 100%; padding-bottom: 150%; text-align: center; transition: transform 0.8s; transform-style: preserve-3d; }
+        .card-wrapper.flipped .card-inner { transform: rotateY(180deg); }
 
         .card-face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            backface-visibility: hidden;
-            border-radius: 16px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 2px solid var(--tarot-gold);
-            overflow: hidden;
+            position: absolute; width: 100%; height: 100%; backface-visibility: hidden; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid var(--tarot-gold); overflow: hidden;
         }
 
         .card-back {
             background: linear-gradient(135deg, #4c1d95, #1e1b4b);
-            background-image: 
-                radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.2), transparent 50%),
-                repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px);
+            background-image: radial-gradient(circle at 50% 50%, rgba(251, 191, 36, 0.2), transparent 50%),
+                              repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.1) 10px, rgba(0,0,0,0.1) 20px);
         }
         
-        .card-back i {
-            font-size: 4rem;
-            color: var(--tarot-gold);
-            opacity: 0.8;
-            filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5));
-        }
+        .card-back i { font-size: 4rem; color: var(--tarot-gold); opacity: 0.8; filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5)); }
 
-        .card-front {
-            background: linear-gradient(to bottom, #1e293b, #0f172a);
-            transform: rotateY(180deg);
-            padding: 1.5rem;
-        }
+        .card-front { background: linear-gradient(to bottom, #1e293b, #0f172a); transform: rotateY(180deg); padding: 1.5rem; }
+        .card-front h3 { color: var(--tarot-gold); font-size: 1.2rem; margin: 0 0 1rem 0; border-bottom: 1px dashed rgba(251,191,36,0.3); padding-bottom: 0.5rem; font-family: 'Cinzel', serif; }
+        .card-front p { color: #e2e8f0; font-size: 1.1rem; line-height: 1.6; margin: 0; word-break: keep-all; }
 
-        .card-front h3 {
-            color: var(--tarot-gold);
-            font-size: 1.2rem;
-            margin: 0 0 1rem 0;
-            border-bottom: 1px dashed rgba(251,191,36,0.3);
-            padding-bottom: 0.5rem;
-            font-family: 'Cinzel', serif;
-        }
-
-        .card-front p {
-            color: #e2e8f0;
-            font-size: 1.1rem;
-            line-height: 1.6;
-            margin: 0;
-            word-break: keep-all;
-        }
-
-        /* Reading Result Area */
         .reading-result {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(168, 85, 247, 0.4);
-            border-radius: 20px;
-            padding: 2.5rem;
-            margin-top: 2rem;
-            text-align: left;
-            display: none;
-            animation: fadeIn 1.5s ease-out;
-            box-shadow: 0 0 40px rgba(168, 85, 247, 0.2);
+            background: rgba(15, 23, 42, 0.8); border: 1px solid rgba(168, 85, 247, 0.4); border-radius: 20px;
+            padding: 2.5rem; margin-top: 2rem; text-align: left; display: none; animation: fadeIn 1.5s ease-out; box-shadow: 0 0 40px rgba(168, 85, 247, 0.2);
         }
 
-        .reading-result h2 {
-            color: var(--tarot-purple);
-            text-align: center;
-            font-size: 2rem;
-            margin-top: 0;
-            margin-bottom: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-        }
+        .reading-result h2 { color: var(--tarot-purple); text-align: center; font-size: 2rem; margin-top: 0; margin-bottom: 2rem; display: flex; align-items: center; justify-content: center; gap: 15px; }
+        .reading-text { color: #f8fafc; font-size: 1.15rem; line-height: 2.0; white-space: pre-wrap; }
 
-        .reading-text {
-            color: #f8fafc;
-            font-size: 1.15rem;
-            line-height: 2.0;
-            white-space: pre-wrap;
-        }
+        .loader { display: none; text-align: center; margin: 2rem 0; }
+        .loader i { font-size: 3rem; color: var(--tarot-gold); animation: spin 2s linear infinite; }
 
-        /* Tabs Structure */
-        .tabs {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 2rem;
-            border-bottom: 1px solid rgba(251, 191, 36, 0.3);
-            padding-bottom: 15px;
-        }
-
-        .tab {
-            padding: 10px 25px;
-            cursor: pointer;
-            color: #cbd5e1;
-            font-size: 1.2rem;
-            font-family: 'Cinzel', 'Nanum Myeongjo', serif;
-            font-weight: 700;
-            border-radius: 30px;
-            transition: all 0.3s;
-            border: 1px solid transparent;
-        }
-
-        .tab.active {
-            color: var(--tarot-gold);
-            background: rgba(251, 191, 36, 0.1);
-            border-color: rgba(251, 191, 36, 0.5);
-            text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
-        }
-
-        .view-section { display: none; animation: fadeIn 0.8s; }
-        .view-section.active { display: block; }
-
-        /* Saju Specific UI */
-        .saju-inputs {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            justify-content: center;
-            margin-bottom: 20px;
-        }
-
-        .saju-inputs select, .saju-inputs input {
-            background: rgba(0,0,0,0.5);
-            border: 1px solid rgba(251, 191, 36, 0.4);
-            color: #fff;
-            padding: 12px 15px;
-            border-radius: 8px;
-            font-size: 1.1rem;
-            font-family: 'Nanum Myeongjo', serif;
-            outline: none;
-        }
-        
-        .saju-inputs select:focus, .saju-inputs input:focus {
-            border-color: var(--tarot-gold);
-        }
-
-        .saju-result-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-top: 2rem;
-        }
-
-        .saju-card {
-            background: rgba(15, 23, 42, 0.7);
-            border: 1px solid rgba(251, 191, 36, 0.3);
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: left;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .saju-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; height: 3px;
-            background: linear-gradient(90deg, transparent, var(--tarot-gold), transparent);
-        }
-
-        .saju-card h3 {
-            color: var(--tarot-gold);
-            margin-top: 0;
-            margin-bottom: 15px;
-            font-size: 1.4rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border-bottom: 1px dashed rgba(255,255,255,0.1);
-            padding-bottom: 10px;
-        }
-
-        .saju-card p {
-            color: #f1f5f9;
-            line-height: 1.8;
-            font-size: 1.05rem;
-            white-space: pre-wrap;
-            margin: 0;
-        }
-
-        /* Loading */
-        .loader {
-            display: none;
-            text-align: center;
-            margin: 2rem 0;
-        }
-        
-        .loader i {
-            font-size: 3rem;
-            color: var(--tarot-gold);
-            animation: spin 2s linear infinite;
-        }
-
-        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
 
         @media (max-width: 768px) {
             .cards-container { grid-template-columns: 1fr; max-width: 300px; margin: 0 auto 3rem auto;}
             h1 { font-size: 2.2rem; }
             .question-input { width: 100%; box-sizing: border-box; }
-            .saju-result-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -360,17 +112,10 @@
                 <a href="/" style="color: var(--text-main); text-decoration: none; font-size: 1.2rem; font-family: 'Outfit', sans-serif;"><i class="fa-solid fa-arrow-left"></i> 홈으로</a>
             </div>
             <h1>The Oracle</h1>
-            <p class="subtitle">모든 해답은 이미 당신 안에 있습니다.</p>
+            <p class="subtitle">모든 해답은 이미 당신 안에 있습니다.<br>마음을 비우고, 우주의 기운이 담긴 타로 카드를 통해 길을 찾아보세요.</p>
         </header>
 
-        <div class="tabs">
-            <div class="tab active" id="tab-tarot" onclick="switchView('tarot')"><i class="fa-solid fa-crystal-ball"></i> 신비의 타로</div>
-            <div class="tab" id="tab-saju" onclick="switchView('saju')"><i class="fa-solid fa-scroll"></i> 동양 명리 사주</div>
-        </div>
-
-        <!-- TAROT VIEW -->
-        <div id="tarotView" class="view-section active">
-            <div class="question-box">
+        <div class="question-box">
             <input type="text" id="questionInput" class="question-input" placeholder="어떤 고민이 있으신가요? (예: 올해 이직해도 될까요?)" autocomplete="off">
             <br>
             <button class="draw-btn" id="drawBtn" onclick="drawCards()">
@@ -384,7 +129,6 @@
         </div>
 
         <div class="cards-container" id="cardsContainer">
-            <!-- 3 Cards -->
             <div class="card-wrapper" id="card1" onclick="flipCard(1)">
                 <div class="card-inner">
                     <div class="card-face card-back"><i class="fa-solid fa-moon"></i></div>
@@ -416,62 +160,13 @@
             </div>
         </div>
 
-            <div class="reading-result" id="tarotReadingResult">
-                <h2><i class="fa-solid fa-crystal-ball"></i> 신탁의 해설</h2>
-                <div class="reading-text" id="tarotReadingText"></div>
-                
-                <div style="text-align: center; margin-top: 3rem;">
-                    <button class="draw-btn" onclick="location.reload()" style="font-size: 1rem; padding: 0.8rem 2rem;">
-                        <i class="fa-solid fa-rotate-right"></i> 새로운 질문하기
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- SAJU VIEW -->
-        <div id="sajuView" class="view-section">
-            <div class="question-box">
-                <p style="margin-bottom: 20px; color: #cbd5e1; font-size: 1.1rem;">당신의 태어난 우주의 기운을 입력해주세요.</p>
-                <div class="saju-inputs">
-                    <input type="date" id="sajuDate" required>
-                    <input type="time" id="sajuTime" required>
-                    <select id="sajuGender">
-                        <option value="남성">남성</option>
-                        <option value="여성">여성</option>
-                    </select>
-                </div>
-                <br>
-                <button class="draw-btn" id="sajuBtn" onclick="analyzeSaju()">
-                    <i class="fa-solid fa-yin-yang"></i> 주역 명리 분석 시작
-                </button>
-            </div>
-
-            <div class="loader" id="sajuLoader">
-                <i class="fa-solid fa-yin-yang fa-spin"></i>
-                <p style="color: var(--tarot-gold); margin-top: 15px;">천체의 기운과 오행을 맞추는 중입니다...</p>
-            </div>
-
-            <div class="saju-result-grid" id="sajuResultGrid" style="display: none;">
-                <div class="saju-card">
-                    <h3><i class="fa-solid fa-sun" style="color: #fcd34d;"></i> 오늘의 운세</h3>
-                    <p id="resToday">...</p>
-                </div>
-                <div class="saju-card">
-                    <h3><i class="fa-solid fa-moon" style="color: #93c5fd;"></i> 이달의 기운</h3>
-                    <p id="resMonth">...</p>
-                </div>
-                <div class="saju-card">
-                    <h3><i class="fa-solid fa-dragon" style="color: #f87171;"></i> 올해 신년운세</h3>
-                    <p id="resYear">...</p>
-                </div>
-                <div class="saju-card">
-                    <h3><i class="fa-solid fa-om" style="color: #c084fc;"></i> 평생 타고난 팔자</h3>
-                    <p id="resLife">...</p>
-                </div>
-            </div>
-            <div style="text-align: center; margin-top: 3rem; display: none;" id="sajuReloadBtn">
+        <div class="reading-result" id="readingResult">
+            <h2><i class="fa-solid fa-crystal-ball"></i> 신탁의 해설</h2>
+            <div class="reading-text" id="readingText"></div>
+            
+            <div style="text-align: center; margin-top: 3rem;">
                 <button class="draw-btn" onclick="location.reload()" style="font-size: 1rem; padding: 0.8rem 2rem;">
-                    <i class="fa-solid fa-rotate-right"></i> 다시 입력하기
+                    <i class="fa-solid fa-rotate-right"></i> 새로운 질문하기
                 </button>
             </div>
         </div>
@@ -481,14 +176,6 @@
         let flippedCount = 0;
         let aiFullReading = "";
 
-        function switchView(view) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.view-section').forEach(v => v.classList.remove('active'));
-
-            document.getElementById('tab-' + view).classList.add('active');
-            document.getElementById('view' === 'tarot' ? 'tarotView' : view + 'View').classList.add('active');
-        }
-
         async function drawCards() {
             const q = document.getElementById('questionInput').value.trim();
             if(!q) {
@@ -496,8 +183,8 @@
                 return;
             }
 
-            document.getElementById('tarotDrawBtn').disabled = true;
-            document.getElementById('tarotLoader').style.display = 'block';
+            document.getElementById('drawBtn').disabled = true;
+            document.getElementById('loader').style.display = 'block';
 
             try {
                 const response = await fetch('/api/tarot/draw', {
@@ -514,19 +201,18 @@
                     document.getElementById('cardName3').textContent = data.cards[2];
                     aiFullReading = data.reading;
 
-                    document.getElementById('tarotLoader').style.display = 'none';
-                    document.getElementById('tarotCardsContainer').style.display = 'grid';
-                    document.querySelector('#tarotView .question-box').style.display = 'none';
+                    document.getElementById('loader').style.display = 'none';
+                    document.getElementById('cardsContainer').style.display = 'grid';
+                    document.querySelector('.question-box').style.display = 'none';
                     
-                    // Trigger scroll animation
                     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 } else {
                     throw new Error(data.error);
                 }
             } catch(e) {
                 alert('해석 중 에러가 발생했습니다: ' + e.message);
-                document.getElementById('tarotDrawBtn').disabled = false;
-                document.getElementById('tarotLoader').style.display = 'none';
+                document.getElementById('drawBtn').disabled = false;
+                document.getElementById('loader').style.display = 'none';
             }
         }
 
@@ -538,57 +224,12 @@
                 
                 if (flippedCount === 3) {
                     setTimeout(() => {
-                        const rr = document.getElementById('tarotReadingResult');
+                        const rr = document.getElementById('readingResult');
                         rr.style.display = 'block';
-                        document.getElementById('tarotReadingText').textContent = aiFullReading;
+                        document.getElementById('readingText').textContent = aiFullReading;
                         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                     }, 1000);
                 }
-            }
-        }
-
-        async function analyzeSaju() {
-            const date = document.getElementById('sajuDate').value;
-            const time = document.getElementById('sajuTime').value;
-            const gender = document.getElementById('sajuGender').value;
-
-            if(!date || !time) {
-                alert('생년월일과 시간을 정확히 입력해 주세요.');
-                return;
-            }
-
-            document.getElementById('sajuBtn').disabled = true;
-            document.getElementById('sajuLoader').style.display = 'block';
-            document.getElementById('sajuResultGrid').style.display = 'none';
-
-            try {
-                const response = await fetch('/api/saju/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date, time, gender })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    document.getElementById('resToday').textContent = data.data.today;
-                    document.getElementById('resMonth').textContent = data.data.month;
-                    document.getElementById('resYear').textContent = data.data.year;
-                    document.getElementById('resLife').textContent = data.data.life;
-
-                    document.getElementById('sajuLoader').style.display = 'none';
-                    document.querySelector('#sajuView .question-box').style.display = 'none';
-                    document.getElementById('sajuResultGrid').style.display = 'grid';
-                    document.getElementById('sajuReloadBtn').style.display = 'block';
-                    
-                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-                } else {
-                    throw new Error(data.error);
-                }
-            } catch(e) {
-                alert('명리 분석 중 에러가 발생했습니다: ' + e.message);
-                document.getElementById('sajuBtn').disabled = false;
-                document.getElementById('sajuLoader').style.display = 'none';
             }
         }
     </script>
