@@ -47,6 +47,7 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            padding-bottom: 80px;
         }
 
         /* Header */
@@ -249,16 +250,23 @@
         /* Loading Spinner */
         .loader {
             display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(11, 14, 20, 0.7);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+        }
+        .loader-content {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 48px;
-            height: 48px;
-            border: 4px solid var(--border-color);
-            border-top-color: var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+            background: rgba(22, 27, 34, 0.9);
+            border-radius: 20px;
+            padding: 2.5rem 3rem;
+            text-align: center;
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            color: #fff;
         }
 
         @keyframes spin {
@@ -289,6 +297,32 @@
             height: 100% !important;
             max-height: 520px;
         }
+        /* Bottom Nav Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 70px;
+            background: rgba(11, 14, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+        .nav-item {
+            text-decoration: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            gap: 5px;
+            transition: 0.2s;
+            width: 25%;
+        }
+        .nav-item i { font-size: 1.5rem; }
+        .nav-item.active, .nav-item:hover { color: var(--primary); }
     </style>
 </head>
 <body>
@@ -360,7 +394,14 @@
                     <div class="legend-item"><div class="legend-color" style="background:transparent; border-top: 2px dashed #fce83a;"></div> 1개월 전 백테스트</div>
                 </div>
             </div>
-            <div class="loader" id="loader"></div>
+            <div class="loader" id="loader">
+                <div class="loader-content">
+                    <div style="font-size: 2rem; color: var(--primary); margin-bottom: 1rem;">
+                        <i class="fa-solid fa-spinner fa-spin"></i>
+                    </div>
+                    <div>AI 분석 엔진 가동 중...</div>
+                </div>
+            </div>
             <div id="stockChart"></div>
         </div>
     </main>
@@ -678,5 +719,24 @@
             fetchStockData();
         });
     </script>
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <a href="/" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>홈</span>
+        </a>
+        <a href="/shopping" class="nav-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>호구방지</span>
+        </a>
+        <a href="/saju" class="nav-item">
+            <i class="fa-solid fa-yin-yang"></i>
+            <span>운세</span>
+        </a>
+        <a href="/archive" class="nav-item">
+            <i class="fa-solid fa-star"></i>
+            <span>보관함</span>
+        </a>
+    </div>
 </body>
 </html>

@@ -271,8 +271,78 @@
         .comment-item:last-child { border-bottom: none; }
         .c-head { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
         .c-author { font-weight: 600; color: #fff; }
-        .c-date { font-size: 0.8rem; color: var(--text-muted); }
         .c-text { color: #d1d5db; line-height: 1.5; white-space: pre-wrap; font-size: 0.95rem; }
+
+        /* Search Bar */
+        .search-container {
+            position: relative;
+            max-width: 600px;
+            margin: 0 auto 3rem auto;
+            width: 100%;
+        }
+        .search-container input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 30px;
+            padding: 1.2rem 1.5rem 1.2rem 3rem;
+            color: #fff;
+            font-size: 1.1rem;
+            box-sizing: border-box;
+            outline: none;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s;
+        }
+        .search-container input:focus {
+            background: rgba(255,255,255,0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+        }
+        .search-container i {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            transition: 0.3s;
+        }
+        .search-container input:focus + i {
+            color: var(--primary);
+        }
+
+        /* Toast Notification */
+        .toast-container {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            background: rgba(11, 14, 20, 0.9);
+            border-left: 4px solid var(--primary);
+            color: #fff;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateX(120%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toast.show {
+            transform: translateX(0);
+        }
+        .toast.error {
+            border-left-color: var(--secondary);
+        }
+        .toast i { font-size: 1.2rem; }
     </style>
 </head>
 <body>
@@ -282,6 +352,12 @@
             <i class="fa-solid fa-users"></i> 오늘 방문자: <b>{{ stats.today }}</b>명 <span style="opacity:0.5;margin:0 8px;">|</span> 총 누적: <b>{{ stats.total }}</b>명
         </div>
         <p>환영합니다. 이용하실 애플리케이션을 선택해주세요.</p>
+
+        <!-- Search Filter -->
+        <div class="search-container">
+            <input type="text" id="appSearchInput" placeholder="무엇을 찾으시나요? (예: 빵집, 병원, 사주, 유튜브...)" oninput="filterApps()">
+            <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
 
         <div class="section-title" style="border-left-color: #ffaa00;">로컬 스캐너 (맛집 / 카페 / 병원)</div>
         <div class="cards">
@@ -502,7 +578,79 @@
         </div>
     </div>
 
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
     <script>
+        function showToast(message, isError = false) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${isError ? 'error' : ''}`;
+            const icon = isError ? '<i class="fa-solid fa-circle-exclamation" style="color:var(--secondary)"></i>' : '<i class="fa-solid fa-circle-check" style="color:var(--primary)"></i>';
+            toast.innerHTML = `${icon} <div>${message}</div>`;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function filterApps() {
+            const query = document.getElementById('appSearchInput').value.toLowerCase();
+            const cards = document.querySelectorAll('.card');
+            const sectionTitles = document.querySelectorAll('.section-title');
+            const sectionDividers = document.querySelectorAll('.section-divider');
+            
+            let hasVisibleAnywhere = false;
+
+            // Step 1: Filter individual cards
+            cards.forEach(card => {
+                const title = card.querySelector('h2').textContent.toLowerCase();
+                const desc = card.querySelector('.description').textContent.toLowerCase();
+                
+                if (title.includes(query) || desc.includes(query)) {
+                    card.style.display = 'block';
+                    hasVisibleAnywhere = true;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            // Step 2: Hide empty sections if searching, or show all if empty query
+            const sections = [
+                { start: 0, end: 3, titleIdx: 0, divIdx: 0 },   // 로컬 스캐너
+                { start: 4, end: 12, titleIdx: 1, divIdx: 1 },  // 유틸리티 & 툴
+                { start: 13, end: 16, titleIdx: 2, divIdx: 2 }, // 미니 게임
+                { start: 17, end: 22, titleIdx: 3, divIdx: 3 }  // 라이프스타일
+            ];
+
+            if (query.trim() === '') {
+                sectionTitles.forEach(t => t.style.display = 'block');
+                sectionDividers.forEach(d => d.style.display = 'block');
+            } else {
+                sections.forEach(sec => {
+                    let sectionHasVisible = false;
+                    for(let i=sec.start; i<=sec.end; i++) {
+                        if(cards[i] && cards[i].style.display !== 'none') {
+                            sectionHasVisible = true; break;
+                        }
+                    }
+                    if (sectionTitles[sec.titleIdx]) {
+                        sectionTitles[sec.titleIdx].style.display = sectionHasVisible ? 'block' : 'none';
+                    }
+                    if (sectionDividers[sec.divIdx]) {
+                        sectionDividers[sec.divIdx].style.display = sectionHasVisible ? 'block' : 'none';
+                    }
+                });
+            }
+        }
+
         async function loadComments() {
             try {
                 let res = await fetch('/api/comments');
@@ -534,7 +682,7 @@
         async function submitComment() {
             let author = document.getElementById('cAuthor').value.trim();
             let text = document.getElementById('cText').value.trim();
-            if(!text) return alert("내용을 입력해주세요.");
+            if(!text) return showToast("내용을 입력해주세요.", true);
             
             try {
                 let res = await fetch('/api/comments', {
@@ -546,11 +694,12 @@
                 if(j.success) {
                     document.getElementById('cText').value = "";
                     renderComments(j.comments);
+                    showToast("의견이 성공적으로 등록되었습니다!");
                 } else {
-                    alert('오류: ' + j.error);
+                    showToast('오류: ' + j.error, true);
                 }
             } catch(e) {
-                alert('통신 오류가 발생했습니다.');
+                showToast('통신 오류가 발생했습니다.', true);
             }
         }
         window.addEventListener('DOMContentLoaded', loadComments);

@@ -29,7 +29,7 @@
             color: var(--text-primary);
             min-height: 100vh;
             margin: 0;
-            padding: 2rem;
+            padding: 2rem 2rem 80px 2rem;
             box-sizing: border-box;
             line-height: 1.6;
         }
@@ -337,12 +337,19 @@
         
         .loading-state {
             display: none;
-            text-align: center;
-            padding: 4rem 2rem;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
         }
 
         .loading-state.show {
-            display: block;
+            display: flex;
         }
         
         .big-loader {
@@ -398,6 +405,32 @@
             .btn-copy { justify-content: center; }
             .text-area-result { font-size: 0.85rem; }
         }
+        /* Bottom Nav Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 70px;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+        .nav-item {
+            text-decoration: none;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            gap: 5px;
+            transition: 0.2s;
+            width: 25%;
+        }
+        .nav-item i { font-size: 1.5rem; }
+        .nav-item.active, .nav-item:hover { color: var(--primary-color); }
     </style>
 </head>
 <body>
@@ -619,5 +652,24 @@
         };
 
     </script>
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <a href="/" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>홈</span>
+        </a>
+        <a href="/shopping" class="nav-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>호구방지</span>
+        </a>
+        <a href="/saju" class="nav-item">
+            <i class="fa-solid fa-yin-yang"></i>
+            <span>운세</span>
+        </a>
+        <a href="/archive" class="nav-item">
+            <i class="fa-solid fa-star"></i>
+            <span>보관함</span>
+        </a>
+    </div>
 </body>
 </html>
