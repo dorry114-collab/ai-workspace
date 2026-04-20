@@ -344,7 +344,7 @@
             <div class="stat-title" style="color: var(--primary); font-size: 1.1rem; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 0.8rem; margin-bottom: 1rem;">
                 <i class="fa-solid fa-brain"></i> AI 차트 전문가 딥러닝 리포트
             </div>
-            <div id="aiAnalysisText" style="line-height: 1.6; font-size: 1.05rem; color: #fff;">
+            <div id="aiAnalysisText" style="line-height: 1.8; font-size: 1.05rem; color: #fff; white-space: pre-wrap;">
                 <!-- AI text goes here -->
             </div>
         </div>
@@ -656,7 +656,16 @@
                 }
             }
 
-            myChart.timeScale().fitContent();
+            // 그래프가 너무 좁게 보이지 않도록, 전체 데이터가 100개가 넘으면 최근 ~100개 캔들만 포커스
+            const totalLen = data.historical.length;
+            if (totalLen > 100) {
+                myChart.timeScale().setVisibleLogicalRange({
+                    from: totalLen - 90,
+                    to: totalLen + (data.predictions ? data.predictions.length : 5)
+                });
+            } else {
+                myChart.timeScale().fitContent();
+            }
             
             // Handle window resize
             window.addEventListener('resize', () => {
