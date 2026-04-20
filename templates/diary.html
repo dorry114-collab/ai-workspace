@@ -7,6 +7,7 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     
     <style>
         :root {
@@ -103,6 +104,8 @@
         .diary-card:focus { outline: none; border-color: var(--primary); }
         .btn-notion { width: 100%; background: #1e293b; color: white; border: none; padding: 15px; border-radius: 12px; font-size: 1.1rem; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; font-weight: bold; display: flex; gap: 10px; align-items: center; justify-content: center; transition: 0.2s;}
         .btn-notion:hover { background: #0f172a; transform: translateY(-2px);}
+        .btn-util { flex:1; background: #e2e8f0; color: #334155; border: none; padding: 12px; border-radius: 12px; font-size: 1rem; font-family: 'Noto Sans KR', sans-serif; cursor: pointer; font-weight: bold; transition: 0.2s; white-space: nowrap;}
+        .btn-util:hover { background: #cbd5e1; transform: translateY(-2px);}
 
         .loader { display: none; text-align: center; color: var(--primary); font-size: 2rem; padding: 1rem;}
         .loader i { animation: spin 1s linear infinite; }
@@ -130,8 +133,14 @@
 
         <div class="final-result" id="finalResult">
             <h2 style="font-family: 'Noto Sans KR'; font-size: 1.2rem; margin-top:0;">✨ 완성된 오늘의 일기</h2>
-            <p style="font-size: 0.9rem; color: #64748b; margin-top: -10px;">자유롭게 텍스트를 수정하거나 추가한 뒤 노션으로 보낼 수 있습니다.</p>
+            <p style="font-size: 0.9rem; color: #64748b; margin-top: -10px;">자유롭게 텍스트를 수정하거나 복사/저장할 수 있습니다.</p>
             <textarea class="diary-card" id="diaryContent"></textarea>
+            
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <button class="btn-util" onclick="copyDiaryText()"><i class="fa-regular fa-clipboard"></i> 텍스트 복사</button>
+                <button class="btn-util" onclick="saveDiaryImage()"><i class="fa-solid fa-camera"></i> 이미지 캡처</button>
+            </div>
+            
             <button class="btn-notion" id="btnNotion" onclick="sendToNotion()"><img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" style="width:20px; filter: grayscale(1) brightness(2);"> 내 노션으로 즉시 보내기</button>
         </div>
 
@@ -294,6 +303,55 @@
                 btn.innerHTML = '<img src="https://upload.wikimedia.org/wikipedia/commons/4/45/Notion_app_logo.png" style="width:20px; filter: grayscale(1) brightness(2);"> 내 노션으로 즉시 보내기';
                 btn.disabled = false;
             }
+        }
+
+        function copyDiaryText() {
+            const text = document.getElementById('diaryContent').value;
+            if(!text) return;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('일기 내용이 클립보드에 복사되었습니다!원하는 곳에 붙여넣기 하세요.');
+            }).catch(err => {
+                alert('복사 실패!');
+            });
+        }
+
+        async function saveDiaryImage() {
+            const val = document.getElementById('diaryContent').value;
+            if(!val) return;
+            
+            // 캡처용 가상 프레임 생성 (textarea 스크롤 잘림 문제 해결용)
+            const shadow = document.createElement('div');
+            shadow.style.background = 'white';
+            shadow.style.padding = '40px';
+            shadow.style.borderRadius = '16px';
+            shadow.style.fontFamily = "'Gowun Dodum', sans-serif";
+            shadow.style.fontSize = '1.3rem';
+            shadow.style.lineHeight = '1.9';
+            shadow.style.color = '#1e293b';
+            shadow.style.whiteSpace = 'pre-wrap';
+            shadow.style.width = '600px';
+            shadow.style.position = 'absolute';
+            shadow.style.left = '-9999px';
+            shadow.style.boxShadow = '0 10px 30px rgba(0,0,0,0.05)';
+            
+            const dateStr = new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+            shadow.innerHTML = `<div style="text-align:center; font-family:'Noto Sans KR'; color:#94a3b8; font-size:1rem; margin-bottom: 20px;">${dateStr}</div>` + val;
+            
+            document.body.appendChild(shadow);
+            
+            try {
+                let canvas = await html2canvas(shadow, { backgroundColor: '#f8fafc', scale: 2 });
+                let imgData = canvas.toDataURL('image/png');
+                let a = document.createElement('a');
+                a.href = imgData;
+                const d = new Date();
+                a.download = `오늘의일기_${d.getFullYear()}${('0'+(d.getMonth()+1)).slice(-2)}${('0'+d.getDate()).slice(-2)}.png`;
+                a.click();
+            } catch(e) {
+                alert('일기 이미지 캡처 중 오류가 발생했습니다.');
+            }
+            
+            document.body.removeChild(shadow);
         }
     </script>
 </body>
