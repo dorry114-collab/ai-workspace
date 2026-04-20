@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Pretendard:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
         :root {
@@ -428,6 +429,16 @@
 
         .btn-kakao:hover { color: #FEE500; border-color: rgba(254, 229, 0, 0.3); }
         .btn-tmap:hover { color: #00A170; border-color: rgba(0, 161, 112, 0.3); }
+        
+        .btn-naver { grid-column: span 1; }
+        .btn-naver:hover { color: #03C75A; border-color: rgba(3, 199, 90, 0.3); }
+        
+        .btn-insta { grid-column: span 1; }
+        .btn-insta:hover { color: #E1306C; border-color: rgba(225, 48, 108, 0.3); }
+
+        .btn-bookmark { grid-column: span 1; background: rgba(210,105,30,0.1); color: var(--primary); }
+        .btn-bookmark:hover { background: rgba(210,105,30,0.2); }
+        .btn-capture { grid-column: span 1; background: rgba(255,255,255,0.1); }
 
         .ai-summary-btn {
             width: 100%;
@@ -805,6 +816,7 @@
             filtered.forEach(r => {
                 const card = document.createElement('div');
                 card.className = 'card';
+                card.id = 'card-' + r.place_id;
                 
                 let ratingHtml = '';
                 if (r.rating !== 'N/A' && r.rating !== '평가 부족') {
@@ -878,11 +890,23 @@
                         
                         <div class="button-group">
                             <a href="https://map.kakao.com/link/to/${r.name},${r.y},${r.x}" target="_blank" class="btn-action btn-kakao">
-                                <i class="fa-solid fa-diamond-turn-right"></i> 카카오
+                                <i class="fa-solid fa-diamond-turn-right"></i> 카카오맵
                             </a>
                             <a href="${tmapUrl}" target="_blank" class="btn-action btn-tmap">
                                 <i class="fa-solid fa-car-side"></i> 티맵
                             </a>
+                            <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(r.name)}" target="_blank" class="btn-action btn-naver">
+                                <i class="fa-solid fa-n"></i> 블로그 리뷰
+                            </a>
+                            <a href="https://www.instagram.com/explore/tags/${encodeURIComponent(r.name.replace(/\s+/g, ''))}" target="_blank" class="btn-action btn-insta">
+                                <i class="fa-brands fa-instagram"></i> 인스타 리뷰
+                            </a>
+                            <button onclick="saveCafeToArchive('${r.place_id}')" class="btn-action btn-bookmark">
+                                <i class="fa-solid fa-star"></i> 스크랩
+                            </button>
+                            <button onclick="captureCafeCard('${r.place_id}')" class="btn-action btn-capture">
+                                <i class="fa-solid fa-camera"></i> 이미지 캡처
+                            </button>
                         </div>
                     </div>
                 `;
@@ -994,6 +1018,72 @@
             inputEl.disabled = false;
             btnEl.disabled = false;
             inputEl.focus();
+        }
+
+        function saveCafeToArchive(placeId) {
+            const r = allRestaurants.find(x => x.place_id === placeId);
+            if(!r) return alert("데이터를 찾을 수 없습니다.");
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            const summaryBox = document.getElementById(`summary-box-${placeId}`);
+            let summaryTxt = "";
+            if(summaryBox && summaryBox.style.display !== 'none') {
+                summaryTxt = summaryBox.innerText.replace('🤖 AI:', '').trim();
+            }
+
+            archive.push({
+                type: 'place',
+                title: r.name,
+                date: dateStr,
+                data: {
+                    address: r.address,
+                    rating: r.rating,
+                    trust_score: r.trust_score,
+                    category: r.category,
+                    ai_summary: summaryTxt || "요약 내역 없음"
+                }
+            });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert("보관함에 성공적으로 스크랩되었습니다!");
+        }
+
+        async function captureCafeCard(placeId) {
+            const cardElement = document.getElementById('card-' + placeId);
+            const r = allRestaurants.find(x => x.place_id === placeId);
+            if(!cardElement) return;
+            try {
+                const buttonGroup = cardElement.querySelector('.button-group');
+                const chatBox = cardElement.querySelector('.ai-chat-box');
+                const summaryBtn = cardElement.querySelector('.ai-summary-btn');
+                
+                const originalButtonGroupDisplay = buttonGroup ? buttonGroup.style.display : null;
+                const originalChatBoxDisplay = chatBox ? chatBox.style.display : null;
+                const originalSummaryBtnDisplay = summaryBtn ? summaryBtn.style.display : null;
+
+                if(buttonGroup) buttonGroup.style.display = 'none';
+                if(chatBox && chatBox.style.display !== 'none') chatBox.style.display = 'none';
+                if(summaryBtn && summaryBtn.style.display !== 'none') summaryBtn.style.display = 'none';
+
+                const canvas = await html2canvas(cardElement, {
+                    backgroundColor: '#161b22',
+                    scale: 2,
+                    useCORS: true
+                });
+
+                if(buttonGroup) buttonGroup.style.display = originalButtonGroupDisplay;
+                if(chatBox) chatBox.style.display = originalChatBoxDisplay;
+                if(summaryBtn) summaryBtn.style.display = originalSummaryBtnDisplay;
+
+                const link = document.createElement('a');
+                link.download = `카페공유_${r ? r.name : placeId}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert("캡처 중 오류가 발생했습니다: " + err.message);
+            }
         }
     </script>
 </body>
