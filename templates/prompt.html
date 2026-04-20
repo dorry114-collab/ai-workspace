@@ -313,6 +313,11 @@
             <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">생각나는 대로 편하게 적어주세요. 나머지는 AI가 알아서 물어볼 것입니다.</p>
             
             <form id="ideaForm" class="input-group">
+                <div style="text-align: right; margin-bottom: -10px;">
+                    <button type="button" onclick="fillRandomPrompt()" style="background: rgba(177, 0, 255, 0.1); border: 1px solid var(--primary); color: var(--primary); padding: 5px 12px; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-family: inherit; transition: 0.3s;">
+                        <i class="fa-solid fa-dice"></i> 프롬프트 예시 채우기
+                    </button>
+                </div>
                 <textarea id="ideaInput" class="input-text" rows="4" placeholder="예: 유튜브 대본을 써주는 프롬프트를 만들고 싶어. 주요 타겟은 2030 직장인이야."></textarea>
                 <button type="submit" class="primary-btn" id="btnAsk">
                     <i class="fa-solid fa-brain"></i> 대화 시작하기
@@ -529,6 +534,28 @@
             navigator.clipboard.writeText(textToCopy.trim()).then(() => {
                 showToast("클립보드에 복사 완료! ChatGPT에 가서 붙여넣기 하세요!");
             });
+        }
+
+        const samplePrompts = [
+            "인스타그램 릴스 대본을 기획해주는 프롬프트. MBTI J 성향처럼 딱딱 떨어지는 bullet point로 정리해주면 좋겠어.",
+            "신입 개발자 기술 면접을 대비해서 압박 면접 질문을 던져주고 내 대답을 평가해주는 AI 면접관 프롬프트.",
+            "초등학생이 이해할 수 있을 정도로 엄청나게 쉽게 양자역학, 블랙홀 같은 우주 과학 상식을 설명해주는 봇 프롬프트.",
+            "소설 작가 지망생인데 나랑 같이 티키타카 하면서 로맨스 판타지 세계관을 같이 짜주는 코파일럿 프롬프트를 만들고 싶어."
+        ];
+
+        function fillRandomPrompt() {
+            const ta = document.getElementById('ideaInput');
+            const randomText = samplePrompts[Math.floor(Math.random() * samplePrompts.length)];
+            ta.value = "";
+            let i = 0;
+            const typeWriter = setInterval(() => {
+                if (i < randomText.length) {
+                    ta.value += randomText.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typeWriter);
+                }
+            }, 30);
         }
     </script>
 </body>

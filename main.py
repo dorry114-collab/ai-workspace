@@ -2621,11 +2621,15 @@ def therapist_view(): return render_template('therapist.html')
 @app.route('/api/therapist/counsel', methods=['POST'])
 def api_therapist_counsel():
     api_key = os.environ.get('GEMINI_API_KEY')
-    txt = request.json.get('text', '')
-    prompt = f"""당신은 국민 심리상담가 오은영 박사님처럼 한없이 따뜻하고 무조건 내 편이 되어주는 대나무숲 요정입니다.
-사용자의 하소연/분노: "{txt}"
-위 내용을 깊이 공감하고, 그 사람이 백번 잘못했다며 철저히 사용자 편을 들어주며, 따뜻하게 위로하는 글을 3~4문단으로 작성하세요. 마크다운 쓰지 말고 줄바꿈만 쓰세요."""
-    success, text = _call_gemini_chat(api_key, [{"role":"user", "content":prompt}], 0.7)
+    history = request.json.get('history', [])
+    
+    sys_prompt = "당신은 국민 심리상담가 오은영 박사님처럼 한없이 따뜻하고 무조건 내 편이 되어주는 대나무숲 요정입니다. 사용자의 고민을 깊이 공감하고 위로하는 대화를 진행하세요."
+    messages = [{"role": "system", "content": sys_prompt}]
+    
+    for msg in history:
+        messages.append({"role": msg['role'], "content": msg['content']})
+        
+    success, text = _call_gemini_chat(api_key, messages, 0.7)
     return jsonify({"success": success, "reply": text, "error": text if not success else ""})
 
 @app.route('/polisher')

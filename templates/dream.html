@@ -114,6 +114,11 @@
         </header>
 
         <div class="input-panel" id="inputPanel">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button type="button" onclick="fillRandomDream()" style="background: rgba(139, 92, 246, 0.2); border: 1px solid var(--primary); color: #d8b4fe; padding: 5px 12px; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-family: inherit; transition: 0.3s;">
+                    <i class="fa-solid fa-dice"></i> 예시 꿈 채워보기
+                </button>
+            </div>
             <textarea id="dreamInput" placeholder="예: 이빨이 와르르 빠졌는데 피는 안 났어요... 누군가에게 쫓기는 꿈을 꿨어요. (자세히 적을수록 정확합니다)"></textarea>
             <button class="btn-analyze" onclick="analyzeDream()"><i class="fa-solid fa-wand-magic-sparkles"></i> 무의식 해독하기</button>
         </div>
@@ -173,6 +178,28 @@
                 document.getElementById('inputPanel').style.display = 'block';
                 document.getElementById('loader').style.display = 'none';
             }
+        }
+
+        const sampleDreams = [
+            "하늘을 날고 있었는데 갑자기 투명한 바다 속으로 푹 빠졌어요. 숨쉬기가 힘들지는 않았고 주변에 엄청 큰 거북이들이 헤엄쳐 다녔습니다.",
+            "화장실을 찾는데 계속 문이 잠겨있거나 너무 더러워서 볼일을 못 보고 참다가 깼어요.",
+            "이빨이 흔들리더니 갑자기 입 안에서 와르르 쏟아져 내렸어요. 피는 하나도 안 났고 너무 당황해서 깼습니다.",
+            "누군지 모르는 검은 그림자에게 계속 쫓기고 있었어요. 발이 안 떨어져서 도망가기 너무 힘들었어요."
+        ];
+
+        function fillRandomDream() {
+            const ta = document.getElementById('dreamInput');
+            const randomText = sampleDreams[Math.floor(Math.random() * sampleDreams.length)];
+            ta.value = "";
+            let i = 0;
+            const typeWriter = setInterval(() => {
+                if (i < randomText.length) {
+                    ta.value += randomText.charAt(i);
+                    i++;
+                } else {
+                    clearInterval(typeWriter);
+                }
+            }, 30);
         }
     </script>
 </body>

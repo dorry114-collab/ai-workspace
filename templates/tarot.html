@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI 타로 상담소</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Nanum+Myeongjo:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
         :root {
@@ -161,10 +162,15 @@
         </div>
 
         <div class="reading-result" id="readingResult">
-            <h2><i class="fa-solid fa-crystal-ball"></i> 신탁의 해설</h2>
-            <div class="reading-text" id="readingText"></div>
+            <div id="captureAreaTarot" style="background: var(--bg-dark); padding: 20px; border-radius: 12px; margin-bottom: 2rem;">
+                <h2><i class="fa-solid fa-crystal-ball"></i> 신탁의 해설</h2>
+                <div class="reading-text" id="readingText"></div>
+            </div>
             
-            <div style="text-align: center; margin-top: 3rem; display: flex; justify-content: center; gap: 1rem;">
+            <div style="text-align: center; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                <button class="draw-btn" onclick="captureAndDownloadTarot()" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;">
+                    <i class="fa-solid fa-camera"></i> 이미지로 캡처
+                </button>
                 <button class="draw-btn" onclick="saveToArchiveTarot()" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: rgba(251, 191, 36, 0.1); border-color: var(--tarot-gold); color: var(--tarot-gold);">
                     <i class="fa-solid fa-star"></i> 보관함에 저장
                 </button>
@@ -250,7 +256,23 @@
                 data: aiFullReading
             });
             localStorage.setItem('antigravity_archive', JSON.stringify(archive));
-            alert("보관함에 신탁이 저장되었습니다!");
+            alert("보관함에 성공적으로 저장되었습니다!");
+        }
+
+        async function captureAndDownloadTarot() {
+            const captureArea = document.getElementById('captureAreaTarot');
+            try {
+                const canvas = await html2canvas(captureArea, {
+                    backgroundColor: '#1a1a2e',
+                    scale: 2
+                });
+                const link = document.createElement('a');
+                link.download = 'AI타로결과.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert("캡처 중 오류가 발생했습니다: " + err.message);
+            }
         }
     </script>
 </body>
