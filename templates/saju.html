@@ -160,10 +160,14 @@
         <div class="question-box" id="sajuInputBox">
             <p style="margin-bottom: 20px; color: #cbd5e1; font-size: 1.1rem;">당신의 태어난 우주의 기운을 입력해주세요.</p>
             <div class="saju-inputs">
+                <select id="sajuCalendar">
+                    <option value="양력">양력</option>
+                    <option value="음력">음력</option>
+                </select>
                 <select id="sajuYear"></select>
                 <select id="sajuMonth"></select>
                 <select id="sajuDay"></select>
-                <input type="time" id="sajuTime" required>
+                <select id="sajuTime"></select>
                 <select id="sajuGender">
                     <option value="남성">남성</option>
                     <option value="여성">여성</option>
@@ -181,10 +185,25 @@
         </div>
 
         <div class="saju-result-grid" id="sajuResultGrid" style="display: none; animation: fadeIn 1s;">
-            <div class="saju-card" style="grid-column: 1 / -1; border-color: var(--tarot-gold);">
-                <h3 style="font-size: 1.6rem;"><i class="fa-solid fa-sun" style="color: #fcd34d;"></i> 사주 총평</h3>
-                <p id="resTotal" style="font-size: 1.15rem;">...</p>
+            <!-- 종합 운세 흐름 -->
+            <div class="saju-card">
+                <h3><i class="fa-solid fa-calendar-day" style="color: #fcd34d;"></i> 오늘(일간)의 기운</h3>
+                <p id="resDaily">...</p>
             </div>
+            <div class="saju-card">
+                <h3><i class="fa-solid fa-calendar-week" style="color: #6ee7b7;"></i> 이번 주(주간)의 흐름</h3>
+                <p id="resWeekly">...</p>
+            </div>
+            <div class="saju-card">
+                <h3><i class="fa-solid fa-calendar-days" style="color: #93c5fd;"></i> 이번 달(월간) 운세</h3>
+                <p id="resMonthly">...</p>
+            </div>
+            <div class="saju-card">
+                <h3><i class="fa-solid fa-calendar" style="color: #f87171;"></i> 올해(년간) 총운</h3>
+                <p id="resYearly">...</p>
+            </div>
+
+            <!-- 디테일 4대 영역 -->
             <div class="saju-card">
                 <h3><i class="fa-solid fa-coins" style="color: #fbbf24;"></i> 금전운</h3>
                 <p id="resWealth">...</p>
@@ -216,7 +235,7 @@
         for(let i=1940; i<=2026; i++) {
             let opt = document.createElement('option');
             opt.value = i; opt.innerText = i + '년';
-            if(i===1990) opt.selected = true;
+            if(i===1983) opt.selected = true;
             y.appendChild(opt);
         }
         const m = document.getElementById('sajuMonth');
@@ -224,6 +243,7 @@
             let opt = document.createElement('option');
             let v = i < 10 ? '0'+i : i;
             opt.value = v; opt.innerText = i + '월';
+            if(i===12) opt.selected = true;
             m.appendChild(opt);
         }
         const d = document.getElementById('sajuDay');
@@ -231,18 +251,26 @@
             let opt = document.createElement('option');
             let v = i < 10 ? '0'+i : i;
             opt.value = v; opt.innerText = i + '일';
+            if(i===29) opt.selected = true;
             d.appendChild(opt);
+        }
+        const t = document.getElementById('sajuTime');
+        const times = [
+            '모름', '자시 (23시~01시)', '축시 (01시~03시)', '인시 (03시~05시)', '묘시 (05시~07시)',
+            '진시 (07시~09시)', '사시 (09시~11시)', '오시 (11시~13시)', '미시 (13시~15시)',
+            '신시 (15시~17시)', '유시 (17시~19시)', '술시 (19시~21시)', '해시 (21시~23시)'
+        ];
+        for(let i=0; i<times.length; i++) {
+            let opt = document.createElement('option');
+            opt.value = times[i]; opt.innerText = times[i];
+            t.appendChild(opt);
         }
 
         async function analyzeSaju() {
+            const calendar = document.getElementById('sajuCalendar').value;
             const dateStr = document.getElementById('sajuYear').value + '-' + document.getElementById('sajuMonth').value + '-' + document.getElementById('sajuDay').value;
             const time = document.getElementById('sajuTime').value;
             const gender = document.getElementById('sajuGender').value;
-
-            if(!time || time.trim() === '') {
-                alert('태어난 시간을 입력해 주세요.');
-                return;
-            }
 
             document.getElementById('sajuBtn').disabled = true;
             document.getElementById('sajuLoader').style.display = 'block';
@@ -252,13 +280,17 @@
                 const response = await fetch('/api/saju/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date: dateStr, time, gender })
+                    body: JSON.stringify({ calendar, date: dateStr, time, gender })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    document.getElementById('resTotal').textContent = data.data.total;
+                    document.getElementById('resDaily').textContent = data.data.daily;
+                    document.getElementById('resWeekly').textContent = data.data.weekly;
+                    document.getElementById('resMonthly').textContent = data.data.monthly;
+                    document.getElementById('resYearly').textContent = data.data.yearly;
+                    
                     document.getElementById('resWealth').textContent = data.data.wealth;
                     document.getElementById('resCareer').textContent = data.data.career;
                     document.getElementById('resLove').textContent = data.data.love;
