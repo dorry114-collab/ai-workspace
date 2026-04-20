@@ -323,6 +323,17 @@
         }
         .nav-item i { font-size: 1.5rem; }
         .nav-item.active, .nav-item:hover { color: var(--primary); }
+
+        /* Scroll To Top Button */
+        .scroll-top-btn {
+            position: fixed; bottom: 90px; right: 20px; width: 45px; height: 45px;
+            background: rgba(11, 14, 20, 0.9); border: 1px solid var(--border-color);
+            color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: all 0.3s ease; z-index: 999;
+        }
+        .scroll-top-btn.visible { opacity: 1; pointer-events: auto; }
+        .scroll-top-btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transform: translateY(-3px); }
     </style>
 </head>
 <body>
@@ -375,8 +386,9 @@
         </div>
 
         <div id="aiAnalysisPanel" class="stat-card" style="display: none; margin-top: -0.5rem; background: rgba(0, 240, 255, 0.03); border-color: rgba(0, 240, 255, 0.2);">
-            <div class="stat-title" style="color: var(--primary); font-size: 1.1rem; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 0.8rem; margin-bottom: 1rem;">
-                <i class="fa-solid fa-brain"></i> AI 차트 전문가 딥러닝 리포트
+            <div class="stat-title" style="color: var(--primary); font-size: 1.1rem; border-bottom: 1px solid rgba(0, 240, 255, 0.2); padding-bottom: 0.8rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                <span><i class="fa-solid fa-brain"></i> AI 차트 전문가 딥러닝 리포트</span>
+                <button onclick="saveToArchive()" style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--primary); color: var(--primary); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-family: inherit; transition: 0.2s; font-size: 0.9rem;">⭐ 보관함에 저장</button>
             </div>
             <div id="aiAnalysisText" style="line-height: 1.8; font-size: 1.05rem; color: #fff; white-space: pre-wrap;">
                 <!-- AI text goes here -->
@@ -406,8 +418,15 @@
         </div>
     </main>
 
+    <!-- Scroll To Top Button -->
+    <button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
     <script>
         let myChart = null;
+        let currentStockData = null;
+        let currentTicker = "";
 
         // 천단위 콤마 및 소수점 2자리 포맷팅
         const formatCurrency = (val) => {
@@ -429,6 +448,9 @@
             try {
                 const response = await fetch(`/api/stock?ticker=${encodeURIComponent(ticker)}`);
                 const data = await response.json();
+                
+                currentStockData = data;
+                currentTicker = ticker;
 
                 if (!data.success) {
                     showError(data.error);
@@ -717,6 +739,33 @@
         // 초기 로드
         window.addEventListener('DOMContentLoaded', () => {
             fetchStockData();
+        });
+
+        function saveToArchive() {
+            if(!currentStockData) return alert("저장할 데이터가 없습니다.");
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            archive.push({
+                type: 'stock',
+                title: `${currentTicker} 종목 분석 리포트`,
+                date: dateStr,
+                data: currentStockData
+            });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert("보관함에 성공적으로 저장되었습니다!");
+        }
+
+        // Scroll To Top Visibility Logic
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('scrollTopBtn');
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
         });
     </script>
     <!-- Bottom Nav -->

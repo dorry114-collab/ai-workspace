@@ -224,6 +224,10 @@
                 let icon = 'fa-file-lines';
                 if(item.type === 'saju') icon = 'fa-yin-yang';
                 if(item.type === 'diet') icon = 'fa-apple-whole';
+                if(item.type === 'stock') icon = 'fa-chart-line';
+                if(item.type === 'tarot') icon = 'fa-moon';
+                if(item.type === 'shopping') icon = 'fa-user-shield';
+                if(item.type === 'face') icon = 'fa-eye';
 
                 container.innerHTML += `
                     <div class="archive-item" onclick="viewItem(${realIndex})">
@@ -257,6 +261,26 @@
                 html += `<h4>주간 운세</h4><p>${item.data.weekly.summary}</p>`;
                 html += `<h4>월간 운세</h4><p>${item.data.monthly.summary}</p>`;
                 html += `<h4>년간 운세</h4><p>${item.data.yearly.summary}</p>`;
+            } else if(item.type === 'stock') {
+                html += `<h4>추천 액션</h4><p style="color:var(--primary); font-size:1.2rem;">${item.data.action}</p>`;
+                html += `<h4>AI 딥러닝 리포트</h4><p>${item.data.analysis || '데이터 없음'}</p>`;
+                html += `<h4>리스크 관리</h4><p>익절/손절가: ${item.data.target_price}</p>`;
+            } else if(item.type === 'tarot') {
+                html += `<h4>운명의 신탁</h4><p>${item.data}</p>`;
+            } else if(item.type === 'shopping') {
+                html += `<h4>치명적 결함</h4><ul style="padding-left:20px;">`;
+                item.data.cons.forEach(c => { html += `<li><strong style="color:#ef4444">${c.title}</strong>: ${c.desc}</li>`; });
+                html += `</ul>`;
+                html += `<h4>진짜 장점</h4><ul style="padding-left:20px;">`;
+                item.data.pros.forEach(p => { html += `<li><strong style="color:#22c55e">${p.title}</strong>: ${p.desc}</li>`; });
+                html += `</ul>`;
+                html += `<h4>AI 최종 판결</h4><p style="color:var(--primary); font-size:1.1rem;">${item.data.verdict}</p>`;
+            } else if(item.type === 'face') {
+                html += `<h4>이목구비 팩트체크</h4><p>${item.data.features}</p>`;
+                html += `<h4>재물운 (금전복)</h4><p>${item.data.wealth}</p>`;
+                html += `<h4>애정운 (연애/도화살)</h4><p>${item.data.love}</p>`;
+                html += `<h4>직장/사업운</h4><p>${item.data.career}</p>`;
+                html += `<h4>👑 최종 판결</h4><p style="color:var(--primary); font-size:1.2rem; font-weight:bold;">${item.data.verdict}</p>`;
             } else {
                 html += `<pre style="white-space: pre-wrap; font-family: 'Outfit'; color: #ccc;">${JSON.stringify(item.data, null, 2)}</pre>`;
             }

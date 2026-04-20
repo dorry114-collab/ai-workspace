@@ -2511,6 +2511,47 @@ def api_shopping_analyze():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@app.route('/face')
+def face_reading():
+    return render_template('face.html')
+
+@app.route('/api/face/analyze', methods=['POST'])
+def api_face_analyze():
+    data = request.json
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "GEMINI_API_KEY가 없습니다."})
+        
+    image_b64 = data.get('image', '')
+    if not image_b64:
+        return jsonify({"success": False, "error": "이미지가 입력되지 않았습니다."})
+        
+    sys_prompt = """당신은 조선시대 저잣거리에서 돗자리를 깔고 관상을 보는 팩트폭력 전문 관상가입니다. 
+말투는 사극풍과 재미있는 인터넷 밈, 반말을 섞어서 사용하며 아주 신랄하고 뼈를 때리는 유머러스한 느낌이어야 합니다. (예: "허허, 이마를 보아하니 고집이 아주 소를 잡아먹겠구만!", "이빨을 보아하니 식복은 타고났네 그려.")
+
+사용자가 올린 얼굴 사진의 이목구비와 비율, 특징을 분석하여 관상 결과를 도출하세요.
+반드시 아래 JSON 형식으로만 응답해야 합니다.
+{
+  "features": "얼굴의 가장 눈에 띄는 생김새 특징 2~3가지 분석 (사극풍 팩폭)",
+  "wealth": "재물운 평가 (뼈때리는 일침 포함)",
+  "love": "애정운/연애운 평가",
+  "career": "직장운/사업운 평가 (또는 적성 추천)",
+  "verdict": "내가 왕이 될 상인가? 에 대한 최종 판결 한 줄"
+}"""
+
+    try:
+        success, text = _call_gemini_vision(api_key, sys_prompt, image_b64)
+        if success:
+            if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+            import json
+            j_data = json.loads(text)
+            return jsonify({"success": True, "data": j_data})
+        else:
+            return jsonify({"success": False, "error": f"분석 실패: {text}"})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+
 def _call_gemini_vision(api_key, text_prompt, base64_image, temperature=0.7):
     import google.generativeai as genai
     try:

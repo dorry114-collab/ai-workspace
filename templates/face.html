@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>매운맛 AI 관상가</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Nanum+Myeongjo:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --primary: #d4af37; /* Gold */
+            --accent: #8b0000; /* Deep Red */
+            --glass-bg: rgba(20, 20, 25, 0.7);
+            --border-color: rgba(212, 175, 55, 0.3);
+            --text-main: #f0e6d2;
+            --text-muted: #a89f91;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Nanum Myeongjo', serif;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(139, 0, 0, 0.15), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(212, 175, 55, 0.1), transparent 40%);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        header {
+            margin-bottom: 2rem;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(212, 175, 55, 0.5);
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .upload-panel {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .preview-area {
+            width: 100%;
+            height: 350px;
+            background: rgba(0,0,0,0.5);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-muted);
+            text-align: center;
+            overflow: hidden;
+            position: relative;
+            transition: 0.3s;
+        }
+
+        .preview-area:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.2) inset;
+        }
+
+        .preview-area img {
+            display: none;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: cover;
+            position: absolute;
+            opacity: 0.8;
+            filter: sepia(30%) contrast(1.1); /* 약간의 사극 테마 필터 */
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, var(--accent), #5c0000);
+            color: #fff;
+            border: 1px solid var(--primary);
+            padding: 1.2rem 3rem;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            font-family: 'Nanum Myeongjo', serif;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 1.5rem;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .analyze-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(139, 0, 0, 0.6);
+            border-color: #fff;
+        }
+
+        .analyze-btn:disabled {
+            background: #333;
+            border-color: #555;
+            color: #888;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Results Area */
+        .results-panel {
+            display: none;
+            animation: fadeIn 1.5s ease-out;
+            text-align: left;
+        }
+
+        .result-card {
+            background: var(--glass-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 4px; height: 100%;
+            background: linear-gradient(to bottom, var(--primary), var(--accent));
+        }
+
+        .result-card h3 {
+            color: var(--primary);
+            margin-top: 0;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px dashed rgba(212, 175, 55, 0.3);
+            padding-bottom: 10px;
+        }
+
+        .result-card p {
+            font-size: 1.15rem;
+            line-height: 1.8;
+            color: #e2e8f0;
+            margin: 0;
+            white-space: pre-wrap;
+        }
+
+        .verdict-box {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(139, 0, 0, 0.2));
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            margin-top: 2rem;
+            box-shadow: 0 0 30px rgba(212, 175, 55, 0.1);
+        }
+
+        .verdict-box h2 {
+            color: var(--text-main);
+            font-size: 2rem;
+            margin-top: 0;
+            font-family: 'Cinzel', serif;
+        }
+
+        .verdict-box p {
+            color: var(--primary);
+            font-size: 1.3rem;
+            font-weight: bold;
+        }
+
+        /* Fullscreen Glass Loader */
+        .loader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(10, 10, 15, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 10000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+        }
+
+        .loader-content {
+            background: rgba(20, 20, 25, 0.9);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 40px rgba(212, 175, 55, 0.2);
+        }
+
+        .loader i {
+            font-size: 4rem;
+            color: var(--accent);
+            animation: pulse-danger 1.5s infinite alternate;
+            margin-bottom: 20px;
+        }
+
+        /* Bottom Nav Bar */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%; height: 70px;
+            background: rgba(10, 10, 15, 0.95); backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(212,175,55,0.2); display: flex;
+            justify-content: space-around; align-items: center; z-index: 1000;
+        }
+        .nav-item {
+            text-decoration: none; color: var(--text-muted); display: flex; flex-direction: column;
+            align-items: center; font-size: 0.8rem; gap: 5px; transition: 0.2s; width: 25%;
+        }
+        .nav-item i { font-size: 1.5rem; }
+        .nav-item.active, .nav-item:hover { color: var(--primary); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse-danger { from { transform: scale(1); opacity: 0.8; filter: drop-shadow(0 0 10px var(--accent)); } to { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 20px var(--primary)); } }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.2rem; }
+            .preview-area { height: 250px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div style="margin-bottom: 1.5rem;">
+                <a href="/" style="color: var(--text-muted); text-decoration: none; font-size: 1.3rem;"><i class="fa-solid fa-house"></i></a>
+            </div>
+            <h1>내가 왕이 될 상인가?</h1>
+            <p class="subtitle">눈, 코, 입, 하관의 기운을 무자비하게 분석하여<br>당신의 재물운, 애정운, 직장운을 팩트폭력 해드립니다.</p>
+        </header>
+
+        <div class="upload-panel" id="uploadPanel">
+            <div class="preview-area" id="previewArea" onclick="document.getElementById('imageInput').click()">
+                <div id="previewText">
+                    <i class="fa-solid fa-camera-retro" style="font-size: 4rem; color:var(--primary); margin-bottom: 15px;"></i>
+                    <br><span style="font-size: 1.1rem;">클릭하여 얼굴 정면 사진 선택</span><br>
+                    <span style="font-size: 0.8rem; color: var(--accent); margin-top:10px; display:inline-block;">(서버에 저장되지 않고 분석 후 즉시 파기됩니다)</span>
+                </div>
+                <img id="imagePreview">
+            </div>
+            <input type="file" id="imageInput" accept="image/*" style="display: none;" onchange="previewImage(event)">
+            
+            <button class="analyze-btn" id="analyzeBtn" onclick="analyzeFace()" disabled>
+                <i class="fa-solid fa-eye"></i> 관상 팩트폭력 시작
+            </button>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="loader-content">
+                <i class="fa-solid fa-yin-yang fa-spin"></i>
+                <h3 style="color: var(--text-main); font-family: 'Nanum Myeongjo'; font-size: 1.3rem; margin: 0;">조선팔도 최고의 관상가가<br>당신의 이목구비를 뜯어보는 중입니다...</h3>
+            </div>
+        </div>
+
+        <div class="results-panel" id="resultsPanel">
+            
+            <div class="result-card">
+                <h3><i class="fa-solid fa-magnifying-glass-chart"></i> 이목구비 팩트체크</h3>
+                <p id="resFeatures">...</p>
+            </div>
+            
+            <div class="result-card">
+                <h3><i class="fa-solid fa-coins"></i> 재물운 (금전복)</h3>
+                <p id="resWealth">...</p>
+            </div>
+
+            <div class="result-card">
+                <h3><i class="fa-solid fa-heart"></i> 애정운 (연애/도화살)</h3>
+                <p id="resLove">...</p>
+            </div>
+
+            <div class="result-card">
+                <h3><i class="fa-solid fa-briefcase"></i> 직장/사업운</h3>
+                <p id="resCareer">...</p>
+            </div>
+
+            <div class="verdict-box">
+                <h2>👑 최종 판결</h2>
+                <p id="resVerdict">...</p>
+                <button onclick="saveToArchiveFace()" style="margin-top: 2rem; background: rgba(212, 175, 55, 0.2); border: 1px solid var(--primary); color: var(--primary); padding: 12px 25px; border-radius: 30px; cursor: pointer; font-family: inherit; font-size: 1.1rem; transition: 0.3s; display: inline-flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-star"></i> 이 관상 결과 보관함에 저장하기
+                </button>
+            </div>
+            
+            <div style="text-align: center; margin-top: 3rem;">
+                <button class="analyze-btn" onclick="location.reload()" style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); width: auto; display: inline-flex;">
+                    <i class="fa-solid fa-rotate-right"></i> 다른 얼굴 관상 보기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <a href="/" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>홈</span>
+        </a>
+        <a href="/shopping" class="nav-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>호구방지</span>
+        </a>
+        <a href="/face" class="nav-item active">
+            <i class="fa-solid fa-eye"></i>
+            <span>관상가</span>
+        </a>
+        <a href="/archive" class="nav-item">
+            <i class="fa-solid fa-star"></i>
+            <span>보관함</span>
+        </a>
+    </div>
+
+    <script>
+        let currentBase64 = '';
+        let currentFaceData = null;
+
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1024;
+                    const MAX_HEIGHT = 1024;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_WIDTH) { height *= MAX_WIDTH / width; width = MAX_WIDTH; }
+                    } else {
+                        if (height > MAX_HEIGHT) { width *= MAX_HEIGHT / height; height = MAX_HEIGHT; }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    currentBase64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
+                    document.getElementById('imagePreview').src = canvas.toDataURL('image/jpeg', 0.8);
+                    document.getElementById('imagePreview').style.display = 'block';
+                    document.getElementById('previewText').style.display = 'none';
+                    
+                    document.getElementById('analyzeBtn').disabled = false;
+                }
+                img.src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+        }
+
+        async function analyzeFace() {
+            if(!currentBase64) { alert('얼굴 사진을 선책해주세요.'); return; }
+
+            const btn = document.getElementById('analyzeBtn');
+            const loader = document.getElementById('loader');
+            const results = document.getElementById('resultsPanel');
+            const uploadPanel = document.getElementById('uploadPanel');
+
+            btn.disabled = true;
+            loader.style.display = 'flex';
+            
+            try {
+                const response = await fetch('/api/face/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: currentBase64 })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    currentFaceData = data.data;
+                    document.getElementById('resFeatures').textContent = data.data.features;
+                    document.getElementById('resWealth').textContent = data.data.wealth;
+                    document.getElementById('resLove').textContent = data.data.love;
+                    document.getElementById('resCareer').textContent = data.data.career;
+                    document.getElementById('resVerdict').textContent = data.data.verdict;
+                    
+                    loader.style.display = 'none';
+                    uploadPanel.style.display = 'none';
+                    results.style.display = 'block';
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert("관상 분석 실패: " + e.message);
+                loader.style.display = 'none';
+                btn.disabled = false;
+            }
+        }
+
+        function saveToArchiveFace() {
+            if(!currentFaceData) return alert("저장할 데이터가 없습니다.");
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            archive.push({
+                type: 'face',
+                title: `나의 인공지능 관상 결과`,
+                date: dateStr,
+                data: currentFaceData
+            });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert("보관함에 성공적으로 저장되었습니다!");
+        }
+    </script>
+</body>
+</html>
