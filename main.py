@@ -1003,21 +1003,29 @@ def api_novel_chat():
         
     system_prompt = """당신은 TRPG 게임의 마스터이자, 사용자와 상호작용하며 흥미진진한 소설을 이끌어가는 뛰어난 작가입니다. 
 다음 규칙을 반드시 지켜주세요:
-1. 분량을 풍부하게 작성하세요. 매 턴마다 최소 3~4개의 밀도 있는 문단(최소 500자 이상)으로 몰입감 넘치는 묘사와 스토리 진행을 해주세요. (내용이 너무 적으면 안 됩니다).
-2. 동일한 단어나 비슷한 문장을 절대 반복하지 마세요. (예: '그는 ~했다. 그는 ~했다.' 식의 반복 금지)
-3. 항상 [새로운 사건 발생], [새로운 단서 발견], [새로운 인물 등장] 중 하나를 통해 스토리를 빠르게 앞으로 전진시키세요.
-4. 당신의 출력 마지막에는 옛날 TV 예능 '인생극장 (그래 결심했어!)' 처럼 주인공이 직면한 **명확하고 극단적인 두 가지 갈림길(A or B, O or X 형태)**을 제공해야 합니다.
-5. 선택지는 반드시 다음과 같은 정확한 텍스트 형식으로 맨 마지막 줄에 작성하세요:
-[선택 A] (가장 첫 번째 운명의 선택 행동 묘사)
-[선택 B] (완전히 반대되거나 다른 방향의 운명의 선택 행동 묘사)
-6. 반드시 자연스럽고 매끄러운 100% 한국어(Korean)로 대답하세요.
-7. HTML이나 마크다운 문법을 활용해 문단 구분을 확실하게 하여 가독성을 높이세요."""
+1. 분량을 풍부하게 작성하세요. 매 턴마다 최소 3~4개의 밀도 있는 문단(최소 500자 이상)으로 몰입감 넘치는 묘사와 스토리 진행을 해주세요.
+2. 동일한 단어나 비슷한 문장을 절대 반복하지 마세요. 항상 [새로운 사건 발생], [새로운 단서 발견], [새로운 인물 등장] 중 하나를 통해 스토리를 빠르게 앞으로 전진시키세요.
+3. 당신의 출력 마지막(스토리 부분)에는 옛날 TV 예능 '인생극장' 처럼 주인공이 직면한 **명확하고 극단적인 두 가지 갈림길(A or B)**을 제공해야 합니다.
+4. 선택지는 반드시 다음과 같은 정확한 텍스트 형식으로 스토리 맨 마지막 줄에 작성하세요:
+[선택 A] (선택 행동 묘사)
+[선택 B] (반대 선택 행동 묘사)
+5. 마스터로서 유저의 답변에 맞게 유저의 현재 파라미터(체력, 소지금, 위치, 보유 아이템)를 계산하세요.
+6. 반드시 100% 한국어로 대답하며, 아래의 JSON 포맷으로만 응답하세요. 마크다운(` ```json ` 등)으로 절대로 감싸지 마세요.
+{
+  "story": "(소설 내용 및 마지막 [선택 A] 선택지 텍스트까지 포함. HTML, 마크다운 모두 가능)",
+  "status": {
+    "hp": (0~100 사이의 숫자 표기),
+    "money": "(문자열, 예: 1500 골드, 30달러 등 세계관에 맞는 화폐)",
+    "location": "(문자열, 현재 위치한 장소명)",
+    "inventory": ["(보유 아이템명1)", "(보유 아이템명2)"]
+  }
+}"""
     
     if len(messages) > 0 and messages[0].get('role') != 'system':
         messages.insert(0, {"role": "system", "content": system_prompt})
         
     if len(messages) > 0 and messages[-1].get('role') == 'user':
-        messages[-1]['content'] += "\n\n(시스템 제약사항: 절대로 방금 전 문장을 반복하지 말고, 즉각적으로 스토리를 다음 단계로 전진시키세요. 엄청나게 구체적이고 긴 분량(최소 3문단)의 소설을 작성하세요. 맨 마지막에는 반드시 '[선택 A] ... [선택 B] ...' 형식으로 정확히 2개의 극단적인 선택지만 주세요.)"
+        messages[-1]['content'] += "\n\n(시스템 제약사항: 절대로 방금 문장을 반복하지 말고 상황을 전진시키세요. 엄청나게 구체적이고 긴 분량으로 작성하고, 반드시 지정된 JSON 포맷({'story': ..., 'status': ...})으로만 반환하세요.)"
         
     success, result_text = _call_gemini_chat(api_key, messages, temperature=0.85)
     
@@ -1030,6 +1038,10 @@ def api_novel_chat():
                 result_text = "💡 (제미나이 사용량 초과로 보조 AI가 답합니다) \n\n" + result_text
     
     if success:
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
         return jsonify({"success": True, "reply": result_text})
     else:
         return jsonify({"success": False, "error": result_text})
@@ -1097,6 +1109,48 @@ Your job is to strictly adhere to the following rules:
             return jsonify({"success": False, "error": f"JSON 파싱 실패: {str(e)} | 원본: {result_text}"})
     else:
         return jsonify({"success": False, "error": result_text})
+
+@app.route('/api/english/hint', methods=['POST'])
+def api_english_hint():
+    data = request.json
+    messages = data.get('messages', [])
+    
+    gemini_api_key = os.environ.get('GEMINI_API_KEY')
+    if not gemini_api_key:
+        return jsonify({"success": False, "error": "[필수] API 키가 없습니다."})
+        
+    if not messages:
+        return jsonify({"success": False, "error": "메시지 내역이 없습니다."})
+        
+    hint_prompt = """Based on the previous conversation history, provide exactly 3 natural English responses the user could say right now to continue the roleplay. Output ONLY valid JSON in this format:
+{"hints": ["Response option 1", "Response option 2", "Response option 3"]}"""
+
+    hint_messages = []
+    # Copy conversation but only keep user/assistant roles, discard system prompt to save token, 
+    # then append the new hint instruction
+    for msg in messages:
+        if msg.get('role') in ['user', 'assistant']:
+            hint_messages.append({"role": msg['role'], "content": msg['content']})
+            
+    hint_messages.append({"role": "user", "content": hint_prompt})
+    
+    success, result_text = _call_gemini_chat(gemini_api_key, hint_messages, temperature=0.7)
+    
+    if success:
+        if "```json" in result_text:
+            result_text = result_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in result_text:
+            result_text = result_text.split("```")[1].split("```")[0].strip()
+            
+        try:
+            import json
+            parsed = json.loads(result_text)
+            return jsonify({"success": True, "hints": parsed.get('hints', [])})
+        except Exception as e:
+            return jsonify({"success": False, "error": f"JSON 파싱 실패: {str(e)} | 원본: {result_text}"})
+    else:
+        return jsonify({"success": False, "error": result_text})
+
 
 @app.route('/api/english/tts', methods=['POST'])
 def api_english_tts():

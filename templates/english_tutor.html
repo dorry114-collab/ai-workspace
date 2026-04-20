@@ -242,6 +242,7 @@
         </div>
         <div class="title"><i class="fa-solid fa-graduation-cap"></i> AI 영어 회화</div>
         <div>
+            <button onclick="openWordbook()" style="color: var(--primary); margin-right: 15px;" title="저장된 내 단어장 보기"><i class="fa-solid fa-star"></i> 단어장</button>
             <button onclick="document.getElementById('evalModal').style.display='flex'" style="color: var(--secondary);" title="종합 리뷰창 임시로 열기"><i class="fa-solid fa-chart-pie"></i> 리포트</button>
         </div>
     </nav>
@@ -296,6 +297,16 @@
         </div>
     </div>
 
+    <!-- Wordbook Modal -->
+    <div id="wordbookModal" style="display:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="position:relative; max-height:80vh; display:flex; flex-direction:column;">
+            <button onclick="closeWordbook()" style="position:absolute; top:20px; right:20px; background:none; border:none; font-size:1.5rem; cursor:pointer; color:var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+            <h2>⭐️ 내 단어장</h2>
+            <p style="margin-bottom:1rem;">스크랩한 유용한 표현들입니다.</p>
+            <div id="wordbookContainer" style="overflow-y:auto; flex:1; text-align:left; display:flex; flex-direction:column; gap:10px; padding: 5px;"></div>
+        </div>
+    </div>
+
     <!-- XP Bar -->
     <div class="xp-bar-container">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -317,7 +328,9 @@
             </div>
         </div>
 
+        <div id="hintChipsContainer" style="display:none; gap:10px; flex-direction:column; margin-bottom:10px;"></div>
         <div class="input-area" id="inputArea">
+            <button id="hintBtn" onclick="fetchHint()" style="background:var(--primary); color:#fff; border-radius:18px; padding:0.8rem 1rem;" title="힌트 보기"><i class="fa-solid fa-lightbulb"></i></button>
             <button id="micBtn" onclick="toggleDictation()" style="background:var(--secondary); color:#000;" title="음성 인식 켜기/끄기"><i class="fa-solid fa-microphone"></i></button>
             <input type="text" id="userInput" placeholder="영어로 답변해 보세요..." onkeypress="if(event.key==='Enter') sendTurn()">
             <button id="sendBtn" onclick="sendTurn()"><i class="fa-solid fa-paper-plane"></i></button>
@@ -524,6 +537,7 @@
             if (status === 'good') {
                 // 이스케이프 처리(따옴표)하여 다시듣기 버튼에 넣음
                 let safeText = data.reply.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                let safeTrans = (data.translation || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                 let emojiHtml = data.emotion ? `<div class="emotion-avatar">${data.emotion}</div>` : '';
                 
                 let html = `<div style="display:flex; justify-content:flex-start; align-items:flex-start; gap:10px;">
@@ -531,7 +545,10 @@
                                 <div style="flex:1;">
                                     <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
                                         <div style="flex:1;">${data.reply}</div>
-                                        <button onclick="speakEnglish('${safeText}', this)" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem; width:25px;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
+                                        <div style="display:flex; gap:5px; flex-shrink:0;">
+                                            <button onclick="speakEnglish('${safeText}', this)" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem; width:25px;" title="발음 듣기"><i class="fa-solid fa-volume-high"></i></button>
+                                            <button onclick="saveWordbook('${safeText}', '${safeTrans}')" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:1.1rem; width:25px;" title="단어장에 저장"><i class="fa-solid fa-star"></i></button>
+                                        </div>
                                     </div>
                                     ${data.translation ? `<div class="translation" onclick="this.classList.add('revealed')" title="클릭해서 한글 뜻 확인하기">🔍 [클릭해서 번역 보기] ${data.translation}</div>` : ''}
                                 </div>
@@ -670,6 +687,101 @@
                 document.getElementById('sendBtn').disabled = false;
                 alert('통신 오류가 발생했습니다.');
             }
+        }
+
+        async function fetchHint() {
+            let hintBtn = document.getElementById('hintBtn');
+            let originalIcon = hintBtn.innerHTML;
+            hintBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            hintBtn.disabled = true;
+
+            try {
+                let res = await fetch('/api/english/hint', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({messages: messageHistory})
+                });
+                let data = await res.json();
+                
+                hintBtn.innerHTML = originalIcon;
+                hintBtn.disabled = false;
+
+                if(data.success && data.hints && data.hints.length > 0) {
+                    let container = document.getElementById('hintChipsContainer');
+                    container.innerHTML = '';
+                    container.style.display = 'flex';
+                    
+                    data.hints.forEach(hint => {
+                        let btn = document.createElement('button');
+                        btn.className = 'preset-btn';
+                        btn.style.textAlign = 'left';
+                        btn.style.fontSize = '0.95rem';
+                        btn.textContent = "💡 " + hint;
+                        btn.onclick = function() {
+                            document.getElementById('userInput').value = hint;
+                            container.style.display = 'none';
+                            document.getElementById('userInput').focus();
+                        };
+                        container.appendChild(btn);
+                    });
+                } else {
+                    alert('힌트를 가져오는데 실패했습니다: ' + (data.error || '알 수 없음'));
+                }
+            } catch(e) {
+                hintBtn.innerHTML = originalIcon;
+                hintBtn.disabled = false;
+                alert('통신 오류가 발생했습니다.');
+            }
+        }
+
+        function saveWordbook(english, korean) {
+            let wordbook = JSON.parse(localStorage.getItem('english_wordbook') || '[]');
+            wordbook.unshift({en: english, ko: korean});
+            localStorage.setItem('english_wordbook', JSON.stringify(wordbook));
+            alert("⭐️ 단어장에 성공적으로 저장되었습니다!");
+        }
+
+        function openWordbook() {
+            renderWordbook();
+            document.getElementById('wordbookModal').style.display = 'flex';
+        }
+
+        function closeWordbook() {
+            document.getElementById('wordbookModal').style.display = 'none';
+            if(currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+        }
+
+        function renderWordbook() {
+            let container = document.getElementById('wordbookContainer');
+            container.innerHTML = '';
+            let wordbook = JSON.parse(localStorage.getItem('english_wordbook') || '[]');
+            
+            if(wordbook.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted); text-align:center; margin-top:2rem;">아직 저장된 단어가 없습니다.<br>튜터와 대화하며 별표(⭐️)를 눌러보세요!</div>';
+                return;
+            }
+            
+            wordbook.forEach((item, idx) => {
+                let div = document.createElement('div');
+                div.style.background = '#f8fafc';
+                div.style.padding = '15px';
+                div.style.borderRadius = '12px';
+                div.style.border = '1px solid #e2e8f0';
+                
+                let safeText = item.en.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                
+                div.innerHTML = `
+                    <div style="font-weight:600; font-size:1.05rem; color:#1e293b; margin-bottom:5px;">${item.en}</div>
+                    <div style="font-size:0.9rem; color:#64748b;">${item.ko}</div>
+                    <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+                        <button onclick="speakEnglish('${safeText}', this)" style="background:none; border:none; color:var(--primary); cursor:pointer;"><i class="fa-solid fa-volume-high"></i> 발음 듣기</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
         }
 
         // --- Local Storage Management ---

@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@400;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     
     <style>
         :root {
@@ -66,6 +67,62 @@
             padding: 1rem;
             box-sizing: border-box;
             min-height: 0;
+        }
+
+        /* Status Dashboard */
+        .status-container {
+            display: none; /* hidden until first ai reply */
+            background: linear-gradient(to right, #161b22, #1e293b);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            font-family: 'Outfit', 'Nanum Myeongjo', sans-serif;
+        }
+        .status-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: space-between;
+        }
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+        .status-label {
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .status-value {
+            color: #fff;
+            font-weight: bold;
+        }
+        .hp-bar-container {
+            width: 100px;
+            height: 10px;
+            background: #30363d;
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid #111;
+        }
+        .hp-fill {
+            height: 100%;
+            background: #ef4444;
+            width: 100%;
+            transition: width 0.5s ease-out;
+        }
+        .inv-chip {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            margin-right: 4px;
+            display: inline-block;
         }
 
         .chat-area {
@@ -213,6 +270,8 @@
         .book-content h1 { text-align: center; margin-bottom: 3rem; font-family: 'Outfit', sans-serif; }
         .book-content p { margin-bottom: 1.5rem; text-indent: 10px; }
         .close-book { position: fixed; top: 20px; right: 20px; background: #000; color: #fff; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-family: 'Outfit', sans-serif; }
+        .capture-btn { position: fixed; top: 20px; right: 100px; background: var(--primary); color: #fff; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-family: 'Outfit', sans-serif; font-weight:bold; box-shadow:0 4px 6px rgba(0,0,0,0.2); transition: 0.2s; }
+        .capture-btn:hover { background: var(--primary-hover); transform: translateY(-2px); }
         
         /* Interactive Choice Buttons */
         .choices-wrapper {
@@ -345,6 +404,7 @@
 
     <!-- Export Book Modal -->
     <div id="bookModal">
+        <button class="capture-btn" id="captureBookBtn" onclick="captureBook()"><i class="fa-solid fa-camera"></i> 단행본 이미지로 저장</button>
         <button class="close-book" onclick="document.getElementById('bookModal').style.display='none'">닫기</button>
         <div class="book-content" id="bookHtml">
             <!-- Book content rendered here -->
@@ -353,6 +413,29 @@
 
     <!-- Main Game Area -->
     <div class="main-container">
+        <!-- Status Dashboard -->
+        <div class="status-container" id="statusContainer">
+            <div class="status-grid">
+                <div class="status-item" title="체력">
+                    <div class="status-label"><i class="fa-solid fa-heart" style="color:#ef4444;"></i> HP</div>
+                    <div class="hp-bar-container"><div class="hp-fill" id="statusHpFill"></div></div>
+                    <div class="status-value" id="statusHpText">100</div>
+                </div>
+                <div class="status-item" title="소지금">
+                    <div class="status-label"><i class="fa-solid fa-coins" style="color:#eab308;"></i> Money</div>
+                    <div class="status-value" id="statusMoneyText">-</div>
+                </div>
+                <div class="status-item" title="현재 위치">
+                    <div class="status-label"><i class="fa-solid fa-map-location-dot" style="color:#3b82f6;"></i> Loc</div>
+                    <div class="status-value" id="statusLocText">-</div>
+                </div>
+                <div class="status-item" style="flex:100%;" title="인벤토리">
+                    <div class="status-label"><i class="fa-solid fa-briefcase" style="color:#a855f7;"></i> Inv</div>
+                    <div id="statusInvContainer" style="display:flex; flex-wrap:wrap; margin-top:2px;"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="chat-area" id="chatbox">
             <!-- Messages go here -->
             <div class="typing-indicator" id="typing">
@@ -370,9 +453,99 @@
     <script>
         let messageHistory = [];
         let storyTurns = 0;
+        let currentAudio = null;
 
         function setPreset(inputId, value) {
             document.getElementById(inputId).value = value;
+        }
+
+        function extractStoryData(content) {
+            let storyText = content;
+            let statusData = null;
+            try {
+                let parsed = JSON.parse(content);
+                if (parsed.story) {
+                    storyText = parsed.story;
+                    statusData = parsed.status;
+                }
+            } catch(e) {}
+            return { storyText, statusData };
+        }
+
+        function renderStatus(statusData) {
+            if (!statusData) return;
+            document.getElementById('statusContainer').style.display = 'block';
+            
+            if(statusData.hp !== undefined) {
+                let hp = parseInt(statusData.hp);
+                if(isNaN(hp)) hp = 100;
+                document.getElementById('statusHpFill').style.width = hp + '%';
+                document.getElementById('statusHpText').textContent = hp;
+                if(hp <= 30) {
+                    document.getElementById('statusHpFill').style.background = '#991b1b';
+                } else {
+                    document.getElementById('statusHpFill').style.background = '#ef4444'; 
+                }
+            }
+            if(statusData.money) document.getElementById('statusMoneyText').textContent = statusData.money;
+            if(statusData.location) document.getElementById('statusLocText').textContent = statusData.location;
+            if(statusData.inventory && Array.isArray(statusData.inventory)) {
+                let container = document.getElementById('statusInvContainer');
+                container.innerHTML = '';
+                statusData.inventory.forEach(item => {
+                    let span = document.createElement('span');
+                    span.className = 'inv-chip';
+                    span.textContent = item;
+                    container.appendChild(span);
+                });
+            }
+        }
+
+        async function speakNovel(text, btnElement) {
+            if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio.currentTime = 0;
+            }
+            let originalIcon = btnElement.innerHTML;
+            btnElement.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            try {
+                let res = await fetch('/api/english/tts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text, voice: 'ko-KR-SunHiNeural'})
+                });
+                if (res.ok) {
+                    let blob = await res.blob();
+                    let url = URL.createObjectURL(blob);
+                    currentAudio = new Audio(url);
+                    currentAudio.onended = () => { btnElement.innerHTML = originalIcon; };
+                    currentAudio.play();
+                } else {
+                    btnElement.innerHTML = originalIcon;
+                }
+            } catch(e) {
+                btnElement.innerHTML = originalIcon;
+            }
+        }
+
+        async function captureBook() {
+            let container = document.getElementById('bookHtml');
+            let btn = document.getElementById('captureBookBtn');
+            let orig = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 촬영 중...';
+            try {
+                let canvas = await html2canvas(container, { backgroundColor: '#ffffff', scale: 2 });
+                let imgData = canvas.toDataURL('image/png');
+                let a = document.createElement('a');
+                a.href = imgData;
+                let title = document.getElementById('setupGenre').value || "소설";
+                a.download = `나만의단행본_${title}.png`;
+                a.click();
+            } catch(e) {
+                alert('캡처에 실패했습니다.');
+            }
+            btn.innerHTML = orig;
         }
 
         function appendMessage(role, content) {
@@ -382,17 +555,24 @@
             let div = document.createElement('div');
             div.className = role === 'user' ? 'msg msg-user' : 'msg msg-ai';
             
+            let { storyText, statusData } = extractStoryData(content);
+
             if (role === 'ai') {
+                if (statusData) renderStatus(statusData);
+
                 // 파싱: [선택 A] 등 객관식 텍스트를 추출하여 버튼으로 변환
                 let choices = [];
-                // 매치 패턴: [선택 1], **[선택 A]**, [선택 B]: 등 알파벳과 숫자 모두 유연하게 포착
-                let cleanContent = content.replace(/(?:\*\*)?\[선택\s*[A-Z0-9가-힣]+\](?:\*\*)?\s*:?\s*(.*)/gi, (match, choiceText) => {
+                let cleanContent = storyText.replace(/(?:\*\*)?\[선택\s*[A-Z0-9가-힣]+\](?:\*\*)?\s*:?\s*(.*)/gi, (match, choiceText) => {
                     let text = choiceText.trim().replace(/[*_]/g, '');
                     if(text) choices.push(text);
                     return ''; // 원본 텍스트에서는 숨김
                 });
                 
-                div.innerHTML = marked.parse(cleanContent.trim());
+                let safeText = cleanContent.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+                let contentHtml = marked.parse(cleanContent.trim());
+                contentHtml += `<button onclick="speakNovel('${safeText}', this)" style="background:none;border:none;color:var(--primary);cursor:pointer;font-size:1.1rem; float:right; margin-top:10px;" title="오디오북 듣기"><i class="fa-solid fa-volume-high"></i> 오디오북</button><div style="clear:both;"></div>`;
+                
+                div.innerHTML = contentHtml;
                 
                 // 선택지 버튼들 동적 추가 (그래 결심했어 스타일!)
                 if (choices.length > 0) {
@@ -416,7 +596,7 @@
                     div.appendChild(choicesContainer);
                 }
             } else {
-                div.textContent = content;
+                div.textContent = storyText;
             }
 
             chatbox.insertBefore(div, typingIndicator);
@@ -502,11 +682,12 @@
             let html = `<h1>${title}</h1>`;
             
             messageHistory.forEach((msg, index) => {
+                let { storyText } = extractStoryData(msg.content);
                 if(msg.role === 'assistant') {
-                    html += marked.parse(msg.content);
+                    html += marked.parse(storyText);
                     html += `<hr style="border:none; border-bottom:1px dashed #ccc; margin: 2rem 0;">`;
                 } else if(msg.role === 'user' && index > 0) { // skip first setup prompt
-                    html += `<p style="text-align:right; font-weight:bold; color:#555;">> ${msg.content}</p>`;
+                    html += `<p style="text-align:right; font-weight:bold; color:#555;">> ${storyText}</p>`;
                 }
             });
 
