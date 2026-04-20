@@ -160,7 +160,9 @@
         <div class="question-box" id="sajuInputBox">
             <p style="margin-bottom: 20px; color: #cbd5e1; font-size: 1.1rem;">당신의 태어난 우주의 기운을 입력해주세요.</p>
             <div class="saju-inputs">
-                <input type="date" id="sajuDate" required>
+                <select id="sajuYear"></select>
+                <select id="sajuMonth"></select>
+                <select id="sajuDay"></select>
                 <input type="time" id="sajuTime" required>
                 <select id="sajuGender">
                     <option value="남성">남성</option>
@@ -179,21 +181,25 @@
         </div>
 
         <div class="saju-result-grid" id="sajuResultGrid" style="display: none; animation: fadeIn 1s;">
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-sun" style="color: #fcd34d;"></i> 오늘의 운세</h3>
-                <p id="resToday">...</p>
+            <div class="saju-card" style="grid-column: 1 / -1; border-color: var(--tarot-gold);">
+                <h3 style="font-size: 1.6rem;"><i class="fa-solid fa-sun" style="color: #fcd34d;"></i> 사주 총평</h3>
+                <p id="resTotal" style="font-size: 1.15rem;">...</p>
             </div>
             <div class="saju-card">
-                <h3><i class="fa-solid fa-moon" style="color: #93c5fd;"></i> 이달의 기운</h3>
-                <p id="resMonth">...</p>
+                <h3><i class="fa-solid fa-coins" style="color: #fbbf24;"></i> 금전운</h3>
+                <p id="resWealth">...</p>
             </div>
             <div class="saju-card">
-                <h3><i class="fa-solid fa-dragon" style="color: #f87171;"></i> 올해 신년운세</h3>
-                <p id="resYear">...</p>
+                <h3><i class="fa-solid fa-building" style="color: #94a3b8;"></i> 직장/사업운</h3>
+                <p id="resCareer">...</p>
             </div>
             <div class="saju-card">
-                <h3><i class="fa-solid fa-om" style="color: #c084fc;"></i> 평생 타고난 팔자</h3>
-                <p id="resLife">...</p>
+                <h3><i class="fa-solid fa-heart" style="color: #f43f5e;"></i> 연애운</h3>
+                <p id="resLove">...</p>
+            </div>
+            <div class="saju-card">
+                <h3><i class="fa-solid fa-users" style="color: #3b82f6;"></i> 인간관계 운</h3>
+                <p id="resPeople">...</p>
             </div>
         </div>
         
@@ -205,13 +211,36 @@
     </div>
 
     <script>
+        // 날짜 드롭다운 초기화
+        const y = document.getElementById('sajuYear');
+        for(let i=1940; i<=2026; i++) {
+            let opt = document.createElement('option');
+            opt.value = i; opt.innerText = i + '년';
+            if(i===1990) opt.selected = true;
+            y.appendChild(opt);
+        }
+        const m = document.getElementById('sajuMonth');
+        for(let i=1; i<=12; i++) {
+            let opt = document.createElement('option');
+            let v = i < 10 ? '0'+i : i;
+            opt.value = v; opt.innerText = i + '월';
+            m.appendChild(opt);
+        }
+        const d = document.getElementById('sajuDay');
+        for(let i=1; i<=31; i++) {
+            let opt = document.createElement('option');
+            let v = i < 10 ? '0'+i : i;
+            opt.value = v; opt.innerText = i + '일';
+            d.appendChild(opt);
+        }
+
         async function analyzeSaju() {
-            const date = document.getElementById('sajuDate').value;
+            const dateStr = document.getElementById('sajuYear').value + '-' + document.getElementById('sajuMonth').value + '-' + document.getElementById('sajuDay').value;
             const time = document.getElementById('sajuTime').value;
             const gender = document.getElementById('sajuGender').value;
 
-            if(!date || !time) {
-                alert('생년월일과 시간을 정확히 입력해 주세요.');
+            if(!time || time.trim() === '') {
+                alert('태어난 시간을 입력해 주세요.');
                 return;
             }
 
@@ -223,16 +252,17 @@
                 const response = await fetch('/api/saju/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date, time, gender })
+                    body: JSON.stringify({ date: dateStr, time, gender })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    document.getElementById('resToday').textContent = data.data.today;
-                    document.getElementById('resMonth').textContent = data.data.month;
-                    document.getElementById('resYear').textContent = data.data.year;
-                    document.getElementById('resLife').textContent = data.data.life;
+                    document.getElementById('resTotal').textContent = data.data.total;
+                    document.getElementById('resWealth').textContent = data.data.wealth;
+                    document.getElementById('resCareer').textContent = data.data.career;
+                    document.getElementById('resLove').textContent = data.data.love;
+                    document.getElementById('resPeople').textContent = data.data.people;
 
                     document.getElementById('sajuLoader').style.display = 'none';
                     document.getElementById('sajuInputBox').style.display = 'none';

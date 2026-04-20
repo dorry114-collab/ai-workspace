@@ -172,7 +172,9 @@
             alert('설정이 브라우저에 저장되었습니다!');
         }
 
-        let answers = [];
+        let chatHistory = [
+            { role: "ai", content: "안녕하세요! 오늘 하루는 어떠셨나요? 특별했던 일이나 사소한 일 하나만 딱 말해주세요." }
+        ];
 
         function addBubble(text, sender) {
             const box = document.getElementById('chatBox');
@@ -195,7 +197,7 @@
             
             el.value = '';
             addBubble(text, 'user');
-            answers.push(text);
+            chatHistory.push({ role: 'user', content: text });
             
             document.getElementById('compileBtn').style.display = 'block';
 
@@ -209,24 +211,25 @@
                 const res = await fetch('/api/diary/chat', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ answers: answers })
+                    body: JSON.stringify({ history: chatHistory })
                 });
                 const data = await res.json();
                 loader.style.display = 'none';
                 if(data.success) {
                     addBubble(data.reply, 'ai');
+                    chatHistory.push({ role: 'ai', content: data.reply });
                     inputArea.style.display = 'flex';
                 } else { throw new Error(data.error); }
             } catch(e) {
                 alert('오류: ' + e.message);
                 inputArea.style.display = 'flex';
-                answers.pop();
+                chatHistory.pop();
                 loader.style.display = 'none';
             }
         }
 
         async function compileDiary() {
-            if(answers.length === 0) return alert('대화를 먼저 시작해주세요!');
+            if(chatHistory.length <= 1) return alert('대화를 먼저 시작해주세요!');
             
             const inputArea = document.getElementById('inputArea');
             const loader = document.getElementById('loader');
@@ -239,7 +242,7 @@
                 const res = await fetch('/api/diary/compile', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ answers })
+                    body: JSON.stringify({ history: chatHistory })
                 });
                 const data = await res.json();
                 loader.style.display = 'none';

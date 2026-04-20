@@ -2396,14 +2396,15 @@ def api_saju_analyze():
 - 양력 생년월일: {date_str}
 - 태어난 시간: {time_str}
 
-위 생년월일시를 바탕으로 육십갑자와 오행, 주역의 괘를 짚어내어, 이 사람의 운명과 기운을 아래 4가지 항목으로 상세하고 통찰력 있게 풀이해 주세요. 
-단순한 뻔한 소리가 아니라, 마치 오랫동안 산 수행자가 조언해주듯 뼈 때리면서도 신비로운 톤을 유지하세요.
+위 생년월일시를 바탕으로 육십갑자와 오행, 주역의 괘를 짚어내어, 이 사람의 운명과 기운을 아래 5가지 항목으로 명확하고 구체적으로 풀이해 주세요. 
+단순한 뻔한 소리가 아니라, 마치 오랫동안 산 수행자가 조언해주듯 뼈 때리면서도 신비롭고 현실적인 톤을 유지하세요.
 반드시 아래 JSON 형식으로만 응답해야 합니다.
 {{
-  "today": "오늘 하루 이 사람을 감싸는 기운과 처신 방법에 대한 조언 (약 3~4문장)",
-  "month": "이번 달의 전체적인 흐름, 재물운/애정운 등 주의할 점 (약 3~4문장)",
-  "year": "올해 신년 운세와 주요 키워드, 그리고 터닝 포인트 (약 4~5문장)",
-  "life": "이 사람이 타고난 큼직한 팔자와 평생의 기운, 성격의 장단점, 그리고 인생을 관통하는 뼈 때리는 조언 (약 5~6문장)"
+  "total": "이 사람이 타고난 전체 기운과 큼직한 평생 팔자 총평 (약 3-4문장)",
+  "wealth": "가장 궁금해하는 금전운, 재물의 흐름과 돈이 새는 곳, 어떻게 부를 축적할 상인지 (약 3-4문장)",
+  "career": "직장/사업운, 타고난 직업적 특징과 어떤 포지션으로 일해야 인생이 풀리는지 (약 3-4문장)",
+  "love": "연애운, 어떤 기운의 사람을 만나서 어떻게 흘러갈지, 뼈 때리는 조언 (약 3-4문장)",
+  "people": "인간관계, 귀인과 악연을 구별하는 법 및 대인관계 처세술 (약 3-4문장)"
 }}"""
 
         success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.6)
@@ -2429,31 +2430,11 @@ def api_shopping_analyze():
     api_key = os.environ.get('GEMINI_API_KEY')
     if not api_key:
         return jsonify({"success": False, "error": "GEMINI_API_KEY가 없습니다."})
-        
-    raw_text = ""
-    if mode == 'url':
-        url = data.get('url', '')
-        try:
-            import requests
-            from bs4 import BeautifulSoup
-            res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}, timeout=7)
-            soup = BeautifulSoup(res.text, 'html.parser')
-            raw_text = soup.get_text(separator=' ', strip=True)[:15000]
-        except Exception as e:
-            return jsonify({"success": False, "error": "URL 스크래핑에 실패했습니다. 해당 쇼핑몰이 봇 접근을 차단했습니다. 상단 탭에서 '직접 복붙' 방식을 이용해주세요."})
-    else:
-        raw_text = data.get('text', '')
-        if not raw_text:
-            return jsonify({"success": False, "error": "텍스트가 입력되지 않았습니다."})
-            
     sys_prompt = f"""당신은 날카롭고 무자비한 '호구 방지' 쇼핑 애널리스트입니다. 
 당신의 목표는 허위/조작성 알바 리뷰를 걸러내고, 진짜 소비자들이 분노를 꾹꾹 눌러 담아 폭로한 **'치명적인 결함과 단점'**들을 찾아내어 팩트 폭행을 날리는 것입니다.
 
-[쇼핑몰 리뷰 원문 데이터]
-{raw_text}
-
-위 원문을 꼼꼼히 분석하여 다음 항목을 도출하세요.
-만약 원문에 리뷰가 너무 적거나 상품 정보를 파악할 수 없다면, 가진 기본 지식으로 도출하되 "원문 데이터가 부족하여 추정된 결과입니다"를 판결에 덧붙이세요.
+원문(또는 캡처 사진)을 꼼꼼히 분석하여 다음 항목을 도출하세요.
+만약 원문에 리뷰가 너무 적거나 상품 정보를 파악할 수 없다면, 가진 기본 지식으로 도출하되 "데이터 부족으로 추정된 결과"라고 명시하세요.
 
 반드시 아래 JSON 형식으로만 응답해야 합니다.
 {{
@@ -2470,14 +2451,41 @@ def api_shopping_analyze():
   "verdict": "절대 사지 마라 / 이정도면 고려해볼 만 하다 와 같은 명확한 최종 판결. (명언이나 뼈 때리는 일침 한 마디 포함)"
 }}"""
     try:
-        success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.3)
+        success = False
+        text = ""
+        
+        if mode == 'url':
+            url = data.get('url', '')
+            try:
+                import requests
+                from bs4 import BeautifulSoup
+                res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=7)
+                soup = BeautifulSoup(res.text, 'html.parser')
+                raw_text = soup.get_text(separator=' ', strip=True)[:15000]
+                sys_prompt += f"\n\n[쇼핑몰 원문 데이터]\n{raw_text}"
+                success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.3)
+            except Exception as e:
+                return jsonify({"success": False, "error": "URL 스크래핑에 실패했습니다. 해당 쇼핑몰이 봇 접근을 차단했습니다. 상단 탭에서 '캡처 스캔'을 적극 권장합니다."})
+        elif mode == 'image':
+            image_b64 = data.get('image', '')
+            if not image_b64:
+                return jsonify({"success": False, "error": "이미지가 입력되지 않았습니다."})
+            sys_prompt += "\n\n사용자가 쇼핑몰 리뷰 화면 스크린샷 캡처를 올렸습니다. 이미지 속 텍스트와 별점 등 맥락을 완벽히 읽어내고, 위 JSON 형식으로 응답하세요."
+            success, text = _call_gemini_vision(api_key, sys_prompt, image_b64)
+        else:
+            raw_text = data.get('text', '')
+            if not raw_text:
+                return jsonify({"success": False, "error": "텍스트가 입력되지 않았습니다."})
+            sys_prompt += f"\n\n[쇼핑몰 원문 데이터]\n{raw_text}"
+            success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.3)
+
         if success:
             if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
             import json
             j_data = json.loads(text)
             return jsonify({"success": True, "data": j_data})
         else:
-            return jsonify({"success": False, "error": text})
+            return jsonify({"success": False, "error": f"분석 실패: {text}"})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
@@ -2648,24 +2656,33 @@ def diary_view(): return render_template('diary.html')
 
 @app.route('/api/diary/chat', methods=['POST'])
 def api_diary_chat():
-    answers = request.json.get('answers', [])
+    history = request.json.get('history', [])
     api_key = os.environ.get('GEMINI_API_KEY')
     
-    ans_text = "\n".join(f"- {a}" for a in answers)
+    convo_text = ""
+    for msg in history:
+        sender = "AI(당신)" if msg.get("role") == "ai" else "사용자"
+        convo_text += f"{sender}: {msg.get('content')}\n"
     
-    sys_p = f"""사용자가 지금까지 한 대답들:
-{ans_text}
+    sys_p = f"""지금까지의 일기장 대화 내역입니다:
+{convo_text}
 
-이 대답들의 맥락을 파악하고, 일기를 쓸 수 있도록 '아직 말하지 않은 또 다른 특별한 일'이나 '당시의 솔직한 기분' 등을 묻는 꼬리 질문을 딱 1개만 친구처럼 편안하고 다정하게 물어보세요. 너무 거창하게 묻지 말고 대화하듯 짧게 물어보세요."""
+[작성 규칙]
+1. 위 대화의 흐름을 완벽히 숙지하고, 사용자의 마지막 대답에 어울리는 새로운 꼬리 질문을 '딱 1개만' 던지세요.
+2. 당신이 이전에 이미 물어봤던 질문 패턴을 앵무새처럼 절대 반복하지 마세요. (예: "기분이 어땠어?"를 계속 묻지 말 것)
+3. 대답이 짧다면("맞아", "응" 등) 화제를 살짝 전환해서 "그나저나 오늘 밥은 뭐 먹었어?" 처럼 자연스럽게 다른 일상 요소를 캐물어보세요.
+4. 친구처럼 편안하고 짧게 대화체로 물어보세요."""
         
     success, text = _call_gemini_chat(api_key, [{"role":"user", "content":sys_p}], 0.7)
     return jsonify({"success": success, "reply": text, "error": text if not success else ""})
 
 @app.route('/api/diary/compile', methods=['POST'])
 def api_diary_compile():
-    answers = request.json.get('answers', [])
+    history = request.json.get('history', [])
     api_key = os.environ.get('GEMINI_API_KEY')
-    ans_text = "\n".join(f"- {a}" for a in answers)
+    
+    user_answers = [msg.get("content") for msg in history if msg.get("role") == "user"]
+    ans_text = "\n".join(f"- {a}" for a in user_answers)
     
     sys_p = f"""당신은 평범한 사람의 하루를 대필해주는 일기 작가입니다. 
 다음 사용자의 단답형 응답들을 바탕으로 '오늘의 일기'를 한 편 대필해주세요. 
