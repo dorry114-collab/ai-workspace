@@ -109,6 +109,9 @@ def get_stock_data():
                 
             historical_data.append({
                 'date': row['Date'].strftime('%Y-%m-%d'),
+                'open': float(row['Open']) if ('Open' in row and not pd.isna(row['Open'])) else c_val,
+                'high': float(row['High']) if ('High' in row and not pd.isna(row['High'])) else c_val,
+                'low': float(row['Low']) if ('Low' in row and not pd.isna(row['Low'])) else c_val,
                 'close': c_val,
                 'volume': v_val,
                 'sma_20': s20_val,
@@ -1185,7 +1188,7 @@ def export_mp4():
     # Store initial job state as a file so all Gunicorn workers can access it
     job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
     with open(job_file_path, "w") as f:
-        json.dump({'status': 'processing', 'url': None, 'error': None}, f)
+        json.dump({'status': 'processing', 'message': '준비 중...', 'progress': 0, 'url': None, 'error': None}, f)
     
     # Run heavy processing in background thread to avoid Gunicorn 30s timeout
     thread = threading.Thread(target=process_export_task, args=(job_id, script, images, bgm_url, gender))
@@ -1215,6 +1218,16 @@ def process_export_task(job_id, script, images, bgm_url, gender):
         
         output_filename = f"shorts_{job_id[:8]}.mp4"
         output_path = os.path.join(static_dir, output_filename)
+        job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
+
+        def update_progress(msg, pct):
+            try:
+                with open(job_file_path, "w") as f:
+                    json.dump({'status': 'processing', 'message': msg, 'progress': pct, 'url': None, 'error': None}, f)
+            except:
+                pass
+
+        update_progress("1. 리소스 준비 및 글꼴 다운로드 중...", 5)
         
         font_path = os.path.join(static_dir, 'NanumGothic.ttf')
         if not os.path.exists(font_path):
@@ -1275,6 +1288,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
         voice_model = 'ko-KR-SunHiNeural' if gender == 'female' else 'ko-KR-InJoonNeural'
 
         # 1. 순차적으로 모든 TTS 생성 (이미지는 아래에서 병렬 다운로드 유지)
+        update_progress("2. AI 대본 음성(TTS) 분석 및 합성 중...", 15)
         try:
             loop = asyncio.get_event_loop()
         except RuntimeError:
@@ -1283,6 +1297,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
         loop.run_until_complete(generate_all_tts(sentences, voice_model, temp_dir))
 
         # 2. 병렬로 모든 고해상도 이미지 다운로드
+        update_progress("3. 고해상도 이미지 검증 및 다운로드 중...", 35)
         def fetch_image(img_src):
             if img_src.startswith('data:image'):
                 header, encoded = img_src.split(',', 1)
@@ -1300,6 +1315,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
                 src = future_to_src[future]
                 unique_images_data[src] = future.result()
 
+        update_progress("4. 오디오 타임라인 동기화 및 텍스트 렌더링 중...", 50)
         for i, text in enumerate(sentences):
             audio_path = os.path.join(temp_dir, f"audio_{i}.mp3")
             audio_clip = AudioFileClip(audio_path)
@@ -1359,6 +1375,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             clips.append(vclip)
 
         # method="chain"으로 변경하여 CompositeVideoClip 빌드 시 발생하는 막대한 메모리(RAM) 피크 및 OOM 킬 방지
+        update_progress("5. 클립 체인 병합 준비 중...", 70)
         final_video = concatenate_videoclips(clips, method="chain")
 
         final_audio = final_video.audio
@@ -1390,6 +1407,7 @@ def process_export_task(job_id, script, images, bgm_url, gender):
             final_audio = CompositeAudioClip([final_audio, bgm_clip])
             final_video = final_video.with_audio(final_audio)
 
+        update_progress("6. 최종 MP4 비디오 인코딩 중 (가장 오래 걸립니다!)...", 80)
         final_video.write_videofile(
             output_path, 
             fps=15, 
@@ -1404,15 +1422,14 @@ def process_export_task(job_id, script, images, bgm_url, gender):
         for c in clips:
             c.close()
 
-        job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
         with open(job_file_path, "w") as f:
-            json.dump({'status': 'completed', 'url': f"/static/{output_filename}", 'error': None}, f)
+            json.dump({'status': 'completed', 'progress': 100, 'message': '완료', 'url': f"/static/{output_filename}", 'error': None}, f)
 
     except Exception as e:
         traceback.print_exc()
         job_file_path = os.path.join(tempfile.gettempdir(), f"job_{job_id}.json")
         with open(job_file_path, "w") as f:
-            json.dump({'status': 'error', 'url': None, 'error': str(e)}, f)
+            json.dump({'status': 'error', 'progress': 0, 'url': None, 'error': str(e)}, f)
 
 @app.route('/api/restaurant/search', methods=['POST'])
 def restaurant_search():
@@ -2339,6 +2356,10 @@ def tarot():
 def saju():
     return render_template('saju.html')
 
+@app.route('/archive')
+def archive():
+    return render_template('archive.html')
+
 @app.route('/api/tarot/draw', methods=['POST'])
 def api_tarot_draw():
     data = request.json
@@ -2398,18 +2419,14 @@ def api_saju_analyze():
 - 생년월일: {date_str}
 - 태어난 시간: {time_str}
 
-위 정보를 바탕으로 육십갑자와 오행, 주역의 괘를 짚어내어, 이 사람의 운명과 기운을 아래 8가지 항목으로 명확하고 구체적으로 풀이해 주세요. 
-단순한 뻔한 소리가 아니라, 마치 오랫동안 산 수행자가 조언해주듯 뼈 때리면서도 신비롭고 현실적인 톤을 유지하세요.
-반드시 아래 JSON 형식으로만 응답해야 합니다.
+위 정보를 바탕으로 육십갑자와 오행, 주역의 괘를 짚어내어, 이 사람의 운명과 기운을 [일간, 주간, 월간, 년간] 4가지 시점 각각에 대하여 [총평, 금전운, 직장/사업운, 연애운, 인간관계] 5대 영역으로 상세하게 풀이해 주세요. 
+단순한 뻔한 소리가 아니라, 마치 오랫동안 산 수행자가 조언해주듯 뼈 때리면서도 신비롭고 현실적인 톤을 유지하세요. 각 항목당 2~3문장으로 간결하지만 타격감 있게 작성하세요.
+반드시 아래 JSON 형식으로만 완벽하게 응답해야 합니다. (daily, weekly, monthly, yearly 내부의 5가지 키를 엄수하세요)
 {{
-  "daily": "오늘 하루 이 사람을 감싸는 일진(日辰) 기운과 조언 (약 2-3문장)",
-  "weekly": "이번 주 전체적인 운신의 폭과 흐름, 일어날 수 있는 이벤트 (약 2-3문장)",
-  "monthly": "이번 달의 굵직한 기운과 재물/애정운 흐름 패턴 (약 2-3문장)",
-  "yearly": "올해 신년 운세와 주요 키워드, 그리고 터닝 포인트 (약 2-3문장)",
-  "wealth": "가장 궁금해하는 금전운, 재물의 흐름과 어떻게 부를 축적할 상인지 (약 3-4문장)",
-  "career": "직장/사업운, 타고난 직업적 특징과 어떤 포지션으로 일해야 인생이 풀리는지 (약 3-4문장)",
-  "love": "연애운, 어떤 기운의 사람을 만나서 어떻게 흘러갈지 조언 (약 3-4문장)",
-  "people": "인간관계, 당신을 돕는 귀인과 조심해야 할 악연을 구별하는 법 (약 3-4문장)"
+  "daily": {{ "summary": "오늘(일간)의 전체 운세와 조언", "wealth": "오늘의 금전운/재물 기운", "career": "오늘의 직장/학업/사업운", "love": "오늘의 연애운/이성 관계", "people": "오늘의 전반적 인간관계 운" }},
+  "weekly": {{ "summary": "이번 주 전체 운세와 흐름", "wealth": "이번 주 금전운 흐름", "career": "이번 주 직장/사업운 목표", "love": "이번 주 연애운 포인트", "people": "이번 주 조심하거나 기대할 인간관계" }},
+  "monthly": {{ "summary": "이번 달 전체 운세와 핵심 과제", "wealth": "이번 달 금전운 전략", "career": "이번 달 직장/사업운 변화", "love": "이번 달 연애운 흐름", "people": "이번 달 귀인과 악연" }},
+  "yearly": {{ "summary": "올해 전체 운세와 터닝 포인트", "wealth": "올해 재물운의 큰 그림", "career": "올해 직업/사업운의 향방", "love": "올해 연애운의 결정적 순간", "people": "올해 내 곁에 남을 사람과 떠날 사람" }}
 }}"""
 
         success, text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.6)

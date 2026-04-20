@@ -10,9 +10,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Chart.js & Date Adapter -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- TradingView Lightweight Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -284,7 +283,8 @@
             .chart-legend { flex-wrap: wrap; gap: 8px; font-size: 0.75rem; }
         }
         
-        canvas {
+        /* Reset canvas handling */
+        #stockChart {
             width: 100% !important;
             height: 100% !important;
             max-height: 520px;
@@ -353,14 +353,15 @@
             <div class="chart-header">
                 <div class="chart-title" id="chartTitle">주가 추이 및 AI 예측선</div>
                 <div class="chart-legend">
-                    <div class="legend-item"><div class="legend-color" style="background:var(--primary); box-shadow: 0 0 8px var(--primary-glow)"></div> 실제 주가</div>
+                    <div class="legend-item"><div class="legend-color" style="background:#00ff88; box-shadow: 0 0 8px #00ff88"></div> 캔들 (상승)</div>
+                    <div class="legend-item"><div class="legend-color" style="background:#ff0055; box-shadow: 0 0 8px #ff0055"></div> 캔들 (하락)</div>
                     <div class="legend-item"><div class="legend-color" style="background:var(--secondary); box-shadow: 0 0 8px var(--secondary-glow)"></div> 향후 예측 방향</div>
                     <div class="legend-item"><div class="legend-color" style="background:var(--sma50-color)"></div> 50일 이동평균</div>
                     <div class="legend-item"><div class="legend-color" style="background:transparent; border-top: 2px dashed #fce83a;"></div> 1개월 전 백테스트</div>
                 </div>
             </div>
             <div class="loader" id="loader"></div>
-            <canvas id="stockChart"></canvas>
+            <div id="stockChart"></div>
         </div>
     </main>
 
@@ -422,7 +423,7 @@
             document.getElementById('volTrendBadge').textContent = '--';
             
             if(myChart) {
-                myChart.destroy();
+                myChart.remove();
                 myChart = null;
             }
         }
@@ -522,236 +523,144 @@
         }
 
         function renderChart(data) {
-            const ctx = document.getElementById('stockChart').getContext('2d');
-            
-            if (myChart) {
-                myChart.destroy();
-            }
+            const chartContainer = document.getElementById('stockChart');
+            chartContainer.innerHTML = ''; // clear previous chart
 
-            // 매핑 데이터 준비
-            const parsedHistorical = data.historical.map(d => ({ x: d.date, y: d.close }));
-            const parsedVolume = data.historical.map(d => ({ x: d.date, y: d.volume }));
-            const parsedSMA50 = data.historical.map(d => ({ x: d.date, y: d.sma_50 })).filter(d => d.y !== null);
-            
-            const parsedPredsCenter = data.predictions.map(d => ({ x: d.date, y: d.predicted_close }));
-            const parsedPredsUpper = data.predictions.map(d => ({ x: d.date, y: d.upper_band }));
-            const parsedPredsLower = data.predictions.map(d => ({ x: d.date, y: d.lower_band }));
-            const parsedPastPreds = (data.past_predictions || []).map(d => ({ x: d.date, y: d.backtest_close }));
-
-            let aiStopLossData = [];
-            let aiTargetData = [];
-            if (data.ai_analysis && data.historical.length > 0) {
-                const allDates = [...data.historical.map(d=>d.date), ...data.predictions.map(d=>d.date)];
-                
-                if (data.ai_analysis.stop_loss) {
-                    const slVal = Number(data.ai_analysis.stop_loss);
-                    if (!isNaN(slVal)) aiStopLossData = allDates.map(date => ({ x: date, y: slVal }));
-                }
-                if (data.ai_analysis.target_price) {
-                    const tpVal = Number(data.ai_analysis.target_price);
-                    if (!isNaN(tpVal)) aiTargetData = allDates.map(date => ({ x: date, y: tpVal }));
-                }
-            }
-
-            // 그래디언트 생성
-            const gradientPrimary = ctx.createLinearGradient(0, 0, 0, 400);
-            gradientPrimary.addColorStop(0, 'rgba(0, 240, 255, 0.4)');
-            gradientPrimary.addColorStop(1, 'rgba(0, 240, 255, 0.0)');
-
-            const gradientSecondary = ctx.createLinearGradient(0, 0, 0, 400);
-            gradientSecondary.addColorStop(0, 'rgba(255, 0, 85, 0.4)');
-            gradientSecondary.addColorStop(1, 'rgba(255, 0, 85, 0.0)');
-
-            myChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [
-                        {
-                            type: 'bar',
-                            label: '거래량',
-                            data: parsedVolume,
-                            backgroundColor: 'rgba(139, 148, 158, 0.3)',
-                            yAxisID: 'yVolume',
-                            order: 10
-                        },
-                        {
-                            label: '실제 주가',
-                            data: parsedHistorical,
-                            borderColor: '#00f0ff',
-                            backgroundColor: gradientPrimary,
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#00f0ff',
-                            yAxisID: 'y',
-                            order: 5
-                        },
-                        {
-                            label: '50일 이동평균',
-                            data: parsedSMA50,
-                            borderColor: '#ff8c00',
-                            borderWidth: 1.5,
-                            borderDash: [5, 5],
-                            fill: false,
-                            tension: 0.4,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            yAxisID: 'y',
-                            order: 4
-                        },
-                        {
-                            label: '하단 지지선 (예측)',
-                            data: parsedPredsLower,
-                            borderColor: 'transparent',
-                            backgroundColor: 'transparent',
-                            borderWidth: 0,
-                            fill: false,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            yAxisID: 'y',
-                            order: 3
-                        },
-                        {
-                            label: '상단 저항선 (예측)',
-                            data: parsedPredsUpper,
-                            borderColor: 'transparent',
-                            backgroundColor: 'rgba(255, 0, 85, 0.15)',
-                            borderWidth: 0,
-                            fill: '-1', // Fill down to the previous dataset (Lower Band)
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            yAxisID: 'y',
-                            order: 1
-                        },
-                        {
-                            label: '종가 예측 중심선',
-                            data: parsedPredsCenter,
-                            borderColor: '#ff0055',
-                            borderWidth: 2,
-                            borderDash: [8, 4],
-                            fill: false,
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 8,
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#ff0055',
-                            yAxisID: 'y',
-                            order: 0
-                        },
-                        {
-                            label: '1개월 전 백테스트 예측치',
-                            data: parsedPastPreds,
-                            borderColor: '#fce83a', // Yellow color for backtest
-                            borderWidth: 2,
-                            borderDash: [3, 3],
-                            fill: false,
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 6,
-                            pointHoverBackgroundColor: '#fff',
-                            pointHoverBorderColor: '#fce83a',
-                            yAxisID: 'y',
-                            order: 2
-                        },
-                        {
-                            label: 'AI 목표가 (1개월)',
-                            data: aiTargetData,
-                            borderColor: '#00ff88',
-                            borderWidth: 2,
-                            borderDash: [15, 5],
-                            fill: false,
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            yAxisID: 'y',
-                            order: -1
-                        },
-                        {
-                            label: 'AI 손절가 (방어선)',
-                            data: aiStopLossData,
-                            borderColor: 'rgba(255, 0, 85, 0.8)',
-                            borderWidth: 2,
-                            borderDash: [5, 5],
-                            backgroundColor: 'rgba(255, 0, 85, 0.05)',
-                            fill: 'start', // shade below the stop loss
-                            tension: 0,
-                            pointRadius: 0,
-                            pointHoverRadius: 0,
-                            yAxisID: 'y',
-                            order: -2
-                        }
-                    ]
+            myChart = LightweightCharts.createChart(chartContainer, {
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#8b949e',
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            backgroundColor: 'rgba(11, 14, 20, 0.9)',
-                            titleColor: '#f0f6fc',
-                            bodyColor: '#f0f6fc',
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            borderWidth: 1,
-                            padding: 12,
-                            boxPadding: 6,
-                            usePointStyle: true,
-                        }
-                    },
-                    scales: {
-                        x: {
-                            type: 'time',
-                            time: {
-                                unit: 'month',
-                                displayFormats: {
-                                    month: 'yyyy-MM'
-                                }
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false,
-                            },
-                            ticks: {
-                                color: '#8b949e',
-                                maxRotation: 0,
-                            }
-                        },
-                        y: {
-                            type: 'linear',
-                            display: true,
-                            position: 'left',
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.05)',
-                                drawBorder: false,
-                            },
-                            ticks: {
-                                color: '#8b949e',
-                                callback: function(value) {
-                                    if(value >= 1000) return value.toLocaleString();
-                                    return value;
-                                }
-                            }
-                        },
-                        yVolume: {
-                            type: 'linear',
-                            display: false,
-                            position: 'right',
-                            min: 0,
-                            beginAtZero: true,
-                            // To overlay volume on bottom 20%, we multiply the max volume.
-                            suggestedMax: Math.max(...parsedVolume.map(v => v.y)) * 5
-                        }
-                    }
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    timeVisible: false,
+                },
+            });
+
+            // Series 1: Candlestick
+            const candleSeries = myChart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff0055',
+                borderVisible: false,
+                wickUpColor: '#00ff88',
+                wickDownColor: '#ff0055'
+            });
+
+            const candleData = data.historical.map(d => ({
+                time: d.date,
+                open: d.open,
+                high: d.high,
+                low: d.low,
+                close: d.close
+            }));
+            candleSeries.setData(candleData);
+
+            // Series 2: Volume
+            const volumeSeries = myChart.addHistogramSeries({
+                priceFormat: { type: 'volume' },
+                priceScaleId: '', // set as an overlay
+            });
+
+            volumeSeries.priceScale().applyOptions({
+                scaleMargins: { top: 0.8, bottom: 0 },
+            });
+
+            const volumeData = data.historical.map(d => ({
+                time: d.date,
+                value: d.volume,
+                color: d.close > d.open ? 'rgba(0, 255, 136, 0.3)' : 'rgba(255, 0, 85, 0.3)'
+            }));
+            volumeSeries.setData(volumeData);
+
+            // Series 3: SMA 50
+            const sma50Series = myChart.addLineSeries({
+                color: '#ff8c00',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dotted,
+                title: 'SMA 50'
+            });
+            const sma50Data = data.historical.filter(d => d.sma_50 !== null).map(d => ({
+                time: d.date,
+                value: d.sma_50
+            }));
+            sma50Series.setData(sma50Data);
+
+            // Series 4: Predictions (Area for Bolinger and Line for Center)
+            const upperBandSeries = myChart.addLineSeries({
+                color: 'rgba(255, 0, 85, 0.5)',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                title: '상단 밴드'
+            });
+            const centerPredSeries = myChart.addLineSeries({
+                color: '#ff0055',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                title: '예측 중심가'
+            });
+            const lowerBandSeries = myChart.addLineSeries({
+                color: 'rgba(0, 240, 255, 0.5)',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                title: '하단 밴드'
+            });
+
+            if (data.predictions && data.predictions.length > 0) {
+                upperBandSeries.setData(data.predictions.map(d => ({ time: d.date, value: d.upper_band })));
+                centerPredSeries.setData(data.predictions.map(d => ({ time: d.date, value: d.predicted_close })));
+                lowerBandSeries.setData(data.predictions.map(d => ({ time: d.date, value: d.lower_band })));
+            }
+
+            // Series 5: Backtest
+            if (data.past_predictions && data.past_predictions.length > 0) {
+                const backtestSeries = myChart.addLineSeries({
+                    color: '#fce83a',
+                    lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    title: '백테스트'
+                });
+                backtestSeries.setData(data.past_predictions.map(d => ({ time: d.date, value: d.backtest_close })));
+            }
+
+            // Price Lines for Target / Stop Loss
+            if (data.ai_analysis) {
+                if (data.ai_analysis.target_price) {
+                    candleSeries.createPriceLine({
+                        price: Number(data.ai_analysis.target_price),
+                        color: '#00ff88',
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dotted,
+                        axisLabelVisible: true,
+                        title: 'AI 목표가',
+                    });
                 }
+                if (data.ai_analysis.stop_loss) {
+                    candleSeries.createPriceLine({
+                        price: Number(data.ai_analysis.stop_loss),
+                        color: '#ff0055',
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dotted,
+                        axisLabelVisible: true,
+                        title: 'AI 손절가',
+                    });
+                }
+            }
+
+            myChart.timeScale().fitContent();
+            
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                myChart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
             });
         }
 

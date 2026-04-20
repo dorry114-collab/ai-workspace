@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Vault Pro</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    </script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -432,11 +437,11 @@
                 <div class="extract-header">
                     <h3 id="extractTitle">추출 완료!</h3>
                     <button class="btn-copy" onclick="copyResult()">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                        결과 복사하기
+                        <i class="fa-solid fa-copy"></i>
+                        URL만 전체 복사하기
                     </button>
                 </div>
-                <textarea id="resultText" class="text-area-result" readonly></textarea>
+                <div id="videoResultsGrid" class="grid" style="margin-top: 1rem;"></div>
             </div>
         </div>
     </div>
@@ -514,14 +519,39 @@
                     
                     let displayText = resultTitle + "\n\n";
                     currentUrlOnlyText = "";
+                    const grid = document.getElementById('videoResultsGrid');
+                    grid.innerHTML = '';
+
                     data.data.forEach((video, index) => {
                         let views = Number(video.view_count).toLocaleString();
                         displayText += `${index + 1}위. [조회수: ${views}회] ${video.title}\n`;
                         currentUrlOnlyText += `${video.url}\n`;
+
+                        const card = document.createElement('div');
+                        card.className = 'video-card';
+                        card.innerHTML = `
+                            <div class="thumbnail-container">
+                                <img src="https://img.youtube.com/vi/${video.id}/hqdefault.jpg" class="thumbnail" alt="thumbnail" onerror="this.src='https://img.youtube.com/vi/${video.id}/default.jpg'">
+                            </div>
+                            <div class="video-info">
+                                <div>
+                                    <h4 class="video-title" title="${video.title}">${index + 1}. ${video.title}</h4>
+                                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">조회수 ${views}회</div>
+                                </div>
+                                <div class="video-actions">
+                                    <a href="${video.url}" target="_blank" class="watch-link"><i class="fa-brands fa-youtube"></i> 유튜브 보기</a>
+                                    <button class="btn-remove" style="color: var(--text-primary); border-color: var(--accent-color); background: rgba(139, 92, 246, 0.2);" onclick="summarizeVideo('${video.id}', '${video.url}', this)"><i class="fa-solid fa-wand-magic-sparkles"></i> AI 요약하기</button>
+                                </div>
+                                <div id="summaryWrap_${video.id}" style="display:none; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                                    <div class="summary-loader" style="text-align:center; padding: 10px; display:none;"><div class="loader"></div> 요약 중...</div>
+                                    <div class="summary-content" style="font-size: 0.9rem; line-height: 1.5;"></div>
+                                </div>
+                            </div>
+                        `;
+                        grid.appendChild(card);
                     });
 
                     document.getElementById('extractTitle').textContent = `'${value}' 추출 완료!`;
-                    resultText.value = displayText.trim();
                     extractPanel.classList.add('show');
                     showToast('추출이 완료되었습니다!');
                 } else {
@@ -542,6 +572,51 @@
             });
         }
 
+        window.summarizeVideo = async function(videoId, videoUrl, btnElement) {
+            const wrap = document.getElementById(`summaryWrap_${videoId}`);
+            const loader = wrap.querySelector('.summary-loader');
+            const content = wrap.querySelector('.summary-content');
+            
+            wrap.style.display = 'block';
+            content.style.display = 'none';
+            loader.style.display = 'block';
+            btnElement.disabled = true;
+
+            try {
+                const response = await fetch('/api/youtube/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl })
+                });
+
+                const data = await response.json();
+                loader.style.display = 'none';
+                content.style.display = 'block';
+
+                if (data.success) {
+                    content.innerHTML = `
+                        <div style="margin-bottom: 10px;">
+                            <span style="background: rgba(255, 255, 255, 0.1); padding: 3px 8px; border-radius: 10px; font-weight: bold; font-size: 0.8rem;">
+                                ${data.sentiment_emoji} ${data.sentiment_label}
+                            </span>
+                        </div>
+                        <div style="color: #f472b6; font-weight: bold; margin-bottom: 5px;">⚡ 핵심 요약</div>
+                        <div style="margin-bottom: 15px; color: var(--text-primary); white-space: pre-wrap;">${data.core_summary || "요약이 제공되지 않았습니다."}</div>
+                    `;
+                    btnElement.innerHTML = '<i class="fa-solid fa-check"></i> 요약 완료';
+                } else {
+                     content.innerHTML = `<div style="color: #ef4444;">오류: ${data.error}</div>`;
+                     btnElement.disabled = false;
+                     btnElement.innerHTML = '<i class="fa-solid fa-rotate-right"></i> 다시 시도';
+                }
+            } catch (error) {
+                loader.style.display = 'none';
+                content.style.display = 'block';
+                content.innerHTML = `<div style="color: #ef4444;">통신 오류가 발생했습니다.</div>`;
+                btnElement.disabled = false;
+                btnElement.innerHTML = '<i class="fa-solid fa-rotate-right"></i> 다시 시도';
+            }
+        };
 
     </script>
 </body>

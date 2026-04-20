@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>내 보관함 - Antigravity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --primary: #00f0ff;
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 80px; /* Space for bottom nav */
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(90deg, #00f0ff, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-muted);
+            padding: 3rem;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            border: 1px dashed rgba(255,255,255,0.2);
+        }
+
+        .archive-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .archive-item {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.3s;
+            cursor: pointer;
+        }
+
+        .archive-item:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .item-info h3 {
+            margin: 0 0 5px 0;
+            font-size: 1.2rem;
+        }
+
+        .item-info p {
+            margin: 0;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .item-actions button {
+            background: rgba(255,0,0,0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .item-actions button:hover {
+            background: rgba(255,0,0,0.2);
+            color: #f87171;
+        }
+
+        /* Modal for Viewing Details */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--primary);
+        }
+        .modal-close {
+            float: right;
+            background: none; border: none; color: #fff; font-size: 1.5rem; cursor: pointer;
+        }
+
+        /* Bottom Nav Bar */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 70px;
+            background: rgba(11, 14, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .nav-item {
+            text-decoration: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            gap: 5px;
+            transition: 0.2s;
+            width: 25%;
+        }
+
+        .nav-item i {
+            font-size: 1.5rem;
+        }
+
+        .nav-item.active, .nav-item:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1><i class="fa-solid fa-star"></i> 내 보관함</h1>
+        
+        <div id="archiveContainer" class="archive-list">
+            <!-- Items will be loaded here via JS -->
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="viewModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="modalTitle" style="margin-top: 0; color: var(--primary);"></h2>
+            <div id="modalBody" style="line-height: 1.6;"></div>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <a href="/" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>홈</span>
+        </a>
+        <a href="/shopping" class="nav-item">
+            <i class="fa-solid fa-shield-halved"></i>
+            <span>호구방지</span>
+        </a>
+        <a href="/saju" class="nav-item">
+            <i class="fa-solid fa-yin-yang"></i>
+            <span>운세</span>
+        </a>
+        <a href="/archive" class="nav-item active">
+            <i class="fa-solid fa-star"></i>
+            <span>보관함</span>
+        </a>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadArchive);
+        let currentArchive = [];
+
+        function loadArchive() {
+            currentArchive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            const container = document.getElementById('archiveContainer');
+            
+            if(currentArchive.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-box-open" style="font-size: 3rem; margin-bottom: 1rem; color: #475569;"></i>
+                        <p>아직 보관함에 저장된 기록이 없습니다.<br>결과 화면에서 보관함 버튼을 눌러 기록을 저장해보세요!</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            // 역순 출력 (최신순)
+            currentArchive.slice().reverse().forEach((item, index) => {
+                const realIndex = currentArchive.length - 1 - index;
+                let icon = 'fa-file-lines';
+                if(item.type === 'saju') icon = 'fa-yin-yang';
+                if(item.type === 'diet') icon = 'fa-apple-whole';
+
+                container.innerHTML += `
+                    <div class="archive-item" onclick="viewItem(${realIndex})">
+                        <div class="item-info">
+                            <h3><i class="fa-solid ${icon}" style="color: var(--primary); margin-right: 8px;"></i>${item.title}</h3>
+                            <p>${item.date}</p>
+                        </div>
+                        <div class="item-actions">
+                            <button onclick="deleteItem(event, ${realIndex})"><i class="fa-solid fa-trash"></i> 삭제</button>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function deleteItem(event, index) {
+            event.stopPropagation(); // Prevents modal from opening when clicking delete
+            if(confirm("정말로 이 기록을 삭제하시겠습니까?")) {
+                currentArchive.splice(index, 1);
+                localStorage.setItem('antigravity_archive', JSON.stringify(currentArchive));
+                loadArchive();
+            }
+        }
+
+        function viewItem(index) {
+            const item = currentArchive[index];
+            document.getElementById('modalTitle').innerText = item.title;
+            
+            let html = '';
+            if(item.type === 'saju') {
+                html += `<h4>일간 운세</h4><p>${item.data.daily.summary}</p>`;
+                html += `<h4>주간 운세</h4><p>${item.data.weekly.summary}</p>`;
+                html += `<h4>월간 운세</h4><p>${item.data.monthly.summary}</p>`;
+                html += `<h4>년간 운세</h4><p>${item.data.yearly.summary}</p>`;
+            } else {
+                html += `<pre style="white-space: pre-wrap; font-family: 'Outfit'; color: #ccc;">${JSON.stringify(item.data, null, 2)}</pre>`;
+            }
+            
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('viewModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('viewModal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

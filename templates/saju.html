@@ -6,6 +6,7 @@
     <title>AI 주역 명리 웹</title>
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Nanum+Myeongjo:wght@400;700&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
     <style>
         :root {
@@ -89,11 +90,36 @@
             border-color: var(--tarot-gold);
         }
 
+        .saju-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        .saju-tab {
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 8px;
+            color: #ccc;
+            cursor: pointer;
+            font-family: 'Nanum Myeongjo', serif;
+            font-size: 1.1rem;
+            transition: 0.3s;
+        }
+        .saju-tab.active {
+            background: var(--tarot-gold);
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+
         .saju-result-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
-            margin-top: 2rem;
         }
 
         .saju-card {
@@ -184,52 +210,127 @@
             <p style="color: var(--tarot-gold); margin-top: 15px;">천체의 기운과 오행을 맞추는 중입니다...</p>
         </div>
 
-        <div class="saju-result-grid" id="sajuResultGrid" style="display: none; animation: fadeIn 1s;">
-            <!-- 종합 운세 흐름 -->
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-calendar-day" style="color: #fcd34d;"></i> 오늘(일간)의 기운</h3>
-                <p id="resDaily">...</p>
-            </div>
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-calendar-week" style="color: #6ee7b7;"></i> 이번 주(주간)의 흐름</h3>
-                <p id="resWeekly">...</p>
-            </div>
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-calendar-days" style="color: #93c5fd;"></i> 이번 달(월간) 운세</h3>
-                <p id="resMonthly">...</p>
-            </div>
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-calendar" style="color: #f87171;"></i> 올해(년간) 총운</h3>
-                <p id="resYearly">...</p>
+        <div id="sajuTabsContainer" style="display: none; animation: fadeIn 1s;">
+            <div class="saju-tabs" id="sajuTabs">
+                <div class="saju-tab active" onclick="showSajuTab('daily', this)">일간(오늘)</div>
+                <div class="saju-tab" onclick="showSajuTab('weekly', this)">주간(이번주)</div>
+                <div class="saju-tab" onclick="showSajuTab('monthly', this)">월간(이번달)</div>
+                <div class="saju-tab" onclick="showSajuTab('yearly', this)">년간(올해)</div>
             </div>
 
-            <!-- 디테일 4대 영역 -->
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-coins" style="color: #fbbf24;"></i> 금전운</h3>
-                <p id="resWealth">...</p>
-            </div>
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-building" style="color: #94a3b8;"></i> 직장/사업운</h3>
-                <p id="resCareer">...</p>
-            </div>
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-heart" style="color: #f43f5e;"></i> 연애운</h3>
-                <p id="resLove">...</p>
-            </div>
-            <div class="saju-card">
-                <h3><i class="fa-solid fa-users" style="color: #3b82f6;"></i> 인간관계 운</h3>
-                <p id="resPeople">...</p>
+            <div class="saju-result-grid" id="sajuResultGrid">
+                <!-- 총평 -->
+                <div class="saju-card" style="grid-column: 1 / -1; border-color: var(--tarot-gold);">
+                    <h3 id="resTitle" style="font-size: 1.5rem; justify-content: center;"><i class="fa-solid fa-sun" style="color: #fcd34d;"></i> 총평</h3>
+                    <p id="resSummary" style="font-size: 1.15rem; text-align: center;">...</p>
+                </div>
+
+                <!-- 디테일 4대 영역 -->
+                <div class="saju-card">
+                    <h3><i class="fa-solid fa-coins" style="color: #fbbf24;"></i> 금전운</h3>
+                    <p id="resWealth">...</p>
+                </div>
+                <div class="saju-card">
+                    <h3><i class="fa-solid fa-building" style="color: #94a3b8;"></i> 회사/직장운</h3>
+                    <p id="resCareer">...</p>
+                </div>
+                <div class="saju-card">
+                    <h3><i class="fa-solid fa-heart" style="color: #f43f5e;"></i> 연애운</h3>
+                    <p id="resLove">...</p>
+                </div>
+                <div class="saju-card">
+                    <h3><i class="fa-solid fa-users" style="color: #3b82f6;"></i> 인간관계 운</h3>
+                    <p id="resPeople">...</p>
+                </div>
             </div>
         </div>
         
         <div style="text-align: center; margin-top: 3rem; display: none;" id="sajuReloadBtn">
-            <button class="draw-btn" onclick="location.reload()" style="font-size: 1rem; padding: 0.8rem 2rem;">
-                <i class="fa-solid fa-rotate-right"></i> 다시 입력하기
+            <button class="draw-btn" onclick="captureAndShare('sajuResultGrid')" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: #22c55e; margin: 5px;">
+                <i class="fa-solid fa-camera"></i> 이미지 저장
             </button>
+            <button class="draw-btn" onclick="saveToArchive('saju')" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: #3b82f6; margin: 5px;">
+                <i class="fa-solid fa-star"></i> 보관함 저장
+            </button>
+            <button class="draw-btn" onclick="location.reload()" style="font-size: 1rem; padding: 0.8rem 1.5rem; margin: 5px;">
+                <i class="fa-solid fa-rotate-right"></i> 다시 입력
+            </button>
+        </div>
         </div>
     </div>
 
     <script>
+        let globalSajuData = null;
+
+        function captureAndShare(elementId) {
+            const el = document.getElementById(elementId);
+            if(!el) return;
+            
+            const originalBg = el.style.background;
+            el.style.background = '#0f172a'; // Ensure solid background for canvas
+            el.style.padding = '20px'; // Add some padding for the image
+            
+            html2canvas(el, { scale: 2, useCORS: true }).then(canvas => {
+                el.style.background = originalBg;
+                el.style.padding = '0px';
+                
+                // Create image data URL
+                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                
+                // Download image
+                const link = document.createElement('a');
+                link.download = `saju_result_${new Date().getTime()}.jpg`;
+                link.href = imgData;
+                link.click();
+            });
+        }
+
+        function saveToArchive(type) {
+            if(!globalSajuData) {
+                alert("저장할 데이터가 없습니다.");
+                return;
+            }
+            
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            const entry = {
+                id: new Date().getTime(),
+                type: type,
+                title: `주역 명리 분석 (${document.getElementById('sajuYear').value}-${document.getElementById('sajuMonth').value}-${document.getElementById('sajuDay').value})`,
+                date: new Date().toLocaleString('ko-KR'),
+                data: globalSajuData
+            };
+            
+            archive.push(entry);
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            
+            alert('보관함에 성공적으로 저장되었습니다! 홈 화면의 보관함 메뉴에서 확인 가능합니다.');
+        }
+
+        function showSajuTab(tabName, el) {
+            if(!globalSajuData) return;
+            
+            if(el) {
+                document.querySelectorAll('.saju-tab').forEach(t => t.classList.remove('active'));
+                el.classList.add('active');
+            }
+
+            const d = globalSajuData[tabName];
+            
+            let titleIcon = '';
+            let titleText = '';
+            if(tabName === 'daily') { titleIcon = 'fa-calendar-day'; titleText = '오늘(일간)의 총운'; }
+            if(tabName === 'weekly') { titleIcon = 'fa-calendar-week'; titleText = '이번 주(주간)의 총운'; }
+            if(tabName === 'monthly') { titleIcon = 'fa-calendar-days'; titleText = '이번 달(월간) 총운'; }
+            if(tabName === 'yearly') { titleIcon = 'fa-calendar'; titleText = '올해(년간) 총운'; }
+
+            document.getElementById('resTitle').innerHTML = `<i class="fa-solid ${titleIcon}" style="color: #fcd34d;"></i> ${titleText}`;
+            document.getElementById('resSummary').textContent = d.summary;
+            document.getElementById('resWealth').textContent = d.wealth;
+            document.getElementById('resCareer').textContent = d.career;
+            document.getElementById('resLove').textContent = d.love;
+            document.getElementById('resPeople').textContent = d.people;
+        }
+
         // 날짜 드롭다운 초기화
         const y = document.getElementById('sajuYear');
         for(let i=1940; i<=2026; i++) {
@@ -274,7 +375,7 @@
 
             document.getElementById('sajuBtn').disabled = true;
             document.getElementById('sajuLoader').style.display = 'block';
-            document.getElementById('sajuResultGrid').style.display = 'none';
+            document.getElementById('sajuTabsContainer').style.display = 'none';
 
             try {
                 const response = await fetch('/api/saju/analyze', {
@@ -286,20 +387,14 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    document.getElementById('resDaily').textContent = data.data.daily;
-                    document.getElementById('resWeekly').textContent = data.data.weekly;
-                    document.getElementById('resMonthly').textContent = data.data.monthly;
-                    document.getElementById('resYearly').textContent = data.data.yearly;
-                    
-                    document.getElementById('resWealth').textContent = data.data.wealth;
-                    document.getElementById('resCareer').textContent = data.data.career;
-                    document.getElementById('resLove').textContent = data.data.love;
-                    document.getElementById('resPeople').textContent = data.data.people;
+                    globalSajuData = data.data;
 
                     document.getElementById('sajuLoader').style.display = 'none';
                     document.getElementById('sajuInputBox').style.display = 'none';
-                    document.getElementById('sajuResultGrid').style.display = 'grid';
+                    document.getElementById('sajuTabsContainer').style.display = 'block';
                     document.getElementById('sajuReloadBtn').style.display = 'block';
+                    
+                    showSajuTab('daily', document.querySelector('.saju-tab'));
                     
                     window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
                 } else {
