@@ -1666,7 +1666,7 @@ def restaurant_summary():
             
         det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
         import requests
-        resp = requests.get(det_url).json()
+        resp = requests.get(det_url, timeout=10).json()
         reviews = resp.get("result", {}).get("reviews", [])
         
         if not reviews:
@@ -1702,12 +1702,14 @@ def restaurant_summary():
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instructions)
         
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(response_mime_type="application/json")
-        )
+        response = model.generate_content(prompt)
         
         res_text = response.text.strip()
+        if "```json" in res_text:
+             res_text = res_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in res_text:
+             res_text = res_text.split("```")[1].strip()
+             
         try:
             parsed_data = json.loads(res_text)
             return jsonify({"success": True, "summary": parsed_data})
