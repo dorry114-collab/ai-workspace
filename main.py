@@ -1656,6 +1656,8 @@ def restaurant_summary():
         data = request.json or {}
         place_id = data.get("place_id")
         place_type = data.get("place_type", "맛집")
+        purpose = data.get("purpose", "일반(상관없음)")
+        
         import os
         google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
         
@@ -1668,73 +1670,50 @@ def restaurant_summary():
         reviews = resp.get("result", {}).get("reviews", [])
         
         if not reviews:
-            return jsonify({"success": True, "summary": "아직 리뷰가 충분하지 않아 요약할 수 없습니다."})
+            return jsonify({"success": True, "summary": {"summary": "아직 리뷰가 충분하지 않아 요약할 수 없습니다."}})
             
         review_texts = [r.get("text") for r in reviews if r.get("text")]
         combined_text = "\n".join(review_texts[:5])
         
         if not combined_text.strip():
-            return jsonify({"success": True, "summary": "아직 텍스트 리뷰가 없어 요약할 수 없습니다."})
+            return jsonify({"success": True, "summary": {"summary": "아직 텍스트 리뷰가 없어 요약할 수 없습니다."}})
             
         import os
-        groq_api_key = os.environ.get("GROQ_API_KEY")
         gemini_api_key = os.environ.get("GEMINI_API_KEY")
         
-        if not groq_api_key and not gemini_api_key:
-            return jsonify({"success": False, "error": "AI API 키(Groq 또는 Gemini)가 세팅되지 않았습니다."})
+        if not gemini_api_key:
+            return jsonify({"success": False, "error": "AI API 키(Gemini)가 세팅되지 않았습니다."})
             
-        if place_type == "빵집":
-            prompt = f"""다음은 특정 빵집/베이커리의 실제 리뷰 5개입니다.
-이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
-1. 🤖 핵심 요약 (2줄 이내): 빵의 맛, 분위기, 주차 여부 등 가장 핵심적이고 유용한 점.
-2. 👑 꼭 사야하는 빵: 리뷰어들이 가장 많이 극찬하는 시그니처 빵 이름. (없으면 '알 수 없음' 이라고 표기)
+        system_instructions = f"""당신은 방문 목적에 맞춰 로컬 리뷰를 완벽히 분석해주는 AI 맛집 가이드입니다.
+사용자의 이번 대상은 '{place_type}' 이며, 방문 목적은 '{purpose}'입니다.
+제공된 실제 방문자 리뷰 5개를 분석하여 반드시 아래의 JSON 규격으로만 응답해야 합니다. 다른 설명 없이 순수 JSON만 출력하세요.
 
-[리뷰 데이터]:
-{combined_text}
+{{
+  "target_score": <유저의 목적 '{purpose}'에 100점 만점 기준으로 얼마나 적합한지를 나타내는 점수 (정수), 리뷰를 바탕으로 깐깐하게 평가할 것>,
+  "recent_vibe": "<가장 최근 리뷰의 감정선을 바탕으로 최근 폼/민심을 요약한 한줄 평 (예: 🚀 최근 폼 미쳤음 극찬, ⚠️ 최근 불친절 리뷰 급증 등 이모지 필수)>",
+  "hashtags": ["<시그니처 메뉴 이름이 들어간 해시태그>", "<강조된 분위기 태그 2>", "<단점이나 주차 등 태그 3>"],
+  "summary": "<방문 목적 '{purpose}' 관점에서 꼭 참고해야 할 유용한 2~3줄 요약 및 조언. 친근하고 생동감 있게 작성할 것.>"
+}}
 """
-        elif place_type == "카페":
-            prompt = f"""다음은 특정 카페의 실제 리뷰 5개입니다.
-이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
-1. 🤖 핵심 요약 (2줄 이내): 커피의 맛, 감성/뷰, 작업(카공) 또는 데이트 분위기 등 가장 핵심적이고 유용한 점.
-2. ☕ 시그니처 메뉴: 리뷰어들이 가장 많이 극찬하는 커피나 디저트 등. (없으면 '알 수 없음' 표기)
-
-[리뷰 데이터]:
-{combined_text}
-"""
-        elif place_type == "병원":
-            prompt = f"""다음은 특정 병원/클리닉의 실제 리뷰 5개입니다.
-이 리뷰들을 종합해서 다음 두 가지 항목을 작성해주세요:
-1. 🤖 핵심 요약 (2줄 이내): 의사 선생님의 친절도, 진료 퀄리티, 대기 시간 길이 등 가장 핵심적인 내용.
-2. 🏥 상세 정보: 과잉 진료 여부나 리뷰어들이 유독 강조하는 장단점 피드백. (알 수 없으면 '알 수 없음' 표기)
-
-[리뷰 데이터]:
-{combined_text}
-"""
-        else:
-            prompt = f"""다음은 특정 맛집의 실제 리뷰 5개입니다.
-이 리뷰들을 종합해서 가장 핵심적이고 유용한 점(맛, 분위기, 주차, 서비스 등)을 바탕으로, 친근하고 생동감 있는 2~3줄 길이의 짧은 조언(요약)을 봇처럼 작성해주세요. 
-
-[리뷰 데이터]:
-{combined_text}
-"""
+        prompt = f"[리뷰 데이터]:\n{combined_text}"
         
-        # 1. 빠른 Groq API 우선 시도
-        if groq_api_key:
-            sys_role = "당신은 리뷰를 전문적으로 요약해주는 친절한 한국인 AI 점원입니다. 반드시 자연스러운 한국어 문장으로만 대답하세요. 외계어나 한자, 베트남어, 러시아어 등 이상한 글자가 섞이면 절대 안 됩니다."
-            success, text = _call_groq(groq_api_key, prompt, system_role=sys_role)
-            if success:
-                return jsonify({"success": True, "summary": text})
-            else:
-                if not gemini_api_key:
-                    return jsonify({"success": False, "error": f"Groq 통신 실패: {text}"})
-
-        # 2. Gemini fallback (Groq 키가 없거나 실패한 경우)
         import google.generativeai as genai
+        import json
         genai.configure(api_key=gemini_api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instructions)
         
-        response = model.generate_content(prompt)
-        return jsonify({"success": True, "summary": response.text.strip()})
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.types.GenerationConfig(response_mime_type="application/json")
+        )
+        
+        res_text = response.text.strip()
+        try:
+            parsed_data = json.loads(res_text)
+            return jsonify({"success": True, "summary": parsed_data})
+        except json.JSONDecodeError:
+            print("FAILED JSON PARSE:", res_text)
+            return jsonify({"success": False, "error": "AI가 올바른 JSON 데이터를 반환하지 않았습니다."})
         
     except Exception as e:
         import traceback
