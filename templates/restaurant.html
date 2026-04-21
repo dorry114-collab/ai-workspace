@@ -625,6 +625,14 @@
             button { word-break: keep-all; }
             img { max-width: 100%; height: auto; }
         }
+
+        /* Epic AI Styles */
+        .vibe-check { background: rgba(0,0,0,0.4); border-left: 4px solid #10b981; padding: 0.8rem; border-radius: 4px; margin-bottom: 0.8rem; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px;}
+        .target-score { color: #ffaa00; font-size: 1.1rem; font-weight: 900; }
+        .hashtags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.8rem 0; }
+        .hash-pill { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid rgba(255,170,0,0.4); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;}
+        .ai-summary-text { line-height: 1.6; color: #e2e8f0; }
+        .purpose-select { background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: white; padding: 0.8rem; border-radius: 8px; font-size: 0.95rem; }
 </style>
 </head>
 <body>
@@ -650,6 +658,13 @@
                 <option value="5000" selected>5km 이내</option>
                 <option value="10000">10km 이내</option>
                 <option value="20000">20km 이내 (최대)</option>
+            </select>
+            <select id="purposeSelect" class="purpose-select">
+                <option value="일반(상관없음)">방문 목적 (기본)</option>
+                <option value="데이트 💑">데이트 💑</option>
+                <option value="부모님/가족 모시고 👨‍👩‍👧">가족/부모님 동반 👨‍👩‍👧</option>
+                <option value="회식/단체모임 🍻">회식/모임 🍻</option>
+                <option value="혼밥/가성비 🍔">혼밥/가성비 🍔</option>
             </select>
             <button class="search-btn" onclick="performSearch()">
                 <i class="fa-solid fa-magnifying-glass"></i> 검색
@@ -962,7 +977,7 @@
                 const res = await fetch('/api/restaurant/summary', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ place_id: placeId })
+                    body: JSON.stringify({ place_id: placeId, place_type: '맛집', purpose: document.getElementById('purposeSelect') ? document.getElementById('purposeSelect').value : '일반(상관없음)' })
                 });
                 const data = await res.json();
                 
@@ -970,7 +985,33 @@
                     btn.style.display = 'none';
                     box.style.display = 'block';
                     let summaryText = data.summary || "";
-                    box.innerHTML = `<strong>🤖 AI 요약:</strong><br>${summaryText.replace(/\n/g, '<br>')}`;
+                    
+                    const sumData = data.summary;
+                    let targetHtml = '';
+                    let vibeHtml = '';
+                    let hashHtml = '';
+                    let mainText = '';
+                    
+                    if (typeof sumData === 'object' && sumData !== null && !sumData.error) {
+                        targetHtml = `<div style="margin-bottom: 8px; font-size:0.95rem;">🎯 목적 적합도: <span class="target-score">${sumData.target_score || 0}점 / 100</span></div>`;
+                        vibeHtml = `<div class="vibe-check">${sumData.recent_vibe || '최근 동향 분석불가'}</div>`;
+                        if (sumData.hashtags && Array.isArray(sumData.hashtags)) {
+                            hashHtml = `<div class="hashtags-wrap">` + sumData.hashtags.map(t => `<span class="hash-pill">${t}</span>`).join('') + `</div>`;
+                        }
+                        mainText = sumData.summary || '';
+                    } else if (typeof sumData === 'string') {
+                        mainText = sumData;
+                    } else if (sumData && sumData.summary) {
+                        mainText = sumData.summary; // fallback for error parsing 
+                    }
+                    
+                    box.innerHTML = `
+                        ${targetHtml}
+                        ${vibeHtml}
+                        <div class="ai-summary-text">${String(mainText || '').replace(/\n/g, '<br>')}</div>
+                        ${hashHtml}
+                    `;
+    
                     document.getElementById(`chat-box-${placeId}`).style.display = 'block';
                 } else {
                     btn.style.display = 'none';
@@ -980,7 +1021,7 @@
             } catch(e) {
                 btn.style.display = 'none';
                 box.style.display = 'block';
-                box.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> 통신 오류 발생</span>`;
+                box.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> 통신 오류 발생 <br> ${e.message}</span>`;
             }
         }
         
@@ -1029,7 +1070,7 @@
             } catch(e) {
                 historyEl.removeChild(loadingDiv);
                 const errDiv = document.createElement('div');
-                errDiv.innerHTML = `<span style="color:#ffaa00;">통신 오류 발생</span>`;
+                errDiv.innerHTML = `<span style="color:#ffaa00;">통신 오류 발생 <br> ${e.message}</span>`;
                 historyEl.appendChild(errDiv);
             }
             
