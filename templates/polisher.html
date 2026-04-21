@@ -109,7 +109,26 @@
         .copy-btn:hover { background: #60a5fa; color: #fff; }
 
         @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
+    
+        /* Mobile Optimization */
+        @media (max-width: 600px) {
+            .container, .main-container { padding: 1rem; width: 100%; max-width: 100%; box-sizing: border-box; margin: 0; border-radius: 0; border: none; min-height: 100vh; }
+            .input-area, .button-group { flex-direction: column; gap: 8px; }
+            .input-area input[type="text"], .input-area button, .button-group button { width: 100%; box-sizing: border-box; }
+            .modal-content { width: 95%; padding: 1.5rem; margin: 0 auto; }
+            header { flex-direction: column; gap: 10px; text-align: center; }
+            header h1 { font-size: 1.3rem; text-align: center; }
+            .nav-bar, .navbar { padding: 1rem; flex-wrap: wrap; gap: 10px; }
+            .navbar > div { width: 100%; display: flex; justify-content: space-between; margin-top: 5px; }
+            .result-card, .diary-card, .chat-box { width: 100%; box-sizing: border-box; padding: 15px; }
+            .msg { max-width: 100%; padding: 1rem; font-size: 1rem; }
+            .status-grid { flex-direction: column; gap: 5px; }
+            .choice-btn { padding: 1rem; }
+            .grid-container { grid-template-columns: 1fr; }
+            button { word-break: keep-all; }
+            img { max-width: 100%; height: auto; }
+        }
+</style>
 </head>
 <body>
     <div class="container">

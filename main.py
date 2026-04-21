@@ -2610,7 +2610,7 @@ def _call_gemini_vision(api_key, text_prompt, base64_image, temperature=0.7):
     import google.generativeai as genai
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         response = model.generate_content(
             [
                 {"mime_type": "image/jpeg", "data": base64_image},
