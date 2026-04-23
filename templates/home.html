@@ -18,396 +18,14 @@
     
     <!-- Google Analytics 4 (GA4) 추적 스크립트 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-EVBPHWZ6FK"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-EVBPHWZ6FK');
-    </script>
+    <script src="/static/js/main.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <style>
-        :root {
-            --bg-color: #0b0e14;
-            --panel-bg: rgba(22, 27, 34, 0.6);
-            --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #00f0ff;
-            --secondary: #ff0055;
-            --text-main: #f0f6fc;
-            --text-muted: #8b949e;
-        }
-
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Outfit', sans-serif;
-            background-color: var(--bg-color);
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05), transparent 25%);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding-bottom: 80px; /* Space for bottom nav */
-        }
-
-        .container {
-            max-width: 1000px;
-            text-align: center;
-            padding: 2rem;
-        }
-
-        h1 {
-            font-size: 3rem;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, #fff, #8b949e);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        p {
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            margin-bottom: 4rem;
-        }
-
-        .cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-        }
-
-        .card {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 3rem 2rem;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: var(--card-color, var(--primary));
-            opacity: 0.5;
-            transition: opacity 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
-            border-color: rgba(255, 255, 255, 0.15);
-        }
-
-        .card:hover::before {
-            opacity: 1;
-        }
-
-        .icon-box {
-            font-size: 3.5rem;
-            margin-bottom: 1.5rem;
-            color: var(--card-color, var(--primary));
-            filter: drop-shadow(0 0 15px rgba(0, 240, 255, 0.3));
-        }
-
-        .card[data-type="youtube"] { --card-color: #ff0000; }
-        .card[data-type="stock"] { --card-color: #00f0ff; }
-        .card[data-type="prompt"] { --card-color: #b100ff; }
-        .card[data-type="lotto"] { --card-color: #10b981; }
-        .card[data-type="restaurant"] { --card-color: #ffaa00; }
-        .card[data-type="bakery"] { --card-color: #d2691e; }
-        .card[data-type="cafe"] { --card-color: #795548; }
-
-        .card[data-type="youtube"] .icon-box {
-            filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.3));
-        }
-        .card[data-type="prompt"] .icon-box {
-            filter: drop-shadow(0 0 15px rgba(177, 0, 255, 0.3));
-        }
-        .card[data-type="lotto"] .icon-box {
-            filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3));
-        }
-
-        h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-
-        .description {
-            font-size: 0.95rem;
-            color: var(--text-muted);
-            line-height: 1.6;
-        }
-
-        /* Bottom Nav Bar */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0; left: 0; width: 100%;
-            height: 70px;
-            background: rgba(11, 14, 20, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(255,255,255,0.1);
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .nav-item {
-            text-decoration: none;
-            color: var(--text-muted);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 0.8rem;
-            gap: 5px;
-            transition: 0.2s;
-            width: 25%;
-        }
-
-        .nav-item i {
-            font-size: 1.5rem;
-        }
-
-        .nav-item.active, .nav-item:hover {
-            color: var(--primary);
-        }
-
-        .section-title {
-            font-size: 1.5rem;
-            color: var(--text-main);
-            text-align: left;
-            margin: 3rem 0 1.5rem 0;
-            padding-left: 1rem;
-            border-left: 4px solid var(--primary);
-            font-weight: 600;
-        }
-
-        .section-divider {
-            height: 1px;
-            background: var(--border-color);
-            margin: 3rem 0;
-            width: 100%;
-        }
-
-        @media (max-width: 768px) {
-            .container { padding: 1rem; margin-top: 2rem; }
-            h1 { font-size: 2.2rem; }
-            p { font-size: 1rem; margin-bottom: 2rem; }
-            .card { padding: 2rem 1.5rem; }
-            .cards { gap: 1rem; }
-            .section-title { margin: 2rem 0 1rem 0; font-size: 1.3rem; }
-        }
-
-        .stats-badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px;
-            padding: 0.5rem 1.5rem;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-            color: var(--text-muted);
-            backdrop-filter: blur(5px);
-        }
-        .stats-badge b { color: var(--primary); }
-
-        .comment-board {
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 2rem;
-            text-align: left;
-            margin-bottom: 4rem;
-        }
-        .comment-input-box {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            background: rgba(0,0,0,0.2);
-            padding: 1.5rem;
-            border-radius: 16px;
-        }
-        .comment-input-box input, .comment-input-box textarea {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            padding: 1rem;
-            color: #fff;
-            font-family: inherit;
-            font-size: 1rem;
-            resize: vertical;
-        }
-        .comment-input-box input:focus, .comment-input-box textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-        .comment-input-box button {
-            align-self: flex-end;
-            background: var(--primary);
-            color: #000;
-            border: none;
-            padding: 0.8rem 2rem;
-            border-radius: 30px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .comment-input-box button:hover {
-            transform: scale(1.05);
-            box-shadow: 0 0 15px rgba(0,240,255,0.4);
-        }
-        .comment-item {
-            padding: 1rem 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .comment-item:last-child { border-bottom: none; }
-        .c-head { display: flex; justify-content: space-between; margin-bottom: 0.5rem; }
-        .c-author { font-weight: 600; color: #fff; }
-        .c-text { color: #d1d5db; line-height: 1.5; white-space: pre-wrap; font-size: 0.95rem; }
-
-        /* Search Bar */
-        .search-container {
-            position: relative;
-            max-width: 600px;
-            margin: 0 auto 3rem auto;
-            width: 100%;
-        }
-        .search-container input {
-            width: 100%;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            border-radius: 30px;
-            padding: 1.2rem 1.5rem 1.2rem 3rem;
-            color: #fff;
-            font-size: 1.1rem;
-            box-sizing: border-box;
-            outline: none;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s;
-        }
-        .search-container input:focus {
-            background: rgba(255,255,255,0.1);
-            border-color: var(--primary);
-            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
-        }
-        .search-container i {
-            position: absolute;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            transition: 0.3s;
-        }
-        .search-container input:focus + i {
-            color: var(--primary);
-        }
-
-        /* Toast Notification */
-        .toast-container {
-            position: fixed;
-            bottom: 90px;
-            right: 20px;
-            z-index: 9999;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .toast {
-            background: rgba(11, 14, 20, 0.9);
-            border-left: 4px solid var(--primary);
-            color: #fff;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            font-size: 0.95rem;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            transform: translateX(120%);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .toast.show {
-            transform: translateX(0);
-        }
-        .toast.error {
-            border-left-color: var(--secondary);
-        }
-        .toast i { font-size: 1.2rem; }
-
-        /* Scroll To Top Button */
-        .scroll-top-btn {
-            position: fixed;
-            bottom: 90px;
-            right: 20px;
-            width: 45px;
-            height: 45px;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            color: var(--primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.3s ease;
-            z-index: 999;
-        }
-        .scroll-top-btn.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .scroll-top-btn:hover {
-            background: var(--primary);
-            color: #000;
-            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
-            transform: translateY(-3px);
-        }
-    
-        /* Mobile Optimization */
-        @media (max-width: 600px) {
-            .container, .main-container { padding: 1rem; width: 100%; max-width: 100%; box-sizing: border-box; margin: 0; border-radius: 0; border: none; min-height: 100vh; }
-            .input-area, .button-group { flex-direction: column; gap: 8px; }
-            .input-area input[type="text"], .input-area button, .button-group button { width: 100%; box-sizing: border-box; }
-            .modal-content { width: 95%; padding: 1.5rem; margin: 0 auto; }
-            header { flex-direction: column; gap: 10px; text-align: center; }
-            header h1 { font-size: 1.3rem; text-align: center; }
-            .nav-bar, .navbar { padding: 1rem; flex-wrap: wrap; gap: 10px; }
-            .navbar > div { width: 100%; display: flex; justify-content: space-between; margin-top: 5px; }
-            .result-card, .diary-card, .chat-box { width: 100%; box-sizing: border-box; padding: 15px; }
-            .msg { max-width: 100%; padding: 1rem; font-size: 1rem; }
-            .status-grid { flex-direction: column; gap: 5px; }
-            .choice-btn { padding: 1rem; }
-            .grid-container { grid-template-columns: 1fr; }
-            button { word-break: keep-all; }
-            img { max-width: 100%; height: auto; }
-        }
-</style>
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <div class="container">
@@ -423,9 +41,18 @@
             <i class="fa-solid fa-magnifying-glass"></i>
         </div>
 
+        
+        <!-- Favorites Section -->
+        <div id="favoritesSection" style="display: none; width: 100%;">
+            <div class="section-title" style="border-left-color: var(--primary);">⭐ 즐겨찾기</div>
+            <div class="cards" id="favoritesContainer"></div>
+            <div class="section-divider"></div>
+        </div>
+
         <div class="section-title" style="border-left-color: #ffaa00;">로컬 스캐너 (맛집 / 카페 / 병원)</div>
         <div class="cards">
-            <a href="/restaurant" class="card" data-type="restaurant">
+            <a href="/restaurant" id="card_restaurant" class="card" data-type="restaurant">
+                <div class="pin-btn" data-id="card_restaurant" onclick="togglePin(event, 'card_restaurant')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-solid fa-utensils"></i></div>
                 <h2>AI 주변 맛집 스캐너</h2>
                 <div class="description">
@@ -433,7 +60,8 @@
                 </div>
             </a>
             
-            <a href="/bakery" class="card" data-type="bakery">
+            <a href="/bakery" id="card_bakery" class="card" data-type="bakery">
+                <div class="pin-btn" data-id="card_bakery" onclick="togglePin(event, 'card_bakery')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-solid fa-bread-slice"></i></div>
                 <h2>🥐 AI 주변 빵집 스캐너</h2>
                 <div class="description">
@@ -441,7 +69,8 @@
                 </div>
             </a>
 
-            <a href="/cafe" class="card" data-type="cafe">
+            <a href="/cafe" id="card_cafe" class="card" data-type="cafe">
+                <div class="pin-btn" data-id="card_cafe" onclick="togglePin(event, 'card_cafe')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-solid fa-mug-hot"></i></div>
                 <h2>☕ AI 주변 카페 스캐너</h2>
                 <div class="description">
@@ -449,7 +78,8 @@
                 </div>
             </a>
 
-            <a href="/clinic" class="card" data-type="clinic" style="--card-color: #3b82f6;">
+            <a href="/clinic" id="card_clinic" class="card" data-type="clinic" style="--card-color: #3b82f6;">
+                <div class="pin-btn" data-id="card_clinic" onclick="togglePin(event, 'card_clinic')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3));"><i class="fa-solid fa-house-medical"></i></div>
                 <h2>🏥 AI 병원/클리닉 스캐너</h2>
                 <div class="description">
@@ -462,7 +92,8 @@
 
         <div class="section-title">유틸리티 & 툴</div>
         <div class="cards">
-            <a href="/english" class="card" data-type="english" style="--card-color: #22c55e;">
+            <a href="/english" id="card_english" class="card" data-type="english" style="--card-color: #22c55e;">
+                <div class="pin-btn" data-id="card_english" onclick="togglePin(event, 'card_english')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(34, 197, 94, 0.3));"><i class="fa-solid fa-graduation-cap"></i></div>
                 <h2>대화형 AI 영어 회화 튜터</h2>
                 <div class="description">
@@ -470,7 +101,8 @@
                 </div>
             </a>
             
-            <a href="/shopping" class="card" data-type="shopping" style="--card-color: #facc15;">
+            <a href="/shopping" id="card_shopping" class="card" data-type="shopping" style="--card-color: #facc15;">
+                <div class="pin-btn" data-id="card_shopping" onclick="togglePin(event, 'card_shopping')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.3)); color: #facc15;"><i class="fa-solid fa-cart-arrow-down"></i></div>
                 <h2>🛒 AI 쇼핑 호구 방지기</h2>
                 <div class="description">
@@ -478,7 +110,8 @@
                 </div>
             </a>
             
-            <a href="/shorts" class="card" data-type="shorts" style="--card-color: #ef4444;">
+            <a href="/shorts" id="card_shorts" class="card" data-type="shorts" style="--card-color: #ef4444;">
+                <div class="pin-btn" data-id="card_shorts" onclick="togglePin(event, 'card_shorts')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.3));"><i class="fa-solid fa-video"></i></div>
                 <h2>🎬 AI 유튜브 쇼츠 메이커</h2>
                 <div class="description">
@@ -486,7 +119,8 @@
                 </div>
             </a>
 
-            <a href="/youtube" class="card" data-type="youtube">
+            <a href="/youtube" id="card_youtube" class="card" data-type="youtube">
+                <div class="pin-btn" data-id="card_youtube" onclick="togglePin(event, 'card_youtube')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-brands fa-youtube"></i></div>
                 <h2>주요 채널 영상 추출기</h2>
                 <div class="description">
@@ -494,7 +128,8 @@
                 </div>
             </a>
 
-            <a href="/youtube_summary" class="card" data-type="youtube">
+            <a href="/youtube_summary" id="card_youtubesummary" class="card" data-type="youtube">
+                <div class="pin-btn" data-id="card_youtubesummary" onclick="togglePin(event, 'card_youtubesummary')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.4)); color: #f472b6;"><i class="fa-solid fa-bolt"></i></div>
                 <h2>AI 유튜브 영상 요약기</h2>
                 <div class="description">
@@ -502,7 +137,8 @@
                 </div>
             </a>
             
-            <a href="/stock" class="card" data-type="stock">
+            <a href="/stock" id="card_stock" class="card" data-type="stock">
+                <div class="pin-btn" data-id="card_stock" onclick="togglePin(event, 'card_stock')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-solid fa-chart-line"></i></div>
                 <h2>AI 주식 기술적 분석 차트</h2>
                 <div class="description">
@@ -510,7 +146,8 @@
                 </div>
             </a>
             
-            <a href="/prompt" class="card" data-type="prompt">
+            <a href="/prompt" id="card_prompt" class="card" data-type="prompt">
+                <div class="pin-btn" data-id="card_prompt" onclick="togglePin(event, 'card_prompt')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
                 <h2>AI 프롬프트 최적화기</h2>
                 <div class="description">
@@ -518,7 +155,8 @@
                 </div>
             </a>
 
-            <a href="/lotto" class="card" data-type="lotto">
+            <a href="/lotto" id="card_lotto" class="card" data-type="lotto">
+                <div class="pin-btn" data-id="card_lotto" onclick="togglePin(event, 'card_lotto')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box"><i class="fa-solid fa-clover"></i></div>
                 <h2>HOT & COLD 로또 교배기</h2>
                 <div class="description">
@@ -526,7 +164,8 @@
                 </div>
             </a>
 
-            <a href="/chef" class="card" data-type="tool" style="--card-color: #f97316;">
+            <a href="/chef" id="card_chef" class="card" data-type="tool" style="--card-color: #f97316;">
+                <div class="pin-btn" data-id="card_chef" onclick="togglePin(event, 'card_chef')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(249, 115, 22, 0.3)); color: #fb923c;"><i class="fa-solid fa-fire-burner"></i></div>
                 <h2>🍳 AI 냉장고 파먹기 셰프</h2>
                 <div class="description">
@@ -534,7 +173,8 @@
                 </div>
             </a>
             
-            <a href="/polisher" class="card" data-type="tool" style="--card-color: #3b82f6;">
+            <a href="/polisher" id="card_polisher" class="card" data-type="tool" style="--card-color: #3b82f6;">
+                <div class="pin-btn" data-id="card_polisher" onclick="togglePin(event, 'card_polisher')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3)); color: #60a5fa;"><i class="fa-solid fa-file-signature"></i></div>
                 <h2>👔 AI 텍스트 탈곡기</h2>
                 <div class="description">
@@ -547,14 +187,16 @@
 
         <div class="section-title" style="border-left-color: #8b5cf6;">🎮 미니 게임</div>
         <div class="cards">
-            <a href="/game_office" class="card" data-type="game" style="--card-color: #8b5cf6;">
+            <a href="/game_office" id="card_gameoffice" class="card" data-type="game" style="--card-color: #8b5cf6;">
+                <div class="pin-btn" data-id="card_gameoffice" onclick="togglePin(event, 'card_gameoffice')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.3));"><i class="fa-solid fa-briefcase"></i></div>
                 <h2>💼 회사원 키우기 (웹 게임)</h2>
                 <div class="description">
                     26세 신입사원으로 입사하여 100세까지 한 평생 자산을 불려나가는 클리커/방치형 모의 시뮬레이션 게임입니다.
                 </div>
             </a>
-            <a href="/novel" class="card" data-type="game" style="--card-color: #d946ef;">
+            <a href="/novel" id="card_novel" class="card" data-type="game" style="--card-color: #d946ef;">
+                <div class="pin-btn" data-id="card_novel" onclick="togglePin(event, 'card_novel')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(217, 70, 239, 0.3));"><i class="fa-solid fa-book-journal-whills"></i></div>
                 <h2>📖 무한의 AI 소설 (TRPG)</h2>
                 <div class="description">
@@ -562,7 +204,8 @@
                 </div>
             </a>
 
-            <a href="/tarot" class="card" data-type="game" style="--card-color: #6366f1;">
+            <a href="/tarot" id="card_tarot" class="card" data-type="game" style="--card-color: #6366f1;">
+                <div class="pin-btn" data-id="card_tarot" onclick="togglePin(event, 'card_tarot')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.4)); color: #818cf8;"><i class="fa-solid fa-moon"></i></div>
                 <h2>🔮 AI 타로 상담소</h2>
                 <div class="description">
@@ -570,7 +213,8 @@
                 </div>
             </a>
             
-            <a href="/saju" class="card" data-type="game" style="--card-color: #fbbf24;">
+            <a href="/saju" id="card_saju" class="card" data-type="game" style="--card-color: #fbbf24;">
+                <div class="pin-btn" data-id="card_saju" onclick="togglePin(event, 'card_saju')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.4)); color: #fbbf24;"><i class="fa-solid fa-yin-yang"></i></div>
                 <h2>📜 신점 명리 사주</h2>
                 <div class="description">
@@ -578,7 +222,8 @@
                 </div>
             </a>
             
-            <a href="/face" class="card" data-type="game" style="--card-color: #d4af37;">
+            <a href="/face" id="card_face" class="card" data-type="game" style="--card-color: #d4af37;">
+                <div class="pin-btn" data-id="card_face" onclick="togglePin(event, 'card_face')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.4)); color: #d4af37;"><i class="fa-solid fa-eye"></i></div>
                 <h2>👑 매운맛 AI 관상가</h2>
                 <div class="description">
@@ -591,7 +236,8 @@
 
         <div class="section-title" style="border-left-color: #f43f5e;">💖 라이프스타일 & 멘탈 케어 <span style="font-size:0.8rem; background:#f43f5e; color:#fff; border-radius:10px; padding:3px 8px; vertical-align:middle; font-weight:bold;">NEW!</span></div>
         <div class="cards">
-            <a href="/love" class="card" data-type="life" style="--card-color: #ec4899;">
+            <a href="/love" id="card_love" class="card" data-type="life" style="--card-color: #ec4899;">
+                <div class="pin-btn" data-id="card_love" onclick="togglePin(event, 'card_love')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.4)); color: #f472b6;"><i class="fa-solid fa-heart-crack"></i></div>
                 <h2>💌 AI 카톡 썸 판독기</h2>
                 <div class="description">
@@ -599,35 +245,40 @@
                 </div>
             </a>
             
-            <a href="/diet" class="card" data-type="life" style="--card-color: #8add36;">
+            <a href="/diet" id="card_diet" class="card" data-type="life" style="--card-color: #8add36;">
+                <div class="pin-btn" data-id="card_diet" onclick="togglePin(event, 'card_diet')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(138, 221, 54, 0.2)); color: #8add36;"><i class="fa-solid fa-fire"></i></div>
                 <h2>🥗 지옥의 다이어트 코치</h2>
                 <div class="description">
                     오늘 먹은 음식 사진이나 배달 영수증을 올려보세요. 호랑이 PT 선생님이 눈물 쏙 빠지게 팩폭하고 속죄 처방을 내립니다.
                 </div>
             </a>
-            <a href="/diary" class="card" data-type="life" style="--card-color: #3b82f6;">
+            <a href="/diary" id="card_diary" class="card" data-type="life" style="--card-color: #3b82f6;">
+                <div class="pin-btn" data-id="card_diary" onclick="togglePin(event, 'card_diary')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3)); color: #60a5fa;"><i class="fa-solid fa-book"></i></div>
                 <h2>📝 티키타카 자동 일기장</h2>
                 <div class="description">
                     티키타카 대화 3번만 하면, AI가 우아한 에세이로 포장하여 내 비밀 노션(Notion)에 꽂아줍니다! <span style="color:#ef4444;font-weight:bold;">(강추)</span>
                 </div>
             </a>
-            <a href="/dream" class="card" data-type="life" style="--card-color: #a855f7;">
+            <a href="/dream" id="card_dream" class="card" data-type="life" style="--card-color: #a855f7;">
+                <div class="pin-btn" data-id="card_dream" onclick="togglePin(event, 'card_dream')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.3)); color: #d8b4fe;"><i class="fa-solid fa-cloud-moon"></i></div>
                 <h2>🌙 AI 몽환의 꿈 해몽가</h2>
                 <div class="description">
                     간밤의 꿈을 해석해 전통적 길몽 여부, 심리학적 무의식 파악, 그리고 행운의 추천 로또 번호 6개를 찍어줍니다.
                 </div>
             </a>
-            <a href="/therapist" class="card" data-type="life" style="--card-color: #10b981;">
+            <a href="/therapist" id="card_therapist" class="card" data-type="life" style="--card-color: #10b981;">
+                <div class="pin-btn" data-id="card_therapist" onclick="togglePin(event, 'card_therapist')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3)); color: #34d399;"><i class="fa-solid fa-leaf"></i></div>
                 <h2>🎋 AI 힐링 대나무숲</h2>
                 <div class="description">
                     오늘 하루 쌓인 울분을 적어보세요. 무조건 내 편이 되어주고 마음을 위로해주는 따뜻한 숲지기가 기다립니다.
                 </div>
             </a>
-            <a href="/fashion" class="card" data-type="life" style="--card-color: #ec4899;">
+            <a href="/fashion" id="card_fashion" class="card" data-type="life" style="--card-color: #ec4899;">
+                <div class="pin-btn" data-id="card_fashion" onclick="togglePin(event, 'card_fashion')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.3)); color: #f472b6;"><i class="fa-solid fa-camera"></i></div>
                 <h2>📸 AI 패션 & 관상 평가소</h2>
                 <div class="description">
@@ -658,139 +309,7 @@
         <i class="fa-solid fa-arrow-up"></i>
     </button>
 
-    <script>
-        function showToast(message, isError = false) {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            toast.className = `toast ${isError ? 'error' : ''}`;
-            const icon = isError ? '<i class="fa-solid fa-circle-exclamation" style="color:var(--secondary)"></i>' : '<i class="fa-solid fa-circle-check" style="color:var(--primary)"></i>';
-            toast.innerHTML = `${icon} <div>${message}</div>`;
-            
-            container.appendChild(toast);
-            
-            // Trigger animation
-            setTimeout(() => toast.classList.add('show'), 10);
-            
-            // Remove after 3 seconds
-            setTimeout(() => {
-                toast.classList.remove('show');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        function filterApps() {
-            const query = document.getElementById('appSearchInput').value.toLowerCase();
-            const cards = document.querySelectorAll('.card');
-            const sectionTitles = document.querySelectorAll('.section-title');
-            const sectionDividers = document.querySelectorAll('.section-divider');
-            
-            let hasVisibleAnywhere = false;
-
-            // Step 1: Filter individual cards
-            cards.forEach(card => {
-                const title = card.querySelector('h2').textContent.toLowerCase();
-                const desc = card.querySelector('.description').textContent.toLowerCase();
-                
-                if (title.includes(query) || desc.includes(query)) {
-                    card.style.display = 'block';
-                    hasVisibleAnywhere = true;
-                } else {
-                    card.style.display = 'none';
-                }
-            });
-
-            // Step 2: Hide empty sections if searching, or show all if empty query
-            const sections = [
-                { start: 0, end: 3, titleIdx: 0, divIdx: 0 },   // 로컬 스캐너
-                { start: 4, end: 12, titleIdx: 1, divIdx: 1 },  // 유틸리티 & 툴
-                { start: 13, end: 16, titleIdx: 2, divIdx: 2 }, // 미니 게임
-                { start: 17, end: 22, titleIdx: 3, divIdx: 3 }  // 라이프스타일
-            ];
-
-            if (query.trim() === '') {
-                sectionTitles.forEach(t => t.style.display = 'block');
-                sectionDividers.forEach(d => d.style.display = 'block');
-            } else {
-                sections.forEach(sec => {
-                    let sectionHasVisible = false;
-                    for(let i=sec.start; i<=sec.end; i++) {
-                        if(cards[i] && cards[i].style.display !== 'none') {
-                            sectionHasVisible = true; break;
-                        }
-                    }
-                    if (sectionTitles[sec.titleIdx]) {
-                        sectionTitles[sec.titleIdx].style.display = sectionHasVisible ? 'block' : 'none';
-                    }
-                    if (sectionDividers[sec.divIdx]) {
-                        sectionDividers[sec.divIdx].style.display = sectionHasVisible ? 'block' : 'none';
-                    }
-                });
-            }
-        }
-
-        async function loadComments() {
-            try {
-                let res = await fetch('/api/comments');
-                let j = await res.json();
-                if(j.success) {
-                    renderComments(j.comments);
-                }
-            } catch(e) {}
-        }
-        function renderComments(list) {
-            let html = "";
-            if(!list || list.length===0) {
-                html = "<div style='text-align:center;color:gray;padding:1rem;'>아직 등록된 방명록이 없습니다. 첫 글을 남겨주세요!</div>";
-            } else {
-                list.forEach(c => {
-                    html += `
-                        <div class="comment-item">
-                            <div class="c-head">
-                                <span class="c-author"><i class="fa-solid fa-user-astronaut"></i> ${c.author}</span>
-                                <span class="c-date">${c.date}</span>
-                            </div>
-                            <div class="c-text">${c.text}</div>
-                        </div>
-                    `;
-                });
-            }
-            document.getElementById('commentList').innerHTML = html;
-        }
-        async function submitComment() {
-            let author = document.getElementById('cAuthor').value.trim();
-            let text = document.getElementById('cText').value.trim();
-            if(!text) return showToast("내용을 입력해주세요.", true);
-            
-            try {
-                let res = await fetch('/api/comments', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({author, text})
-                });
-                let j = await res.json();
-                if(j.success) {
-                    document.getElementById('cText').value = "";
-                    renderComments(j.comments);
-                    showToast("의견이 성공적으로 등록되었습니다!");
-                } else {
-                    showToast('오류: ' + j.error, true);
-                }
-            } catch(e) {
-                showToast('통신 오류가 발생했습니다.', true);
-            }
-        }
-        window.addEventListener('DOMContentLoaded', loadComments);
-
-        // Scroll To Top Visibility Logic
-        window.addEventListener('scroll', () => {
-            const btn = document.getElementById('scrollTopBtn');
-            if (window.scrollY > 300) {
-                btn.classList.add('visible');
-            } else {
-                btn.classList.remove('visible');
-            }
-        });
-    </script>
+    <script src="/static/js/main.js"></script>
 
     <!-- Bottom Nav -->
     <div class="bottom-nav">
@@ -811,5 +330,12 @@
             <span>보관함</span>
         </a>
     </div>
+
+    <!-- Global Loader -->
+    <div id="globalLoader">
+        <div class="loader-spinner"></div>
+        <div class="loader-text" id="globalLoaderText">AI가 작업 중입니다...</div>
+    </div>
+
 </body>
 </html>

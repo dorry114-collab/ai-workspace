@@ -634,6 +634,9 @@
         .ai-summary-text { line-height: 1.6; color: #e2e8f0; }
         .purpose-select { background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: white; padding: 0.8rem; border-radius: 8px; font-size: 0.95rem; }
 </style>
+{% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+    {% endif %}
 </head>
 <body>
 
@@ -673,6 +676,9 @@
 
         <div id="errorBox" class="error-msg"></div>
 
+        
+        <div id="mapContainer" style="width: 100%; height: 350px; border-radius: 16px; margin-bottom: 2rem; border: 1px solid var(--border-color); display: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></div>
+
         <div class="controls-area" id="controlsArea" style="display: none;">
             <div class="filter-tabs" id="filterTabs">
                 <div class="tab active" data-cat="all">전체</div>
@@ -709,6 +715,74 @@
 
     <script>
         let allRestaurants = [];
+        let currentCenter = null;
+
+        let map;
+        let markers = [];
+        let infoWindow;
+
+        function initMap() {
+            // Callback for Google Maps
+        }
+
+        function updateMap(centerData, filteredData) {
+            if (!document.getElementById('mapContainer')) return;
+            
+            if (typeof google === 'undefined' || !google.maps) {
+                return; // Maps API not loaded
+            }
+            
+            document.getElementById('mapContainer').style.display = 'block';
+            
+            if (!map) {
+                map = new google.maps.Map(document.getElementById('mapContainer'), {
+                    zoom: 14,
+                    center: { lat: parseFloat(centerData.y), lng: parseFloat(centerData.x) },
+                    styles: [
+                        { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                        { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
+                    ],
+                    disableDefaultUI: true,
+                    zoomControl: true
+                });
+                infoWindow = new google.maps.InfoWindow();
+            } else {
+                map.setCenter({ lat: parseFloat(centerData.y), lng: parseFloat(centerData.x) });
+            }
+            
+            // Clear markers
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+            
+            // Add new markers
+            filteredData.forEach(r => {
+                if(r.y && r.x) {
+                    const marker = new google.maps.Marker({
+                        position: { lat: parseFloat(r.y), lng: parseFloat(r.x) },
+                        map: map,
+                        title: r.name,
+                        animation: google.maps.Animation.DROP
+                    });
+                    
+                    marker.addListener('click', () => {
+                        infoWindow.setContent(`<div style="color: black; font-weight: bold; padding: 5px;">${r.name}</div><div style="color: #666; font-size: 0.8rem; padding: 0 5px 5px 5px;">${r.category}</div>`);
+                        infoWindow.open(map, marker);
+                        
+                        // Scroll to card
+                        const card = document.getElementById('card-' + r.place_id);
+                        if(card) {
+                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            card.style.boxShadow = '0 0 20px var(--primary)';
+                            setTimeout(() => { card.style.boxShadow = ''; }, 2000);
+                        }
+                    });
+                    markers.push(marker);
+                }
+            });
+        }
+
 
         function handleKeyPress(e) {
             if (e.key === 'Enter') {
@@ -797,6 +871,7 @@
                 }
 
                 allRestaurants = data.data;
+                if(data.center) currentCenter = data.center;
                 hideLoader();
 
                 if (allRestaurants.length === 0) {
@@ -946,6 +1021,7 @@
                 
                 grid.appendChild(card);
             });
+            if(currentCenter) updateMap(currentCenter, filtered);
         }
 
         // Tab Filter Logic
