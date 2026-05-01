@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>🏢 AI 동네 임장/부동산 스캐너</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface-color: #161b22;
+            --primary: #3b82f6;
+            --secondary: #10b981;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(22, 27, 34, 0.7);
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.08), transparent 25%);
+            background-attachment: fixed;
+        }
+
+        .navbar {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover { color: var(--primary); }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .search-area {
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            gap: 12px;
+            margin-bottom: 2rem;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0 1rem;
+            flex: 2;
+            min-width: 250px;
+        }
+
+        .input-group i { color: var(--primary); }
+
+        .input-group input {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 1rem;
+            width: 100%;
+            font-size: 1rem;
+            outline: none;
+        }
+
+        .geo-btn {
+            background: rgba(59, 130, 246, 0.2);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+        .geo-btn:hover { background: rgba(59, 130, 246, 0.4); }
+
+        select {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            appearance: none;
+        }
+
+        button.search-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            flex: 1;
+            min-width: 150px;
+        }
+
+        button.search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 4rem 0;
+        }
+        .loader.active { display: block; }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .error-msg {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        .result-container {
+            display: none;
+            gap: 2rem;
+        }
+
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .panel {
+            background: var(--surface-color);
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            padding: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.8rem;
+        }
+
+        .radar-container {
+            width: 100%;
+            height: 350px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .ai-summary {
+            line-height: 1.7;
+            color: #e2e8f0;
+            font-size: 1.05rem;
+        }
+        .ai-summary strong { color: var(--primary); }
+
+        .infra-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        .infra-badge {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        .infra-badge:hover { transform: translateY(-3px); border-color: rgba(59, 130, 246, 0.5); }
+        .infra-icon { font-size: 1.8rem; margin-bottom: 0.5rem; }
+        .infra-name { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.2rem; }
+        .infra-count { font-size: 1.5rem; font-weight: bold; color: #fff; }
+
+
+        .score-board {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .score-title {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        .score-value {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+            line-height: 1;
+        }
+        .score-value span {
+            font-size: 1.5rem;
+            -webkit-text-fill-color: var(--text-muted);
+        }
+        .score-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .score-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 5px;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .top-places-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+        .top-place-item {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .top-place-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .top-place-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+        .top-place-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 1.05rem;
+        }
+        .top-place-dist {
+            color: var(--secondary);
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .modal-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .modal-close:hover { color: #fff; }
+        .modal-body {
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .place-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            transition: background 0.3s;
+            text-decoration: none;
+        }
+        .place-list-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+        .place-list-name {
+            color: #fff;
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.3rem;
+        }
+        .place-list-dist {
+            color: var(--secondary);
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+        .infra-badge {
+            cursor: pointer;
+        }
+
+        .map-container {
+            width: 100%;
+            height: 400px;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid-layout { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            .search-area { flex-direction: column; }
+            .input-group, select, button.search-btn { width: 100%; box-sizing: border-box; }
+            .infra-grid { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+    {% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+    {% endif %}
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로 돌아가기</a>
+    </nav>
+
+    <div class="container">
+        <h1>🏢 AI 동네 임장/부동산 스캐너</h1>
+        <p class="subtitle">해당 위치 주변의 교통, 학군, 상권, 인프라를 AI가 종합 분석해 드립니다.</p>
+
+        <div class="search-area">
+            <div class="input-group">
+                <i class="fa-solid fa-location-dot"></i>
+                <input type="text" id="addressInput" placeholder="관심 있는 동네/아파트 (예: 마포구 아현동)" onkeypress="if(event.key === 'Enter') analyzeEstate()">
+                <button type="button" class="geo-btn" onclick="geolocate()" title="내 위치로 찾기">
+                    <i class="fa-solid fa-crosshairs"></i> 현위치
+                </button>
+            </div>
+            <select id="radiusSelect">
+                <option value="500">반경 500m (도보권)</option>
+                <option value="1000" selected>반경 1km (동네권)</option>
+                <option value="2000">반경 2km (생활권)</option>
+            </select>
+            <button class="search-btn" onclick="analyzeEstate()">
+                <i class="fa-solid fa-chart-pie"></i> 동네 분석하기
+            </button>
+        </div>
+
+        <div id="errorBox" class="error-msg"></div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>반경 내 핵심 상권, 교통, 학교, 의료 시설 데이터를 수집하고 AI가 임장 보고서를 작성 중입니다...<br>(약 10초 소요)</p>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="score-board">
+                <div class="score-title">🌟 AI 평가 종합 거주 점수</div>
+                <div class="score-value" id="totalScore">0<span>점 / 100</span></div>
+                <div class="score-bar-bg"><div class="score-bar-fill" id="scoreBar"></div></div>
+            </div>
+
+            <div class="grid-layout">
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fa-solid fa-chart-radar"></i> 인프라 지수 (육각형 차트)</h2>
+                    <div class="radar-container">
+                        <canvas id="radarChart"></canvas>
+                    </div>
+                </div>
+                <div class="panel">
+                    <h2 class="panel-title"><i class="fa-solid fa-robot"></i> AI 종합 임장 보고서</h2>
+                    <div class="ai-summary" id="aiSummary"></div>
+                    
+                    <h3 style="margin-top:2.5rem; border-bottom:1px solid var(--border-color); padding-bottom:0.8rem; color:#fff;">
+                        <i class="fa-solid fa-location-crosshairs" style="color:var(--primary)"></i> 가장 가까운 핵심 랜드마크
+                    </h3>
+                    <div class="top-places-list" id="topPlacesList"></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2 class="panel-title"><i class="fa-solid fa-building"></i> 반경 내 핵심 인프라 요약</h2>
+                <div class="infra-grid" id="infraGrid">
+                    <!-- Badges will be injected here -->
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top:2rem;">
+                <h2 class="panel-title"><i class="fa-solid fa-map-location-dot"></i> 인프라 지도</h2>
+                <div id="mapContainer" class="map-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        let map;
+        let chartInstance = null;
+        let globalPlacesDict = {};
+
+
+        function initMap() {}
+
+        function showError(msg) { 
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+        function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+        function showLoader() { document.getElementById('loader').classList.add('active'); }
+        function hideLoader() { document.getElementById('loader').classList.remove('active'); }
+
+        async function geolocate() {
+            if (!navigator.geolocation) return showError("위치 기능을 지원하지 않습니다.");
+            
+            const btn = document.querySelector('.geo-btn');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                try {
+                    const res = await fetch('/api/geocode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat, lng })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('addressInput').value = data.address;
+                        hideError();
+                    } else showError("주소 변환 실패");
+                } catch(e) { showError("통신 오류"); }
+                finally { btn.innerHTML = originalHtml; btn.disabled = false; }
+            }, (error) => {
+                showError("위치 접근 권한을 허용해주세요.");
+                btn.innerHTML = originalHtml; btn.disabled = false;
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        }
+
+        const icons = {
+            'MT1': { i: 'fa-basket-shopping', color: '#f59e0b', name: '대형마트' },
+            'CS2': { i: 'fa-store', color: '#10b981', name: '편의점' },
+            'PS3': { i: 'fa-child', color: '#ec4899', name: '어린이집/유치원' },
+            'SC4': { i: 'fa-school', color: '#3b82f6', name: '학교' },
+            'SW8': { i: 'fa-train-subway', color: '#8b5cf6', name: '지하철역' },
+            'HP8': { i: 'fa-hospital', color: '#ef4444', name: '병원' },
+            'PM9': { i: 'fa-pills', color: '#14b8a6', name: '약국' },
+            'PK6': { i: 'fa-tree', color: '#84cc16', name: '공원/산책로' },
+            'CE7': { i: 'fa-mug-hot', color: '#a855f7', name: '카페' }
+        };
+
+        async function analyzeEstate() {
+            const address = document.getElementById('addressInput').value.trim();
+            const radius = document.getElementById('radiusSelect').value;
+            
+            if (!address) return showError("동네/아파트명을 입력해주세요.");
+
+            hideError();
+            document.getElementById('resultContainer').style.display = 'none';
+            showLoader();
+
+            try {
+                const response = await fetch('/api/estate/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address, radius })
+                });
+                const data = await response.json();
+                
+                hideLoader();
+                if (!data.success) return showError(data.error);
+
+                renderEstate(data);
+            } catch (err) {
+                hideLoader();
+                showError("서버 오류가 발생했습니다.");
+            }
+        }
+
+        function renderEstate(data) {
+            document.getElementById('resultContainer').style.display = 'flex';
+            document.getElementById('resultContainer').style.flexDirection = 'column';
+
+            // 1. AI Summary
+            document.getElementById('aiSummary').innerHTML = data.summary.replace(/\n/g, '<br>');
+
+            // Total Score Animation
+            let currentScore = 0;
+            const targetScore = data.total_score || 0;
+            document.getElementById('scoreBar').style.width = '0%';
+            
+            setTimeout(() => {
+                document.getElementById('scoreBar').style.width = targetScore + '%';
+                const interval = setInterval(() => {
+                    if (currentScore >= targetScore) {
+                        clearInterval(interval);
+                        document.getElementById('totalScore').innerHTML = targetScore + '<span>점 / 100</span>';
+                    } else {
+                        currentScore++;
+                        document.getElementById('totalScore').innerHTML = currentScore + '<span>점 / 100</span>';
+                    }
+                }, 20);
+            }, 300);
+
+            // Top Places List
+            const tpList = document.getElementById('topPlacesList');
+            tpList.innerHTML = '';
+            
+            // Sort top places by distance
+            let placesArr = [];
+            for (const [code, pData] of Object.entries(data.top_places)) {
+                if (icons[code] && pData.distance) {
+                    placesArr.push({ code, name: pData.name, distance: parseInt(pData.distance) });
+                }
+            }
+            placesArr.sort((a, b) => a.distance - b.distance);
+            
+            placesArr.slice(0, 3).forEach(p => {
+                const iconConf = icons[p.code];
+                tpList.innerHTML += `
+                    <div class="top-place-item">
+                        <div class="top-place-info">
+                            <div class="top-place-icon" style="color: ${iconConf.color}"><i class="fa-solid ${iconConf.i}"></i></div>
+                            <div>
+                                <div style="font-size:0.8rem; color:var(--text-muted);">${iconConf.name}</div>
+                                <div class="top-place-name">${p.name}</div>
+                            </div>
+                        </div>
+                        <div class="top-place-dist">${p.distance}m</div>
+                    </div>
+                `;
+            });
+            
+            if (placesArr.length === 0) {
+                tpList.innerHTML = '<div style="color:var(--text-muted); padding:1rem;">가까운 핵심 랜드마크가 없습니다.</div>';
+            }
+
+            // Store places globally
+            globalPlacesDict = data.places_dict || {};
+
+            // 2. Infra Badges
+            const grid = document.getElementById('infraGrid');
+            grid.innerHTML = '';
+            for (const [code, count] of Object.entries(data.counts)) {
+                if (icons[code]) {
+                    grid.innerHTML += `
+                        <div class="infra-badge" onclick="openModal('${code}')">
+                            <i class="fa-solid ${icons[code].i} infra-icon" style="color: ${icons[code].color}"></i>
+                            <div class="infra-name">${icons[code].name}</div>
+                            <div class="infra-count">${count}개</div>
+                        </div>
+                    `;
+                }
+            }
+
+            // 3. Radar Chart
+            renderChart(data.scores);
+
+            // 4. Map
+            if (typeof google !== 'undefined' && google.maps && data.center) {
+                const mapEl = document.getElementById('mapContainer');
+                if (!map) {
+                    map = new google.maps.Map(mapEl, {
+                        center: { lat: parseFloat(data.center.lat), lng: parseFloat(data.center.lng) },
+                        zoom: data.radius === '500' ? 15 : 14,
+                        styles: [
+                            { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                            { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                            { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                            { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
+                        ],
+                        disableDefaultUI: true, zoomControl: true
+                    });
+                } else {
+                    map.setCenter({ lat: parseFloat(data.center.lat), lng: parseFloat(data.center.lng) });
+                    map.setZoom(data.radius === '500' ? 15 : 14);
+                }
+
+                // Draw Radius Circle
+                new google.maps.Circle({
+                    strokeColor: '#3b82f6',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 2,
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.15,
+                    map: map,
+                    center: { lat: parseFloat(data.center.lat), lng: parseFloat(data.center.lng) },
+                    radius: parseInt(data.radius)
+                });
+            }
+        }
+
+        function renderChart(scores) {
+            const ctx = document.getElementById('radarChart').getContext('2d');
+            if (chartInstance) chartInstance.destroy();
+
+            chartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: ['교통(역세권)', '교육(학세권)', '상권(몰세권)', '자연(팍세권)', '의료(병세권)', '편의(슬세권)'],
+                    datasets: [{
+                        label: '동네 인프라 지수',
+                        data: [scores.transport, scores.education, scores.shopping, scores.nature, scores.medical, scores.convenience],
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        pointBackgroundColor: 'rgba(16, 185, 129, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(16, 185, 129, 1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            pointLabels: { color: '#f8fafc', font: { size: 13, family: 'Pretendard' } },
+                            ticks: { display: false, min: 0, max: 100, stepSize: 20 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,0.8)',
+                            titleFont: { size: 14, family: 'Pretendard' },
+                            bodyFont: { size: 14, family: 'Pretendard' },
+                            padding: 10,
+                            cornerRadius: 8
+                        }
+                    }
+                }
+            });
+        }
+
+        function openModal(code) {
+            const iconConf = icons[code];
+            document.getElementById('modalTitle').innerHTML = `<i class="fa-solid ${iconConf.i}" style="color:${iconConf.color}"></i> ${iconConf.name} 목록`;
+            
+            const places = globalPlacesDict[code] || [];
+            const body = document.getElementById('modalBody');
+            
+            if (places.length === 0) {
+                body.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:2rem;">검색된 장소가 없습니다.</div>';
+            } else {
+                body.innerHTML = places.map(p => `
+                    <a href="${p.url}" target="_blank" class="place-list-item">
+                        <div>
+                            <div class="place-list-name">${p.name}</div>
+                            <div class="place-list-dist">${p.distance}m</div>
+                        </div>
+                        <i class="fa-solid fa-chevron-right" style="color:var(--text-muted)"></i>
+                    </a>
+                `).join('');
+            }
+            
+            document.getElementById('placesModal').style.display = 'flex';
+        }
+        
+        function closeModal() {
+            document.getElementById('placesModal').style.display = 'none';
+        }
+
+    </script>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="placesModal" onclick="if(event.target===this) closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title" id="modalTitle">목록</h3>
+                <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Items injected here -->
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

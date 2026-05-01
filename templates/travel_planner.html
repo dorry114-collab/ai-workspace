@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>✈️ AI 맞춤형 여행 플래너</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #080c16;
+            --surface-color: #121824;
+            --primary: #3b82f6; /* Blue */
+            --secondary: #06b6d4; /* Cyan */
+            --accent: #f59e0b; /* Amber */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(255, 255, 255, 0.03);
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08), transparent 30%);
+            background-attachment: fixed;
+        }
+
+        .navbar {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(8, 12, 22, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover { color: var(--primary); }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--secondary), var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            font-size: 1.1rem;
+        }
+
+        /* Input Form Container (Ticket Style) */
+        .ticket-panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .ticket-panel::before, .ticket-panel::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 30px;
+            height: 30px;
+            background-color: var(--bg-color);
+            border-radius: 50%;
+            transform: translateY(-50%);
+            border: 1px solid var(--border-color);
+            z-index: 1;
+        }
+        
+        .ticket-panel::before { left: -16px; border-left-color: transparent; border-top-color: transparent; transform: translateY(-50%) rotate(45deg); }
+        .ticket-panel::after { right: -16px; border-right-color: transparent; border-bottom-color: transparent; transform: translateY(-50%) rotate(45deg); }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media(max-width: 650px) {
+            .form-grid { grid-template-columns: 1fr; }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #bae6fd;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .form-control {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1.05rem;
+            outline: none;
+            transition: all 0.3s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem top 50%;
+            background-size: 0.65rem auto;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.2);
+        }
+
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 5px;
+        }
+
+        .chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+
+        .chip:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .chip.active {
+            background: rgba(6, 182, 212, 0.2);
+            border-color: var(--secondary);
+            color: #22d3ee;
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1.2rem;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            margin-top: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(6, 182, 212, 0.3);
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(6, 182, 212, 0.5);
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 3rem 0;
+        }
+        .loader.active { display: block; }
+        .airplane-spinner {
+            font-size: 2.5rem;
+            color: var(--secondary);
+            animation: flyAround 2s infinite ease-in-out;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+        @keyframes flyAround {
+            0% { transform: translate(-30px, 10px) rotate(-10deg); opacity: 0; }
+            50% { transform: translate(0, -10px) rotate(15deg); opacity: 1; }
+            100% { transform: translate(30px, 10px) rotate(40deg); opacity: 0; }
+        }
+
+        .error-msg {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        /* Result Area */
+        .result-container {
+            display: none;
+        }
+
+        .summary-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(6, 182, 212, 0.1));
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media(max-width: 600px) { .summary-card { grid-template-columns: 1fr; } }
+
+        .summary-section h3 {
+            color: #22d3ee;
+            font-size: 1.1rem;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .summary-section ul {
+            margin: 0; padding-left: 1.2rem;
+            color: #e2e8f0;
+            line-height: 1.6;
+        }
+        .summary-section li { margin-bottom: 6px; }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 3rem;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0; width: 2px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .day-header {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 2rem 0 1rem -2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .day-header .badge {
+            background: var(--primary);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 1rem;
+        }
+        .day-desc {
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 400;
+        }
+
+        .timeline-item {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        
+        .timeline-item:hover {
+            transform: translateX(5px);
+            border-color: rgba(59, 130, 246, 0.4);
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -2.35rem;
+            top: 1.5rem;
+            width: 14px;
+            height: 14px;
+            background: var(--bg-color);
+            border: 3px solid var(--secondary);
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .item-time {
+            color: var(--accent);
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+            font-size: 0.95rem;
+        }
+
+        .item-title {
+            font-size: 1.25rem;
+            color: #fff;
+            margin: 0 0 0.5rem 0;
+            font-weight: 700;
+        }
+
+        .item-desc {
+            color: #cbd5e1;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .map-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #bae6fd;
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        .map-link:hover {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+        }
+
+        /* University Timetable Style */
+        .uni-wrapper {
+            margin-bottom: 3rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .uni-header-row {
+            display: flex;
+            margin-left: 50px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 0.5rem;
+        }
+        .uni-day-header {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            font-weight: 700;
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+        .uni-body {
+            display: flex;
+            position: relative;
+            margin-top: 10px;
+        }
+        .uni-time-axis {
+            width: 50px;
+            flex-shrink: 0;
+            position: relative;
+        }
+        .uni-time-label {
+            position: absolute;
+            transform: translateY(-50%);
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-align: right;
+            width: 40px;
+        }
+        .uni-day-cols-container {
+            display: flex;
+            flex: 1;
+            position: relative;
+        }
+        .uni-grid-line {
+            position: absolute;
+            left: 0; right: 0;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+            z-index: 1;
+        }
+        .uni-day-col {
+            flex: 1;
+            min-width: 120px;
+            position: relative;
+            border-right: 1px solid rgba(255,255,255,0.05);
+        }
+        .uni-day-col:last-child {
+            border-right: none;
+        }
+        .uni-block {
+            position: absolute;
+            left: 4px; right: 4px;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.85rem;
+            overflow: hidden;
+            z-index: 2;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .uni-block:hover {
+            transform: scale(1.03);
+            z-index: 10;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.4);
+        }
+        .uni-block-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로 돌아가기</a>
+    </nav>
+
+    <div class="container">
+        <h1>✈️ AI 맞춤형 여행 플래너</h1>
+        <p class="subtitle">국내부터 해외까지, 일자별 완벽한 동선과 필수 팁을 기획해드립니다.</p>
+
+        <div class="ticket-panel">
+            <div id="errorBox" class="error-msg"></div>
+
+            <div class="form-grid">
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label><i class="fa-solid fa-plane-departure"></i> 여행 목적지 (어디로 떠나시나요?)</label>
+                    <input type="text" id="destination" class="form-control" placeholder="예: 도쿄, 일본 / 제주도 / 파리, 프랑스">
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-regular fa-calendar-days"></i> 여행 기간</label>
+                    <select id="duration" class="form-control">
+                        <option value="1박 2일">1박 2일</option>
+                        <option value="2박 3일" selected>2박 3일</option>
+                        <option value="3박 4일">3박 4일</option>
+                        <option value="4박 5일">4박 5일</option>
+                        <option value="5박 6일">5박 6일</option>
+                        <option value="6박 7일">6박 7일</option>
+                        <option value="당일치기">당일치기</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label><i class="fa-solid fa-user-group"></i> 동반자</label>
+                    <select id="companion" class="form-control">
+                        <option value="혼자서">혼자서 🎒</option>
+                        <option value="친구와 함께">친구와 함께 🍻</option>
+                        <option value="연인과 함께">연인/배우자와 함께 💕</option>
+                        <option value="아이 동반 가족">아이 동반 가족 👶</option>
+                        <option value="부모님 동반 가족">부모님 동반 👨‍👩‍👧</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label><i class="fa-solid fa-star"></i> 여행 테마 (복수 선택 가능)</label>
+                    <div class="chips-container" id="themeChips">
+                        <div class="chip active">먹방 투어 🍔</div>
+                        <div class="chip">사진 명소 📸</div>
+                        <div class="chip">힐링/휴양 🌴</div>
+                        <div class="chip">액티비티 🏄‍♂️</div>
+                        <div class="chip">가성비 여행 💸</div>
+                        <div class="chip">쇼핑 🛍️</div>
+                        <div class="chip">역사/문화 🏛️</div>
+                    </div>
+                </div>
+
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label><i class="fa-solid fa-clipboard-list"></i> 내 여행 계획 (선택사항)</label>
+                    <textarea id="draftSchedule" class="form-control" style="min-height: 120px; resize: vertical;" placeholder="이미 세워둔 일정이나 비행기/호텔 시간표가 있다면 자유롭게 복사해서 붙여넣어주세요. AI가 이 일정을 기반으로 빈 시간을 채우고 완벽하게 다듬어 줍니다! (예: 5/20 14:00 비행기 출발...)"></textarea>
+                </div>
+            </div>
+
+            <button class="generate-btn" id="generateBtn" onclick="generatePlan()">
+                <i class="fa-solid fa-plane"></i> AI 여행 일정 만들기
+            </button>
+        </div>
+
+        <div class="loader" id="loader">
+            <i class="fa-solid fa-plane airplane-spinner"></i>
+            <p style="color: #94a3b8; line-height: 1.6;">
+                최적의 비행 노선과 동선을 검색 중입니다...<br>
+                해외 데이터까지 분석하느라 약 15~30초 정도 소요될 수 있습니다.
+            </p>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <!-- Summary Info -->
+            <div class="summary-card" id="summaryCard">
+                <div class="summary-section">
+                    <h3><i class="fa-solid fa-wallet"></i> 예상 경비 가이드</h3>
+                    <ul id="budgetList"></ul>
+                </div>
+                <div class="summary-section">
+                    <h3><i class="fa-solid fa-suitcase"></i> 필수 준비물 & 팁</h3>
+                    <ul id="packingList"></ul>
+                </div>
+            </div>
+
+            <!-- Timetable Data -->
+            <div id="timetableContainer"></div>
+
+            <!-- Timeline Data -->
+            <div id="timelineContainer"></div>
+
+            <!-- Share Button -->
+            <div style="text-align: center; margin-top: 2rem; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <button class="generate-btn" style="background: var(--secondary); max-width: 250px; display: inline-flex; justify-content: center; gap: 8px;" onclick="sharePlan()">
+                    <i class="fa-solid fa-share-nodes"></i> 일정 공유/복사
+                </button>
+                <button class="generate-btn" style="background: #10b981; max-width: 250px; display: inline-flex; justify-content: center; gap: 8px;" onclick="downloadExcel()">
+                    <i class="fa-solid fa-file-excel"></i> 엑셀로 저장하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Theme Chips Logic
+        const chips = document.querySelectorAll('.chip');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chip.classList.toggle('active');
+            });
+        });
+
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+
+        let currentGeneratedPlan = null;
+
+        async function generatePlan() {
+            const destination = document.getElementById('destination').value.trim();
+            const duration = document.getElementById('duration').value;
+            const companion = document.getElementById('companion').value;
+            const draftSchedule = document.getElementById('draftSchedule').value.trim();
+            
+            const selectedThemes = Array.from(document.querySelectorAll('.chip.active')).map(c => c.innerText);
+
+            if (!destination) {
+                return showError("여행 목적지를 입력해주세요. (예: 도쿄, 제주도)");
+            }
+            if (selectedThemes.length === 0) {
+                return showError("최소 1개의 여행 테마를 선택해주세요.");
+            }
+
+            document.getElementById('errorBox').style.display = 'none';
+            document.getElementById('resultContainer').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('loader').classList.add('active');
+
+            try {
+                const response = await fetch('/api/travel/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        destination, duration, companion, themes: selectedThemes, draft_schedule: draftSchedule
+                    })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                renderPlan(data.plan);
+            } catch (err) {
+                showError("일정 생성 중 오류가 발생했습니다: " + err.message);
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('loader').classList.remove('active');
+            }
+        }
+
+        function renderPlan(plan) {
+            currentGeneratedPlan = plan;
+            
+            // Render Summary
+            const budgetList = document.getElementById('budgetList');
+            budgetList.innerHTML = plan.budget_tips.map(t => `<li>${t}</li>`).join('');
+            
+            const packingList = document.getElementById('packingList');
+            packingList.innerHTML = plan.packing_tips.map(t => `<li>${t}</li>`).join('');
+
+            // Render Timetable & Timeline
+            const timetableContainer = document.getElementById('timetableContainer');
+            const timelineContainer = document.getElementById('timelineContainer');
+            
+            let globalMin = 24 * 60;
+            let globalMax = 0;
+            let parsedBlocks = [];
+            
+            const colors = [
+                'linear-gradient(135deg, #3b82f6, #2563eb)',
+                'linear-gradient(135deg, #10b981, #059669)',
+                'linear-gradient(135deg, #f59e0b, #d97706)',
+                'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                'linear-gradient(135deg, #ec4899, #db2777)',
+                'linear-gradient(135deg, #06b6d4, #0891b2)'
+            ];
+
+            let timelineHtml = '';
+
+            plan.days.forEach(day => {
+                let blocksForDay = [];
+                day.schedule.forEach((item, iIdx) => {
+                    let timeStr = item.time.replace(/시\s*/g, ':').replace(/분/g, ''); // "10시 30분" -> "10:30"
+                    let matches = timeStr.match(/\d{1,2}:\d{2}/g);
+                    
+                    if (!matches) {
+                        const hMatch = item.time.match(/\d{1,2}/g);
+                        if (hMatch && hMatch.length > 0) {
+                            matches = [hMatch[0] + ":00"];
+                            if(hMatch.length > 1) matches.push(hMatch[1] + ":00");
+                        } else {
+                            matches = ["12:00", "13:00"];
+                        }
+                    }
+
+                    if(matches) {
+                        const parseMins = t => {
+                            let [h, m] = t.split(':').map(Number);
+                            return h * 60 + (m || 0);
+                        };
+                        let startMins = parseMins(matches[0]);
+                        let endMins = matches.length > 1 ? parseMins(matches[1]) : startMins + 60;
+                        
+                        if (item.time.includes('+1') || endMins < startMins) {
+                            endMins += 1440;
+                        }
+                        if (startMins > 2800) startMins = 720;
+                        if (endMins > 3000) endMins = startMins + 60;
+
+                        if (startMins < globalMin) globalMin = startMins;
+                        if (endMins > globalMax) globalMax = endMins;
+                        
+                        blocksForDay.push({
+                            start: startMins,
+                            end: endMins,
+                            title: item.place_name,
+                            timeStr: item.time,
+                            color: colors[iIdx % colors.length]
+                        });
+                    }
+                });
+                
+                parsedBlocks.push({
+                    dayNumber: day.day_number,
+                    theme: day.theme,
+                    blocks: blocksForDay
+                });
+
+                // For Timeline
+                timelineHtml += `
+                    <div class="day-header">
+                        <span class="badge">Day ${day.day_number}</span>
+                        <span class="day-desc">${day.theme}</span>
+                    </div>
+                    <div class="timeline">
+                `;
+
+                day.schedule.forEach(item => {
+                    const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.place_name + ' ' + plan.destination)}`;
+                    
+                    timelineHtml += `
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="item-time">${item.time}</div>
+                            <h4 class="item-title">${item.place_name}</h4>
+                            <div class="item-desc">${item.description}</div>
+                            <a href="${searchUrl}" target="_blank" class="map-link">
+                                <i class="fa-solid fa-map-location-dot"></i> 구글 지도로 보기
+                            </a>
+                        </div>
+                    `;
+                });
+
+                timelineHtml += `</div>`;
+            });
+
+            if (globalMin === 24*60) {
+                globalMin = 8 * 60;
+                globalMax = 22 * 60;
+            }
+            
+            let startHour = Math.max(0, Math.floor(globalMin / 60));
+            let endHour = Math.ceil(globalMax / 60);
+            if(endHour <= startHour) endHour = startHour + 10;
+            let totalHeight = (endHour - startHour) * 60;
+
+            let timetableHtml = `
+            <div class="uni-wrapper">
+                <div style="font-size:1.2rem; font-weight:700; margin-bottom:1.5rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-calendar-week"></i> 일정 시간표
+                </div>
+                <div style="min-width: ${parsedBlocks.length * 150 + 60}px;">
+                    <div class="uni-header-row">
+            `;
+            parsedBlocks.forEach(day => {
+                timetableHtml += `<div class="uni-day-header">Day ${day.dayNumber}</div>`;
+            });
+            timetableHtml += `</div>
+                    <div class="uni-body" style="height: ${totalHeight}px;">
+                        <div class="uni-time-axis">`;
+            for(let h = startHour; h <= endHour; h++) {
+                let displayH = h % 24;
+                let label = `${displayH.toString().padStart(2, '0')}:00`;
+                let top = (h - startHour) * 60;
+                timetableHtml += `<div class="uni-time-label" style="top: ${top}px;">${label}</div>`;
+            }
+            timetableHtml += `</div>
+                        <div class="uni-day-cols-container">`;
+            for(let h = startHour; h <= endHour; h++) {
+                let top = (h - startHour) * 60;
+                timetableHtml += `<div class="uni-grid-line" style="top: ${top}px;"></div>`;
+            }
+            parsedBlocks.forEach(day => {
+                timetableHtml += `<div class="uni-day-col">`;
+                day.blocks.forEach(block => {
+                    let top = block.start - (startHour * 60);
+                    let height = block.end - block.start;
+                    if(height < 25) height = 25; 
+                    
+                    timetableHtml += `
+                        <div class="uni-block" style="top: ${top}px; height: ${height}px; background: ${block.color};">
+                            <div class="uni-block-title">${block.title}</div>
+                            <div style="font-size:0.75rem; opacity:0.9;">${block.timeStr}</div>
+                        </div>
+                    `;
+                });
+                timetableHtml += `</div>`;
+            });
+            timetableHtml += `
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            if(timetableContainer) timetableContainer.innerHTML = timetableHtml;
+            if(timelineContainer) timelineContainer.innerHTML = timelineHtml;
+
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function sharePlan() {
+            if (!currentGeneratedPlan) return;
+            const plan = currentGeneratedPlan;
+            const destination = document.getElementById('destination').value.trim();
+            const duration = document.getElementById('duration').value;
+            
+            let text = `[✈️ ${destination} ${duration} 여행 일정]\n\n`;
+            
+            text += `[💰 예상 경비 가이드]\n`;
+            plan.budget_tips.forEach(t => text += `- ${t}\n`);
+            text += `\n`;
+            
+            text += `[🧳 필수 준비물 & 팁]\n`;
+            plan.packing_tips.forEach(t => text += `- ${t}\n`);
+            text += `\n`;
+            
+            text += `[🗓️ 일정 요약 시간표]\n`;
+            plan.days.forEach(day => {
+                text += `\n=== Day ${day.day_number} (${day.theme}) ===\n`;
+                day.schedule.forEach(item => {
+                    text += `[${item.time}] ${item.place_name}\n`;
+                    text += `  └ ${item.description}\n`;
+                });
+            });
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: `${destination} 여행 일정`,
+                        text: text
+                    });
+                } catch (err) {
+                    console.log('Share canceled or failed:', err);
+                }
+            } else {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    alert("✅ 전체 일정이 클립보드에 복사되었습니다!\n카카오톡, 메모장 등에 바로 붙여넣기 하세요.");
+                } catch (err) {
+                    alert("복사 기능이 지원되지 않는 브라우저입니다. 텍스트를 직접 드래그해서 복사해주세요.");
+                }
+            }
+        }
+
+        function downloadExcel() {
+            if (!currentGeneratedPlan) return;
+            const plan = currentGeneratedPlan;
+            
+            // CSV Header
+            let csvContent = "\uFEFF"; // UTF-8 BOM for Excel
+            csvContent += "일차,테마,시간,장소,상세설명\n";
+            
+            // CSV Data
+            plan.days.forEach(day => {
+                day.schedule.forEach(item => {
+                    // Escape double quotes by doubling them
+                    const theme = `"${day.theme.replace(/"/g, '""')}"`;
+                    const time = `"${item.time.replace(/"/g, '""')}"`;
+                    const place = `"${item.place_name.replace(/"/g, '""')}"`;
+                    const desc = `"${item.description.replace(/"/g, '""')}"`;
+                    
+                    csvContent += `${day.day_number}일차,${theme},${time},${place},${desc}\n`;
+                });
+            });
+
+            // Download Logic
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "나만의_여행_계획표.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

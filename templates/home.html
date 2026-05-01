@@ -41,6 +41,15 @@
             <i class="fa-solid fa-magnifying-glass"></i>
         </div>
 
+        <!-- Category Tabs -->
+        <div class="category-tabs">
+            <button class="cat-btn active" data-category="all" onclick="filterCategory('all')">전체보기</button>
+            <button class="cat-btn" data-category="local" onclick="filterCategory('local')">로컬 스캐너</button>
+            <button class="cat-btn" data-category="utility" onclick="filterCategory('utility')">유틸리티 & 툴</button>
+            <button class="cat-btn" data-category="game" onclick="filterCategory('game')">미니 게임</button>
+            <button class="cat-btn" data-category="life" onclick="filterCategory('life')">라이프스타일</button>
+        </div>
+
         
         <!-- Favorites Section -->
         <div id="favoritesSection" style="display: none; width: 100%;">
@@ -86,12 +95,56 @@
                     광고 후기를 거르고 과잉 진료 없는 양심적인 병원(피부과, 치과, 안과, 내과 등)을 찾아줍니다.
                 </div>
             </a>
+
+            <a href="/course" id="card_course" class="card" data-type="course" style="--card-color: #a855f7;">
+                <div class="pin-btn" data-id="card_course" onclick="togglePin(event, 'card_course')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
+                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.3));"><i class="fa-solid fa-map-location-dot"></i></div>
+                <h2>🗺️ AI 원데이 코스 플래너</h2>
+                <div class="description">
+                    데이트, 부모님 동반 등 방문 목적만 입력하면 완벽한 하루 동선(맛집➡️카페➡️놀거리)을 짜드립니다.
+                </div>
+            </a>
+
+            <a href="/travel" id="card_travel" class="card" data-type="travel" style="--card-color: #06b6d4;">
+                <div class="pin-btn" data-id="card_travel" onclick="togglePin(event, 'card_travel')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
+                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(6, 182, 212, 0.3));"><i class="fa-solid fa-plane"></i></div>
+                <h2>✈️ AI 맞춤형 여행 플래너</h2>
+                <div class="description">
+                    해외부터 국내까지! 목적지와 일정만 고르면 AI가 완벽한 일자별 동선과 필수 준비물, 예상 경비 가이드를 세워드립니다.
+                </div>
+            </a>
+
+            <a href="/meetup" id="card_meetup" class="card" data-type="local" style="--card-color: #f97316;">
+                <div class="pin-btn" data-id="card_meetup" onclick="togglePin(event, 'card_meetup')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
+                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(249, 115, 22, 0.3)); color: #f97316;"><i class="fa-solid fa-location-crosshairs"></i></div>
+                <h2>📍 중간 지점 약속 플래너</h2>
+                <div class="description">
+                    친구들의 출발 주소를 입력하면 지리적으로 가장 공평한 중간 지점을 계산하고, 주변의 약속 잡기 좋은 추천 장소를 알려줍니다.
+                </div>
+            </a>
+
+            <a href="/estate" id="card_estate" class="card" data-type="estate" style="--card-color: #10b981;">
+                <div class="pin-btn" data-id="card_estate" onclick="togglePin(event, 'card_estate')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
+                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3));"><i class="fa-solid fa-building-user"></i></div>
+                <h2>🏢 AI 부동산/임장 스캐너</h2>
+                <div class="description">
+                    거주 예정인 동네나 아파트 단지의 교통, 상권, 학군, 병원 인프라를 분석하고 육각형 지표로 보여줍니다.
+                </div>
+            </a>
         </div>
 
         <div class="section-divider"></div>
 
         <div class="section-title">유틸리티 & 툴</div>
         <div class="cards">
+            <a href="/message" id="card_message" class="card" data-type="message" style="--card-color: #ec4899;">
+                <div class="pin-btn" data-id="card_message" onclick="togglePin(event, 'card_message')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
+                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.3));"><i class="fa-solid fa-envelope-open-text"></i></div>
+                <h2>💬 AI 찰떡 메세지 메이커</h2>
+                <div class="description">
+                    부모님, 애인, 직장상사 등 대상에게 전할 말을 대충 쓰면 AI가 가장 알맞은 3가지 버전의 카톡/메일 내용으로 다듬어 줍니다.
+                </div>
+            </a>
             <a href="/english" id="card_english" class="card" data-type="english" style="--card-color: #22c55e;">
                 <div class="pin-btn" data-id="card_english" onclick="togglePin(event, 'card_english')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
                 <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(34, 197, 94, 0.3));"><i class="fa-solid fa-graduation-cap"></i></div>

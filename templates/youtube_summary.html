@@ -453,9 +453,14 @@
                     <div id="sentimentBadge" style="background: rgba(255, 255, 255, 0.1); padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 1.1rem; border: 1px solid rgba(255, 255, 255, 0.2);">
                         <!-- sentiment goes here -->
                     </div>
-                    <button class="btn-copy" onclick="copyMarkdown()" style="border-color: #a855f7; color: #a855f7;">
-                        <i class="fa-solid fa-copy"></i> 마크다운으로 복사
-                    </button>
+                    <div style="display: flex; gap: 1rem;">
+                        <button class="btn-copy" onclick="copyMarkdown()" style="border-color: #a855f7; color: #a855f7;">
+                            <i class="fa-solid fa-copy"></i> 마크다운으로 복사
+                        </button>
+                        <button class="btn-copy" onclick="downloadForNotebookLM()" style="border-color: #3b82f6; color: #3b82f6; background: rgba(59, 130, 246, 0.1);">
+                            <i class="fa-solid fa-download"></i> 노트북LM용 다운로드
+                        </button>
+                    </div>
                 </div>
                 
                 <div id="fallbackWarningBanner" style="display: none; background: rgba(234, 179, 8, 0.15); border: 1px solid rgba(234, 179, 8, 0.5); padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; color: #fef08a; font-size: 0.95rem; line-height: 1.6;">
@@ -613,6 +618,54 @@
                 });
             }
             navigator.clipboard.writeText(md).then(() => showToast("마크다운이 깔끔하게 복사되었습니다!"));
+        }
+
+        window.downloadForNotebookLM = function() {
+            if(!currentSummaryData) return;
+            
+            // 노트북LM은 전체 스크립트가 있을 때 가장 정확하게 답변하므로, 대본 전체를 포함합니다.
+            let content = `# 유튜브 영상 AI 분석 및 대본\n\n`;
+            if (currentSummaryData.core_summary) {
+                content += `## ⚡ 5문장 초핵심 요약\n${currentSummaryData.core_summary}\n\n`;
+            }
+            content += `## 📖 상세 요약\n${currentSummaryData.summary}\n\n`;
+            
+            if(currentSummaryData.timeline_summary && currentSummaryData.timeline_summary.length > 0) {
+                content += `## ⏱️ 타임라인\n`;
+                currentSummaryData.timeline_summary.forEach(t => {
+                    content += `- [${t.time}] ${t.title}: ${t.desc}\n`;
+                });
+                content += `\n`;
+            }
+            
+            if(currentSummaryData.glossary && currentSummaryData.glossary.length > 0) {
+                content += `## 📚 용어 사전\n`;
+                currentSummaryData.glossary.forEach(g => {
+                    content += `- **${g.term}**: ${g.explanation}\n`;
+                });
+                content += `\n`;
+            }
+
+            if(currentSummaryData.full_transcript) {
+                content += `## 📝 전체 스크립트 (대본)\n${currentSummaryData.full_transcript}\n`;
+            }
+
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `youtube_notebooklm_source.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast("노트북LM용 파일이 다운로드되었습니다. 잠시 후 노트북LM이 열립니다.");
+            
+            // 다운로드 후 노트북LM 웹사이트 새 탭으로 열기
+            setTimeout(() => {
+                window.open('https://notebooklm.google.com/', '_blank');
+            }, 1500);
         }
 
         document.getElementById('summaryForm').addEventListener('submit', async (e) => {

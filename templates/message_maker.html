@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💬 AI 찰떡 메세지 메이커</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --surface-color: #161b22;
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(22, 27, 34, 0.7);
+        }
+
+        body {
+            font-family: 'Pretendard', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08), transparent 25%);
+            background-attachment: fixed;
+        }
+
+        .navbar {
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .navbar a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover { color: var(--primary); }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .panel {
+            background: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 2rem;
+        }
+
+        .chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.6rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .chip:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .chip.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+            color: #60a5fa;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 150px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.2rem;
+            color: #fff;
+            font-family: 'Pretendard', sans-serif;
+            font-size: 1.05rem;
+            resize: vertical;
+            box-sizing: border-box;
+            line-height: 1.6;
+            transition: border-color 0.3s;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1.2rem 2rem;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 3rem 0;
+        }
+        .loader.active { display: block; }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .result-container {
+            display: none;
+            margin-top: 2rem;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .message-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s;
+        }
+
+        .message-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(139, 92, 246, 0.4);
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .message-style {
+            font-weight: 700;
+            color: #d8b4fe;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .message-body {
+            flex-grow: 1;
+            line-height: 1.6;
+            color: #e2e8f0;
+            margin-bottom: 1.5rem;
+            white-space: pre-wrap;
+            font-size: 1.05rem;
+        }
+
+        .copy-btn {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 0.8rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            color: #fff;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: bottom 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2000;
+        }
+        .toast.show {
+            bottom: 30px;
+        }
+
+        .error-msg {
+            display: none;
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 1rem; }
+            .panel { padding: 1.5rem; }
+            .result-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로 돌아가기</a>
+    </nav>
+
+    <div class="container">
+        <h1>💬 AI 찰떡 메세지 메이커</h1>
+        <p class="subtitle">대충 적어도 상대방에게 딱 맞는 3가지 버전의 카톡/메일을 만들어드립니다.</p>
+
+        <div class="panel">
+            <div id="errorBox" class="error-msg"></div>
+
+            <div class="section-title"><i class="fa-solid fa-user-tag"></i> 누구에게 보낼 메시지인가요?</div>
+            <div class="chips-container" id="targetChips">
+                <div class="chip active" data-value="부모님">👨‍👩‍👧 부모님</div>
+                <div class="chip" data-value="아내">👰‍♀️ 아내</div>
+                <div class="chip" data-value="남편">🤵‍♂️ 남편</div>
+                <div class="chip" data-value="애인/연인">💕 애인/연인</div>
+                <div class="chip" data-value="친구/절친">🍻 친구/절친</div>
+                <div class="chip" data-value="직장상사">👔 직장상사</div>
+                <div class="chip" data-value="동료/후배">🤝 동료/후배</div>
+                <div class="chip" data-value="거래처/고객">💼 거래처/고객</div>
+            </div>
+
+            <div class="section-title"><i class="fa-solid fa-pen-nib"></i> 전하고 싶은 내용을 대충 적어주세요.</div>
+            <textarea id="contextInput" placeholder="예: 오늘 저녁에 회식 있어서 늦어 먼저 자. 미안해 주말에 맛있는거 먹자"></textarea>
+
+            <button class="generate-btn" id="generateBtn" onclick="generateMessage()" style="margin-top: 1.5rem;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> 찰떡 메세지 3가지 버전 만들기
+            </button>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>상황에 맞는 최고의 단어들을 조합 중입니다...</p>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            <div class="section-title" style="margin-bottom: 1.5rem;"><i class="fa-solid fa-envelope-open-text"></i> 마음에 드는 버전을 복사하세요</div>
+            <div class="result-grid" id="resultGrid">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"><i class="fa-solid fa-check"></i> 복사되었습니다!</div>
+
+    <script>
+        // Chip selection logic
+        const chips = document.querySelectorAll('.chip');
+        let selectedTarget = '부모님';
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                selectedTarget = chip.getAttribute('data-value');
+            });
+        });
+
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+        function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+
+        async function generateMessage() {
+            const context = document.getElementById('contextInput').value.trim();
+            if (!context) {
+                return showError("전하고 싶은 내용을 적어주세요.");
+            }
+            if (context.length < 5) {
+                return showError("조금 더 자세히 적어주시면 AI가 더 잘 만들어줍니다. (5자 이상)");
+            }
+
+            hideError();
+            document.getElementById('resultContainer').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('loader').classList.add('active');
+
+            try {
+                const response = await fetch('/api/message/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ target: selectedTarget, context })
+                });
+                
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                renderResults(data.options);
+            } catch (err) {
+                showError("메세지 생성 중 오류가 발생했습니다: " + err.message);
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('loader').classList.remove('active');
+            }
+        }
+
+        function renderResults(options) {
+            const grid = document.getElementById('resultGrid');
+            grid.innerHTML = '';
+
+            const icons = ['fa-heart', 'fa-face-smile-wink', 'fa-briefcase'];
+            
+            options.forEach((opt, idx) => {
+                const icon = icons[idx % icons.length];
+                const card = document.createElement('div');
+                card.className = 'message-card';
+                card.innerHTML = `
+                    <div class="message-header">
+                        <div class="message-style"><i class="fa-solid ${icon}"></i> ${opt.style}</div>
+                    </div>
+                    <div class="message-body">${opt.text}</div>
+                    <button class="copy-btn" onclick="copyToClipboard(this)">
+                        <i class="fa-regular fa-copy"></i> 복사하기
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function copyToClipboard(btnElement) {
+            const textElement = btnElement.previousElementSibling;
+            const textToCopy = textElement.innerText;
+
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast();
+                // Change button state temporarily
+                const originalHtml = btnElement.innerHTML;
+                btnElement.innerHTML = '<i class="fa-solid fa-check"></i> 복사 완료';
+                btnElement.style.background = 'rgba(16, 185, 129, 0.2)';
+                btnElement.style.color = '#10b981';
+                btnElement.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+                
+                setTimeout(() => {
+                    btnElement.innerHTML = originalHtml;
+                    btnElement.style = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

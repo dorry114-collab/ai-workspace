@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>불량 데이터 유의차 분석기</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #64748b;
+            --danger: #ef4444;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: #334155;
+            margin: 0;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: var(--secondary);
+            font-size: 1.1rem;
+        }
+
+        .upload-area {
+            background: var(--card-bg);
+            border: 2px dashed #cbd5e1;
+            border-radius: 12px;
+            padding: 60px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #94a3b8;
+            margin-bottom: 15px;
+        }
+
+        .upload-area:hover .upload-icon {
+            color: var(--primary);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-container {
+            display: none;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ai-report-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 1px solid #bae6fd;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .ai-report-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #0369a1;
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+
+        .ai-report-content {
+            line-height: 1.6;
+            color: #0f172a;
+            white-space: pre-wrap;
+        }
+
+        .process-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .process-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .process-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .badge.significant {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .badge.normal {
+            background: #f1f5f9;
+            color: #64748b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .worst-row {
+            background: #fff1f2;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>📊 불량 데이터 유의차 분석기</h1>
+        <p>엑셀 파일(공정명, 호기, 챔버, 레시피, 검사수, 불량수)을 업로드하시면 시스템이 자동으로 통계 분석 및 해석을 수행합니다. (망분리/보안 준수)</p>
+    </div>
+
+    <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+        <h2 style="margin: 0 0 10px 0; color: #334155;">클릭하거나 엑셀 파일을 여기에 드롭하세요</h2>
+        <p style="margin: 0; color: #94a3b8;">지원 형식: .xlsx, .csv</p>
+        <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+    </div>
+
+    <div class="loading" id="loadingArea">
+        <div class="spinner"></div>
+        <h3 style="color: #334155; margin: 0;">데이터 분석 및 통계 검정 중...</h3>
+        <p style="color: #64748b; font-size: 0.9rem;">데이터양에 따라 수 초 소요될 수 있습니다.</p>
+    </div>
+
+    <div class="results-container" id="resultsArea">
+        
+        <div class="ai-report-card">
+            <div class="ai-report-title">
+                <i class="fa-solid fa-chart-pie"></i> 시스템 자동 분석 리포트
+            </div>
+            <div class="ai-report-content" id="aiReportText">
+                <!-- 텍스트 렌더링 -->
+            </div>
+        </div>
+
+        <h2 style="margin-bottom: 20px; color: #0f172a;"><i class="fa-solid fa-table-list"></i> 공정별 상세 통계 (Chi-Square Test)</h2>
+        <div id="processCardsArea">
+            <!-- 공정별 카드 렌더링 -->
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const loadingArea = document.getElementById('loadingArea');
+    const resultsArea = document.getElementById('resultsArea');
+    const processCardsArea = document.getElementById('processCardsArea');
+    const aiReportText = document.getElementById('aiReportText');
+
+    // Drag and Drop Events
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileUpload();
+        }
+    });
+
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length) handleFileUpload();
+    });
+
+    function handleFileUpload() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        dropZone.style.display = 'none';
+        loadingArea.style.display = 'block';
+        resultsArea.style.display = 'none';
+
+        fetch('/api/analyze', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            loadingArea.style.display = 'none';
+            if (data.success) {
+                renderResults(data);
+            } else {
+                alert('분석 오류: ' + data.error);
+                dropZone.style.display = 'block';
+            }
+        })
+        .catch(err => {
+            loadingArea.style.display = 'none';
+            alert('서버 통신 오류가 발생했습니다.');
+            dropZone.style.display = 'block';
+            console.error(err);
+        });
+    }
+
+    function renderResults(data) {
+        // AI Report
+        aiReportText.innerText = data.ai_report;
+
+        // Process Cards
+        processCardsArea.innerHTML = '';
+        
+        data.results.forEach(res => {
+            const isSig = res.status === '유의차 있음';
+            const badgeClass = isSig ? 'significant' : 'normal';
+            const pvalText = res.p_value !== null ? `(p-value: ${res.p_value})` : '';
+            
+            // Find worst combo to highlight if significant
+            let worstCombo = null;
+            if (isSig && res.details.length > 0) {
+                worstCombo = res.details.reduce((prev, current) => (prev['불량률(%)'] > current['불량률(%)']) ? prev : current).조합;
+            }
+
+            let rowsHtml = '';
+            res.details.forEach(d => {
+                const isWorst = d.조합 === worstCombo;
+                rowsHtml += `
+                    <tr class="${isWorst ? 'worst-row' : ''}">
+                        <td style="text-align:left; font-weight:${isWorst?'bold':'normal'};">${d.조합}</td>
+                        <td>${d.검사수.toLocaleString()}</td>
+                        <td>${d.불량수.toLocaleString()}</td>
+                        <td style="color:${isWorst?'#b91c1c':'#0f172a'}; font-weight:${isWorst?'bold':'normal'};">${d['불량률(%)']}%</td>
+                    </tr>
+                `;
+            });
+
+            const card = document.createElement('div');
+            card.className = 'process-card';
+            card.innerHTML = `
+                <div class="process-header">
+                    <div class="process-title">${res.공정명}</div>
+                    <div>
+                        <span class="badge ${badgeClass}">${res.status} ${pvalText}</span>
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; width:40%;">조합 (호기-챔버-레시피)</th>
+                            <th>검사수</th>
+                            <th>불량수</th>
+                            <th>불량률</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            `;
+            processCardsArea.appendChild(card);
+        });
+
+        resultsArea.style.display = 'block';
+    }
+</script>
+</body>
+</html>

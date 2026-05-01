@@ -8,7 +8,39 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Pretendard:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+        let isMapView = false;
+        function toggleMapView() {
+            isMapView = !isMapView;
+            const mapContainer = document.getElementById('mapContainer');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const btnSpan = document.querySelector('#mapToggleBtn span');
+            const btnIcon = document.querySelector('#mapToggleBtn i');
+            
+            if (isMapView) {
+                mapContainer.style.display = 'block';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                resultsGrid.style.display = 'none';
+                btnSpan.textContent = '목록 보기';
+                btnIcon.className = 'fa-solid fa-list';
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                    if (currentCenter) {
+                        map.setCenter({ lat: parseFloat(currentCenter.y), lng: parseFloat(currentCenter.x) });
+                    }
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                btnSpan.textContent = '지도 보기';
+                btnIcon.className = 'fa-solid fa-map-location-dot';
+            }
+        }
+        
+    </script>
     
     <style>
         :root {
@@ -633,9 +665,100 @@
         .hash-pill { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid rgba(255,170,0,0.4); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;}
         .ai-summary-text { line-height: 1.6; color: #e2e8f0; }
         .purpose-select { background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: white; padding: 0.8rem; border-radius: 8px; font-size: 0.95rem; }
-</style>
+
+        .floating-map-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .floating-map-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,107,107,0.6);
+        }
+        .map-fullscreen {
+            height: 70vh !important;
+            margin-bottom: 2rem !important;
+            border-radius: 16px !important;
+        }
+
+    
+        #mapLegend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 25, 35, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #ddd;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+    </style>
 {% if google_maps_api_key %}
-    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer>
+        let isMapView = false;
+        function toggleMapView() {
+            isMapView = !isMapView;
+            const mapContainer = document.getElementById('mapContainer');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const btnSpan = document.querySelector('#mapToggleBtn span');
+            const btnIcon = document.querySelector('#mapToggleBtn i');
+            
+            if (isMapView) {
+                mapContainer.style.display = 'block';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                resultsGrid.style.display = 'none';
+                btnSpan.textContent = '목록 보기';
+                btnIcon.className = 'fa-solid fa-list';
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                    if (currentCenter) {
+                        map.setCenter({ lat: parseFloat(currentCenter.y), lng: parseFloat(currentCenter.x) });
+                    }
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                btnSpan.textContent = '지도 보기';
+                btnIcon.className = 'fa-solid fa-map-location-dot';
+            }
+        }
+        
+    </script>
     {% endif %}
 </head>
 <body>
@@ -678,7 +801,17 @@
         <div id="errorBox" class="error-msg"></div>
 
         
-        <div id="mapContainer" style="width: 100%; height: 350px; border-radius: 16px; margin-bottom: 2rem; border: 1px solid var(--border-color); display: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></div>
+        
+    <div id="mapWrapper" style="position: relative; width: 100%;">
+<div id="mapLegend">
+        <div class="legend-item"><div class="legend-color" style="background: red;"></div> 파워점수 3000+ (최상위)</div>
+        <div class="legend-item"><div class="legend-color" style="background: orange;"></div> 파워점수 1000+ (상위)</div>
+        <div class="legend-item"><div class="legend-color" style="background: yellow;"></div> 파워점수 500+ (중위)</div>
+        <div class="legend-item"><div class="legend-color" style="background: green;"></div> 파워점수 100+ (일반)</div>
+        <div class="legend-item"><div class="legend-color" style="background: blue;"></div> 파워점수 100- (신규/기타)</div>
+    </div>
+<div id="mapContainer" class="map-fullscreen" style="width: 100%; display: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></div>
+</div>
 
         <div class="controls-area" id="controlsArea" style="display: none;">
             <div class="filter-tabs" id="filterTabs">
@@ -732,7 +865,7 @@
                 return; // Maps API not loaded
             }
             
-            document.getElementById('mapContainer').style.display = 'block';
+            if (typeof isMapView !== 'undefined' && isMapView) { document.getElementById('mapContainer').style.display = 'block'; }
             
             if (!map) {
                 map = new google.maps.Map(document.getElementById('mapContainer'), {
@@ -757,12 +890,22 @@
             markers = [];
             
             // Add new markers
+                        function getMarkerIcon(score) {
+                let color = "blue";
+                if (score >= 3000) color = "red";
+                else if (score >= 1000) color = "orange";
+                else if (score >= 500) color = "yellow";
+                else if (score >= 100) color = "green";
+                return `http://maps.google.com/mapfiles/ms/icons/${color}-dot.png`;
+            }
+            
             filteredData.forEach(r => {
                 if(r.y && r.x) {
                     const marker = new google.maps.Marker({
                         position: { lat: parseFloat(r.y), lng: parseFloat(r.x) },
                         map: map,
                         title: r.name,
+                        icon: getMarkerIcon(r.trust_score || 0),
                         animation: google.maps.Animation.DROP
                     });
                     
@@ -819,7 +962,7 @@
                         setTimeout(() => {
                             btn.innerHTML = originalHtml;
                             btn.disabled = false;
-                            performSearch();
+                            performSearch(lat, lng);
                         }, 1000);
                     } else {
                         showError("현위치 주소 변환에 실패했습니다.");
@@ -827,7 +970,7 @@
                         btn.disabled = false;
                     }
                 } catch(e) {
-                    showError("서버와의 통신 오류.");
+                    showError("서버와의 통신 오류: " + (e.message || e));
                     btn.innerHTML = originalHtml;
                     btn.disabled = false;
                 }
@@ -837,10 +980,10 @@
                 showError(msg);
                 btn.innerHTML = originalHtml;
                 btn.disabled = false;
-            });
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
         }
 
-        async function performSearch() {
+        async function performSearch(lat=null, lng=null) {
             const address = document.getElementById('addressInput').value.trim();
             const radius = document.getElementById('radiusSelect').value;
             
@@ -856,10 +999,12 @@
             document.getElementById('emptyState').style.display = 'none';
 
             try {
+                const reqBody = { address, radius, purpose: document.getElementById('purposeSelect') ? document.getElementById('purposeSelect').value : '기본' };
+                if (lat && lng) { reqBody.lat = lat; reqBody.lng = lng; }
                 const response = await fetch('/api/bakery/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ address, radius })
+                    body: JSON.stringify(reqBody)
                 });
 
                 const data = await response.json();
@@ -1022,6 +1167,8 @@
                 grid.appendChild(card);
             });
             if(currentCenter) updateMap(currentCenter, filtered);
+            const mtb = document.getElementById('mapToggleBtn');
+            if(mtb) mtb.style.display = 'flex';
         }
 
         // Tab Filter Logic
@@ -1053,15 +1200,39 @@
                 const res = await fetch('/api/restaurant/summary', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ place_id: placeId, place_type: '빵집' })
+                    body: JSON.stringify({ place_id: placeId, place_type: '빵집', purpose: document.getElementById('purposeSelect') ? document.getElementById('purposeSelect').value : '일반(상관없음)' })
                 });
                 const data = await res.json();
                 
                 if (data.success) {
                     btn.style.display = 'none';
                     box.style.display = 'block';
-                    let summaryText = data.summary || "";
-                    box.innerHTML = `<strong>🤖 AI:</strong><br>${summaryText.replace(/\n/g, '<br>')}`;
+                    
+                    const sumData = data.summary;
+                    let targetHtml = '';
+                    let vibeHtml = '';
+                    let hashHtml = '';
+                    let mainText = '';
+                    
+                    if (typeof sumData === 'object' && sumData !== null && !sumData.error) {
+                        targetHtml = `<div style="margin-bottom: 8px; font-size:0.95rem;">🎯 목적 적합도: <span class="target-score">${sumData.target_score || 0}점 / 100</span></div>`;
+                        vibeHtml = `<div class="vibe-check">${sumData.recent_vibe || '최근 동향 분석불가'}</div>`;
+                        if (sumData.hashtags && Array.isArray(sumData.hashtags)) {
+                            hashHtml = `<div class="hashtags-wrap">` + sumData.hashtags.map(t => `<span class="hash-pill">${t}</span>`).join('') + `</div>`;
+                        }
+                        mainText = sumData.summary || '';
+                    } else if (typeof sumData === 'string') {
+                        mainText = sumData;
+                    } else if (sumData && sumData.summary) {
+                        mainText = sumData.summary;
+                    }
+                    
+                    box.innerHTML = `
+                        ${targetHtml}
+                        ${vibeHtml}
+                        <div class="ai-summary-text">${String(mainText || '').replace(/\n/g, '<br>')}</div>
+                        ${hashHtml}
+                    `;
                     document.getElementById(`chat-box-${placeId}`).style.display = 'block';
                 } else {
                     btn.style.display = 'none';
@@ -1099,7 +1270,9 @@
             historyEl.appendChild(loadingDiv);
             
             try {
-                const res = await fetch('/api/restaurant/chat', {
+                const reqBody = { address, radius, purpose: document.getElementById('purposeSelect') ? document.getElementById('purposeSelect').value : '기본' };
+            if (lat && lng) { reqBody.lat = lat; reqBody.lng = lng; }
+            const res = await fetch('/api/restaurant/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ place_id: placeId, question: question })
@@ -1194,6 +1367,43 @@
                 alert("캡처 중 오류가 발생했습니다: " + err.message);
             }
         }
+    
+        let isMapView = false;
+        function toggleMapView() {
+            isMapView = !isMapView;
+            const mapContainer = document.getElementById('mapContainer');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const btnSpan = document.querySelector('#mapToggleBtn span');
+            const btnIcon = document.querySelector('#mapToggleBtn i');
+            
+            if (isMapView) {
+                mapContainer.style.display = 'block';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                resultsGrid.style.display = 'none';
+                btnSpan.textContent = '목록 보기';
+                btnIcon.className = 'fa-solid fa-list';
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                    if (currentCenter) {
+                        map.setCenter({ lat: parseFloat(currentCenter.y), lng: parseFloat(currentCenter.x) });
+                    }
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                btnSpan.textContent = '지도 보기';
+                btnIcon.className = 'fa-solid fa-map-location-dot';
+            }
+        }
+        
     </script>
+
+    <button id="mapToggleBtn" class="floating-map-btn" onclick="toggleMapView()" style="display: none;">
+        <i class="fa-solid fa-map-location-dot"></i> <span>지도 보기</span>
+    </button>
+    
 </body>
 </html>

@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중간 지점 약속 플래너 - Antigravity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #3b82f6;
+            --secondary: #ec4899;
+            --accent: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            padding: 1.5rem 2rem;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar a {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: color 0.3s;
+        }
+        .navbar a:hover { color: var(--primary); }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #3b82f6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+        }
+
+        .planner-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            margin-bottom: 3rem;
+        }
+
+        .address-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .address-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s;
+        }
+        .address-item:focus-within {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .address-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .form-control {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1rem;
+            padding: 8px;
+            outline: none;
+        }
+        .form-control::placeholder {
+            color: #64748b;
+        }
+
+        .btn-remove {
+            background: transparent;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+        .btn-remove:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .btn-add {
+            background: rgba(255,255,255,0.05);
+            border: 1px dashed var(--border-color);
+            color: var(--text-muted);
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-add:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            border-color: rgba(255,255,255,0.3);
+        }
+
+        .generate-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 1.2rem 2rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 2rem;
+            transition: all 0.3s;
+            box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px rgba(236, 72, 153, 0.4);
+        }
+        .generate-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 4px solid #ef4444;
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        /* Result Section */
+        .result-container {
+            display: none;
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .map-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 3rem;
+        }
+        
+        .map-header {
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .midpoint-badge {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        .midpoint-address {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        #map {
+            width: 100%;
+            height: 400px;
+            background: #cbd5e1;
+        }
+
+        .recommend-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .recommend-title i { color: var(--secondary); }
+
+        .rec-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .rec-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255,255,255,0.2);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        .rec-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--primary), var(--secondary));
+        }
+
+        .rec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        .rec-name {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .rec-category {
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+        .rec-distance {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 8px;
+        }
+        .rec-reason {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        /* Loader */
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 4rem 0;
+        }
+        .loader.active { display: block; }
+        .spinner {
+            font-size: 3rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: spin 2s linear infinite;
+            margin-bottom: 1rem;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+    {% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}"></script>
+    {% endif %}
+</head>
+<body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로 돌아가기</a>
+    </nav>
+
+    <div class="container">
+        <h1>📍 중간 지점 약속 플래너</h1>
+        <p class="subtitle">친구들의 출발 주소를 입력하면 가장 공평한 중간 지점과 추천 장소를 알려드립니다.</p>
+
+        <div class="planner-panel">
+            <div id="errorBox" class="error-msg"></div>
+
+            <div class="address-list" id="addressList">
+                <div class="address-item">
+                    <div class="address-icon">1</div>
+                    <input type="text" class="form-control address-input" placeholder="첫 번째 친구 출발 주소 (예: 서울 강남역)">
+                    <button class="btn-remove" onclick="removeAddress(this)" style="visibility: hidden;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+                <div class="address-item">
+                    <div class="address-icon">2</div>
+                    <input type="text" class="form-control address-input" placeholder="두 번째 친구 출발 주소 (예: 홍대입구역)">
+                    <button class="btn-remove" onclick="removeAddress(this)" style="visibility: hidden;"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+            </div>
+
+            <button class="btn-add" onclick="addAddress()">
+                <i class="fa-solid fa-plus"></i> 친구 주소 추가하기
+            </button>
+
+            <button class="generate-btn" id="generateBtn" onclick="findMidpoint()">
+                <i class="fa-solid fa-location-crosshairs"></i> 중간 지점 찾기
+            </button>
+        </div>
+
+        <div class="loader" id="loader">
+            <i class="fa-solid fa-compass spinner"></i>
+            <p style="color: #94a3b8; line-height: 1.6; margin-top: 1rem;">
+                각 위치를 분석하여 지리적 중간 지점을 계산 중입니다...<br>
+                주변의 맛집과 카페를 AI가 선별하고 있어요! (약 10~20초 소요)
+            </p>
+        </div>
+
+        <div class="result-container" id="resultContainer">
+            
+            <div class="map-card">
+                <div class="map-header">
+                    <span class="midpoint-badge"><i class="fa-solid fa-star"></i> 최적의 중간 지점</span>
+                    <div class="midpoint-address" id="midpointAddress">서울 용산구 이태원동</div>
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <h3 class="recommend-title"><i class="fa-solid fa-utensils"></i> AI 추천 약속 장소 Top 5</h3>
+            <div id="recommendationsList"></div>
+
+        </div>
+    </div>
+
+    <script>
+        let addressCount = 2;
+
+        function updateIcons() {
+            const items = document.querySelectorAll('.address-item');
+            items.forEach((item, index) => {
+                item.querySelector('.address-icon').innerText = index + 1;
+                const removeBtn = item.querySelector('.btn-remove');
+                if (items.length <= 2) {
+                    removeBtn.style.visibility = 'hidden';
+                } else {
+                    removeBtn.style.visibility = 'visible';
+                }
+            });
+        }
+
+        function addAddress() {
+            addressCount++;
+            const list = document.getElementById('addressList');
+            const div = document.createElement('div');
+            div.className = 'address-item';
+            div.innerHTML = `
+                <div class="address-icon">${addressCount}</div>
+                <input type="text" class="form-control address-input" placeholder="${addressCount}번째 친구 출발 주소">
+                <button class="btn-remove" onclick="removeAddress(this)"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            list.appendChild(div);
+            updateIcons();
+        }
+
+        function removeAddress(btn) {
+            btn.closest('.address-item').remove();
+            updateIcons();
+        }
+
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+
+        let map = null;
+        let markers = [];
+
+        async function findMidpoint() {
+            document.getElementById('errorBox').style.display = 'none';
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            const inputs = document.querySelectorAll('.address-input');
+            const addresses = Array.from(inputs).map(input => input.value.trim()).filter(val => val !== '');
+
+            if (addresses.length < 2) {
+                showError('최소 2개 이상의 주소를 입력해주세요.');
+                return;
+            }
+
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('loader').classList.add('active');
+
+            try {
+                const response = await fetch('/api/meetup/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ addresses: addresses })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+
+                renderResult(data);
+            } catch (err) {
+                showError("중간 지점 검색 중 오류가 발생했습니다: " + err.message);
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('loader').classList.remove('active');
+            }
+        }
+
+        function renderResult(data) {
+            const midpoint = data.midpoint;
+            document.getElementById('midpointAddress').innerText = midpoint.address;
+
+            // Render Recommendations
+            const recList = document.getElementById('recommendationsList');
+            recList.innerHTML = '';
+            
+            data.recommendations.forEach(rec => {
+                recList.innerHTML += `
+                    <div class="rec-card">
+                        <div class="rec-header">
+                            <div class="rec-name">${rec.name}</div>
+                            <div class="rec-category">${rec.category}</div>
+                        </div>
+                        <div class="rec-distance"><i class="fa-solid fa-location-dot"></i> 중간 지점에서 ${rec.distance}</div>
+                        <div class="rec-reason"><i class="fa-solid fa-quote-left" style="color:rgba(255,255,255,0.2); margin-right:5px;"></i> ${rec.reason}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('resultContainer').style.display = 'block';
+            document.getElementById('resultContainer').scrollIntoView({ behavior: 'smooth' });
+
+            // Render Google Map
+            if (typeof google !== 'undefined') {
+                initMap(data.locations, midpoint);
+            }
+        }
+
+        function initMap(locations, midpoint) {
+            const center = { lat: midpoint.lat, lng: midpoint.lng };
+            
+            if (!map) {
+                map = new google.maps.Map(document.getElementById("map"), {
+                    zoom: 13,
+                    center: center,
+                    styles: [
+                        { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                        {
+                            featureType: "administrative.locality",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#d59563" }],
+                        },
+                        {
+                            featureType: "poi",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#d59563" }],
+                        },
+                        {
+                            featureType: "poi.park",
+                            elementType: "geometry",
+                            stylers: [{ color: "#263c3f" }],
+                        },
+                        {
+                            featureType: "poi.park",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#6b9a76" }],
+                        },
+                        {
+                            featureType: "road",
+                            elementType: "geometry",
+                            stylers: [{ color: "#38414e" }],
+                        },
+                        {
+                            featureType: "road",
+                            elementType: "geometry.stroke",
+                            stylers: [{ color: "#212a37" }],
+                        },
+                        {
+                            featureType: "road",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#9ca5b3" }],
+                        },
+                        {
+                            featureType: "road.highway",
+                            elementType: "geometry",
+                            stylers: [{ color: "#746855" }],
+                        },
+                        {
+                            featureType: "road.highway",
+                            elementType: "geometry.stroke",
+                            stylers: [{ color: "#1f2835" }],
+                        },
+                        {
+                            featureType: "road.highway",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#f3d19c" }],
+                        },
+                        {
+                            featureType: "transit",
+                            elementType: "geometry",
+                            stylers: [{ color: "#2f3948" }],
+                        },
+                        {
+                            featureType: "transit.station",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#d59563" }],
+                        },
+                        {
+                            featureType: "water",
+                            elementType: "geometry",
+                            stylers: [{ color: "#17263c" }],
+                        },
+                        {
+                            featureType: "water",
+                            elementType: "labels.text.fill",
+                            stylers: [{ color: "#515c6d" }],
+                        },
+                        {
+                            featureType: "water",
+                            elementType: "labels.text.stroke",
+                            stylers: [{ color: "#17263c" }],
+                        },
+                    ],
+                });
+            } else {
+                map.setCenter(center);
+            }
+
+            // Clear old markers
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+
+            const bounds = new google.maps.LatLngBounds();
+
+            // Friends markers
+            locations.forEach((loc, idx) => {
+                const pos = { lat: loc.lat, lng: loc.lng };
+                const marker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    label: { text: String(idx + 1), color: "white", fontWeight: "bold" },
+                    title: loc.original
+                });
+                markers.push(marker);
+                bounds.extend(pos);
+            });
+
+            // Midpoint marker
+            const midMarker = new google.maps.Marker({
+                position: center,
+                map: map,
+                icon: {
+                    url: "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png"
+                },
+                title: "중간 지점"
+            });
+            markers.push(midMarker);
+            bounds.extend(center);
+
+            map.fitBounds(bounds);
+        }
+    </script>
+</body>
+</html>
