@@ -18,6 +18,41 @@ import uuid
 import re
 import math
 import base64
+
+
+def haversine(lat1, lon1, lat2, lon2):
+    import math
+    R = 6371000
+    phi1 = math.radians(float(lat1))
+    phi2 = math.radians(float(lat2))
+    delta_phi = math.radians(float(lat2) - float(lat1))
+    delta_lambda = math.radians(float(lon2) - float(lon1))
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    return R * (2 * math.atan2(math.sqrt(a), math.sqrt(1 - a)))
+
+def get_search_points(lat, lng, radius_m):
+    import math
+    lat = float(lat)
+    lng = float(lng)
+    radius_m = int(radius_m)
+    points = [{"lat": lat, "lng": lng}]
+    if radius_m <= 2000:
+        return points
+    offset_m = radius_m * 0.6
+    lat_offset = offset_m / 111320.0
+    lng_offset = offset_m / (111320.0 * math.cos(math.radians(lat)))
+    points.append({"lat": lat + lat_offset, "lng": lng})
+    points.append({"lat": lat - lat_offset, "lng": lng})
+    points.append({"lat": lat, "lng": lng + lng_offset})
+    points.append({"lat": lat, "lng": lng - lng_offset})
+    if radius_m >= 10000:
+        points.append({"lat": lat + lat_offset*0.7, "lng": lng + lng_offset*0.7})
+        points.append({"lat": lat - lat_offset*0.7, "lng": lng - lng_offset*0.7})
+        points.append({"lat": lat + lat_offset*0.7, "lng": lng - lng_offset*0.7})
+        points.append({"lat": lat - lat_offset*0.7, "lng": lng + lng_offset*0.7})
+    return points
+
+
 from io import BytesIO
 import traceback
 import json
@@ -31,6 +66,60 @@ import os, json, datetime, uuid, urllib.parse, urllib.request, traceback
 from extensions import db, limiter
 
 scanner_bp = Blueprint('scanner', __name__)
+
+def _call_groq(api_key, prompt, system_role="You are a helpful assistant.", model="llama3-8b-8192", temperature=0.7):
+    import requests
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    messages = []
+    if system_role:
+        messages.append({"role": "system", "content": system_role})
+    messages.append({"role": "user", "content": prompt})
+    
+    data = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature
+    }
+    try:
+        resp = requests.post(url, headers=headers, json=data, timeout=10)
+        resp.raise_for_status()
+        return True, resp.json()["choices"][0]["message"]["content"]
+    except Exception as e:
+        return False, str(e)
+
+def _call_groq_stream(api_key, prompt, system_role="You are a helpful assistant.", model="llama3-8b-8192", temperature=0.7):
+    import requests, json
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    messages = []
+    if system_role: messages.append({"role": "system", "content": system_role})
+    messages.append({"role": "user", "content": prompt})
+    data = {"model": model, "messages": messages, "temperature": temperature, "stream": True}
+    
+    try:
+        with requests.post(url, headers=headers, json=data, stream=True, timeout=10) as resp:
+            resp.raise_for_status()
+            for line in resp.iter_lines():
+                if line:
+                    line_str = line.decode('utf-8')
+                    if line_str.startswith("data: "):
+                        data_str = line_str[6:]
+                        if data_str.strip() == "[DONE]":
+                            yield "data: [DONE]\n\n"
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            content = chunk.get("choices", [{}])[0].get("delta", {}).get("content", "")
+                            if content:
+                                yield f"data: {json.dumps({'text': content})}\n\n"
+                        except:
+                            pass
+    except Exception as e:
+        yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 @scanner_bp.route('/restaurant')
 def restaurant():
@@ -78,19 +167,71 @@ def restaurant_search():
             x = geo_data['documents'][0]['x']
             y = geo_data['documents'][0]['y']
         
-        # 2. 좌표 기준 음식점(FD6) 검색
+        # 2. 다중 키워드 분산 검색 (거리별로 다양한 결과를 얻기 위함)
         places = []
-        for page in range(1, 5):  # 최대 4페이지(60개)로 확장
-            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=FD6&x={x}&y={y}&radius={radius}&page={page}"
-            cat_resp = requests.get(cat_url, headers=headers)
-            cat_data = cat_resp.json()
-            docs = cat_data.get('documents', [])
-            places.extend(docs)
-            if cat_data.get('meta', {}).get('is_end', True):
-                break
+        seen_ids = set()
+        
+        # 반경에 따라 키워드 수 조정
+        keywords = ["맛집", "고기집", "횟집", "레스토랑", "파스타", "국밥"]
+        if radius >= 5000:
+            keywords.extend(["피자", "치킨", "한정식", "브런치", "짬뽕", "스테이크", "오마카세", "야식"])
+            
+
+        search_points = [{"lat": float(y), "lng": float(x)}]
+        
+        import concurrent.futures
+        def fetch_kw(pt, kw):
+            try:
+                import urllib.parse, requests
+                r_val = int(radius)//2 if int(radius) > 3000 else radius
+                docs = []
+                for p in [1, 2]:
+                    k_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(kw)}&x={pt['lng']}&y={pt['lat']}&radius={r_val}&page={p}"
+                    resp = requests.get(k_url, headers=headers, timeout=3).json()
+                    docs.extend(resp.get('documents', []))
+                    if resp.get('meta', {}).get('is_end', True): break
+                return docs
+            except:
+                return []
+                
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for pt in search_points:
+                for kw in keywords:
+                    futures.append(executor.submit(fetch_kw, pt, kw))
+                    
+        
+        
+        for future in concurrent.futures.as_completed(futures):
+            docs = future.result()
+            for d in docs:
+                p_name = d.get('place_name', '')
+                try:
+                    d_lat = float(d.get('y', 0))
+                    d_lng = float(d.get('x', 0))
+                    actual_dist = haversine(float(y), float(x), d_lat, d_lng)
+                    d['distance'] = str(int(actual_dist))
+                    
+                    if actual_dist <= int(radius) and d['id'] not in seen_ids and True:
+                        places.append(d)
+                        seen_ids.add(d['id'])
+                except Exception as e:
+                    pass
+
                 
         if not places:
             return jsonify({"success": False, "error": "해당 반경 내에 검색된 음식점이 없습니다."})
+            
+        # 거리가 먼 결과도 포함되도록 거리순으로 정렬 후 균등 샘플링 (최대 50개)
+        places.sort(key=lambda p: int(p.get('distance', 0)))
+        
+        limit = 80
+        if radius >= 20000: limit = 200
+        elif radius >= 10000: limit = 150
+        elif radius >= 5000: limit = 120
+        
+        if len(places) > limit:
+            places = places[:limit]
             
         # 3. 카테고리 단순화 및 정리
         results = []
@@ -169,8 +310,8 @@ def restaurant_search():
             return item
 
         # 병렬 스크래핑 처리
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-            scraped_places = list(executor.map(scrape_place, places[:50])) # 최대 30개에서 50개로 확장
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:limit])) # 최대 30개에서 50개로 확장
             
         results = sorted(scraped_places, key=lambda x: x['distance'])
         
@@ -194,17 +335,27 @@ def geocode():
     if not api_key or not lat or not lng:
         return jsonify({"success": False, "error": "API 키 또는 좌표 정보 누락"})
     
-    url = f"https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x={lng}&y={lat}"
+    import requests
+    addr_url = f"https://dapi.kakao.com/v2/local/geo/coord2address.json?x={lng}&y={lat}"
     try:
-        import requests
-        resp = requests.get(url, headers={"Authorization": f"KakaoAK {api_key}"}).json()
+        resp = requests.get(addr_url, headers={"Authorization": f"KakaoAK {api_key}"}).json()
         docs = resp.get("documents", [])
         if docs:
-            # 법정동 혹은 행정동 기준 주소 리턴
-            for d in docs:
-                if d.get("region_type") == "B":  # 법정동
+            d = docs[0]
+            if d.get("road_address") and d["road_address"].get("address_name"):
+                return jsonify({"success": True, "address": d["road_address"]["address_name"]})
+            elif d.get("address") and d["address"].get("address_name"):
+                return jsonify({"success": True, "address": d["address"]["address_name"]})
+                
+        region_url = f"https://dapi.kakao.com/v2/local/geo/coord2regioncode.json?x={lng}&y={lat}"
+        resp2 = requests.get(region_url, headers={"Authorization": f"KakaoAK {api_key}"}).json()
+        docs2 = resp2.get("documents", [])
+        if docs2:
+            for d in docs2:
+                if d.get("region_type") == "B":
                     return jsonify({"success": True, "address": d.get("address_name")})
-            return jsonify({"success": True, "address": docs[0].get("address_name")})
+            return jsonify({"success": True, "address": docs2[0].get("address_name")})
+            
         return jsonify({"success": False, "error": "위치 변환 결과가 없습니다."})
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
@@ -223,6 +374,11 @@ def restaurant_summary():
         
         if not place_id or not google_api_key:
             return jsonify({"success": False, "error": "요청 정보가 올바르지 않거나 구글 API 키가 세팅되지 않았습니다."})
+            
+        from ai_cache import get_cached_summary, save_cached_summary
+        cached = get_cached_summary(place_id, purpose)
+        if cached:
+            return jsonify({"success": True, "summary": cached, "cached": True})
             
         det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
         import requests
@@ -262,7 +418,7 @@ def restaurant_summary():
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel("gemini-2.5-flash", system_instruction=system_instructions)
         
-        response = model.generate_content(prompt, request_options={'timeout': 15})
+        response = model.generate_content(prompt, request_options={'timeout': 30})
         
         res_text = response.text.strip()
         if "```json" in res_text:
@@ -272,6 +428,7 @@ def restaurant_summary():
              
         try:
             parsed_data = json.loads(res_text)
+            save_cached_summary(place_id, purpose, parsed_data)
             return jsonify({"success": True, "summary": parsed_data})
         except json.JSONDecodeError:
             print("FAILED JSON PARSE:", res_text)
@@ -343,7 +500,7 @@ def restaurant_chat():
         genai.configure(api_key=gemini_api_key)
         model = genai.GenerativeModel("gemini-2.5-flash")
         
-        response = model.generate_content(prompt, request_options={'timeout': 15})
+        response = model.generate_content(prompt, request_options={'timeout': 30})
         return jsonify({"success": True, "answer": response.text.strip()})
         
     except Exception as e:
@@ -356,6 +513,39 @@ def restaurant_chat():
             return jsonify({"success": False, "error": "AI 호출 한도 초과: 약 1분 뒤에 다시 시도해주세요. (단기간 사용량 초과)"})
         return jsonify({"success": False, "error": f"AI 답변 중 오류가 발생했습니다. ({error_str})"})
 
+@scanner_bp.route("/api/restaurant/chat/stream", methods=["POST"])
+def restaurant_chat_stream():
+    from flask import Response
+    data = request.json or {}
+    place_id = data.get("place_id")
+    question = data.get("question")
+    import os, requests
+    google_api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    
+    if not place_id or not google_api_key or not question:
+        return Response("data: {\"error\": \"요청 정보 오류\"}\n\n", mimetype="text/event-stream")
+        
+    det_url = f"https://maps.googleapis.com/maps/api/place/details/json?place_id={place_id}&fields=reviews&language=ko&key={google_api_key}"
+    resp = requests.get(det_url).json()
+    reviews = resp.get("result", {}).get("reviews", [])
+    
+    if not reviews:
+        return Response("data: {\"text\": \"아직 리뷰가 등록되지 않아 답변할 수 없습니다.\"}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
+        
+    review_texts = [r.get("text") for r in reviews if r.get("text")]
+    combined_text = "\n".join(review_texts[:5])
+    
+    if not combined_text.strip():
+        return Response("data: {\"text\": \"텍스트 리뷰가 없어 구체적인 답변을 드릴 수 없습니다.\"}\n\ndata: [DONE]\n\n", mimetype="text/event-stream")
+        
+    groq_api_key = os.environ.get("GROQ_API_KEY")
+    if not groq_api_key:
+        return Response("data: {\"error\": \"Groq API 키 누락\"}\n\n", mimetype="text/event-stream")
+        
+    prompt = f"다음은 이 가게의 최근 방문자 리뷰입니다:\n{combined_text}\n\n사용자의 질문: {question}\n\n위 리뷰 내용을 바탕으로 질문에 친절하게 답변해주세요. 정보가 없으면 '알 수 없다'고 하세요."
+    sys_role = "당신은 식당/장소 리뷰 분석 AI입니다. 한국어로 자연스럽게 대답하세요."
+    
+    return Response(_call_groq_stream(groq_api_key, prompt, system_role=sys_role), mimetype="text/event-stream")
 
 @scanner_bp.route('/bakery')
 def bakery():
@@ -367,7 +557,9 @@ def bakery():
 def bakery_search():
     data = request.json
     address = data.get('address', '').strip()
-    radius = data.get('radius', '3000')
+    radius = int(data.get('radius', 3000))
+    lat = data.get('lat')
+    lng = data.get('lng')
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -375,46 +567,92 @@ def bakery_search():
     if not api_key:
         return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
         
-    if not address:
-        return jsonify({"success": False, "error": "지역명을 입력해주세요."})
+    if not address and not (lat and lng):
+        return jsonify({"success": False, "error": "지역명을 입력하거나 현재 위치를 허용해주세요."})
         
     headers = {"Authorization": f"KakaoAK {api_key}"}
     
     try:
-        # 1. 주소 -> 위경도 변환
-        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
-        geo_resp = requests.get(geo_url, headers=headers).json()
-        
-        if not geo_resp.get('documents'):
-            geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+        if lat and lng:
+            x = str(lng)
+            y = str(lat)
+        else:
+            # 1. 주소 -> 위경도 변환
+            geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
             geo_resp = requests.get(geo_url, headers=headers).json()
             
-        if not geo_resp.get('documents'):
-            return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
-            
-        x = geo_resp['documents'][0]['x']
-        y = geo_resp['documents'][0]['y']
+            if not geo_resp.get('documents'):
+                geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+                geo_resp = requests.get(geo_url, headers=headers).json()
+                
+            if not geo_resp.get('documents'):
+                return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+                
+            x = geo_resp['documents'][0]['x']
+            y = geo_resp['documents'][0]['y']
 
-        search_query = f"{address} 빵집"
         places = []
-        for page in range(1, 4):  # 카카오 키워드 검색 최대 3페이지(45개)
-            cat_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote('빵집')}&x={x}&y={y}&radius={radius}&page={page}"
-            cat_resp = requests.get(cat_url, headers=headers)
-            cat_data = cat_resp.json()
-            docs = cat_data.get('documents', [])
+        seen_ids = set()
+        
+        keywords = ["유명한 빵집", "베이커리 카페", "디저트", "마카롱", "케이크", "식빵", "소금빵"]
+        if int(radius) >= 5000:
+            keywords.extend(["타르트", "스콘", "크로플", "도넛", "수제버거", "샌드위치"])
             
-            # 파리바게뜨, 뚜레쥬르 등의 대형 프랜차이즈 제외
-            ignore_keywords = ['파리바게', '뚜레쥬', '뚜레주', '파리크라상', '던킨', '배스킨', '베스킨', '크리스피크림']
+
+        search_points = [{"lat": float(y), "lng": float(x)}]
+        
+        import concurrent.futures
+        def fetch_kw(pt, kw):
+            try:
+                import urllib.parse, requests
+                r_val = int(radius)//2 if int(radius) > 3000 else radius
+                docs = []
+                for p in [1, 2]:
+                    k_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(kw)}&x={pt['lng']}&y={pt['lat']}&radius={r_val}&page={p}"
+                    resp = requests.get(k_url, headers=headers, timeout=3).json()
+                    docs.extend(resp.get('documents', []))
+                    if resp.get('meta', {}).get('is_end', True): break
+                return docs
+            except:
+                return []
+                
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for pt in search_points:
+                for kw in keywords:
+                    futures.append(executor.submit(fetch_kw, pt, kw))
+                    
+        ignore_keywords = ['파리바게', '뚜레쥬', '뚜레주', '파리크라상', '던킨', '배스킨', '베스킨', '크리스피크림']
+        
+        for future in concurrent.futures.as_completed(futures):
+            docs = future.result()
             for d in docs:
                 p_name = d.get('place_name', '')
-                if not any(k in p_name for k in ignore_keywords):
-                    places.append(d)
+                try:
+                    d_lat = float(d.get('y', 0))
+                    d_lng = float(d.get('x', 0))
+                    actual_dist = haversine(float(y), float(x), d_lat, d_lng)
+                    d['distance'] = str(int(actual_dist))
                     
-            if cat_data.get('meta', {}).get('is_end', True):
-                break
+                    if actual_dist <= int(radius) and d['id'] not in seen_ids and not any(k in p_name for k in ignore_keywords):
+                        places.append(d)
+                        seen_ids.add(d['id'])
+                except Exception as e:
+                    pass
+
                 
         if not places:
-            return jsonify({"success": False, "error": f"'{search_query}'(으)로 검색된 결과가 없습니다."})
+            return jsonify({"success": False, "error": f"검색된 빵집/디저트 결과가 없습니다."})
+            
+        places.sort(key=lambda p: int(p.get('distance', 0)))
+        
+        limit = 80
+        if radius >= 20000: limit = 200
+        elif radius >= 10000: limit = 150
+        elif radius >= 5000: limit = 120
+        
+        if len(places) > limit:
+            places = places[:limit]
             
         results = []
         import concurrent.futures
@@ -489,15 +727,15 @@ def bakery_search():
             
             return item
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-            scraped_places = list(executor.map(scrape_place, places[:50]))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:limit]))
             
         results = sorted(scraped_places, key=lambda k: k.get('trust_score', 0), reverse=True)
         
         return jsonify({
             "success": True, 
             "data": results, 
-            "center": None
+            "center": {"x": x, "y": y}
         })
         
     except Exception as e:
@@ -516,7 +754,9 @@ def cafe():
 def cafe_search():
     data = request.json
     address = data.get('address', '').strip()
-    radius = data.get('radius', '3000')
+    radius = int(data.get('radius', 3000))
+    lat = data.get('lat')
+    lng = data.get('lng')
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -524,46 +764,92 @@ def cafe_search():
     if not api_key:
         return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
         
-    if not address:
-        return jsonify({"success": False, "error": "지역명을 입력해주세요."})
+    if not address and not (lat and lng):
+        return jsonify({"success": False, "error": "지역명을 입력하거나 현재 위치를 허용해주세요."})
         
     headers = {"Authorization": f"KakaoAK {api_key}"}
     
     try:
-        # 1. 주소 -> 위경도 변환
-        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
-        geo_resp = requests.get(geo_url, headers=headers).json()
-        
-        if not geo_resp.get('documents'):
-            geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+        if lat and lng:
+            x = str(lng)
+            y = str(lat)
+        else:
+            # 1. 주소 -> 위경도 변환
+            geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
             geo_resp = requests.get(geo_url, headers=headers).json()
             
-        if not geo_resp.get('documents'):
-            return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
-            
-        x = geo_resp['documents'][0]['x']
-        y = geo_resp['documents'][0]['y']
+            if not geo_resp.get('documents'):
+                geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+                geo_resp = requests.get(geo_url, headers=headers).json()
+                
+            if not geo_resp.get('documents'):
+                return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+                
+            x = geo_resp['documents'][0]['x']
+            y = geo_resp['documents'][0]['y']
 
-        # CE7(카페) 카테고리 검색
         places = []
-        for page in range(1, 4):  # 카카오 키워드 검색 최대 3페이지(45개)
-            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=CE7&x={x}&y={y}&radius={radius}&page={page}"
-            cat_resp = requests.get(cat_url, headers=headers)
-            cat_data = cat_resp.json()
-            docs = cat_data.get('documents', [])
+        seen_ids = set()
+        
+        keywords = ["분위기 좋은 카페", "디저트 카페", "로스터리", "에스프레소 바", "대형 카페", "감성 카페"]
+        if int(radius) >= 5000:
+            keywords.extend(["브런치 카페", "테라스 카페", "루프탑 카페", "뷰맛집 카페", "핸드드립"] )
             
-            # 대형 프랜차이즈 카페 제외
-            ignore_keywords = ['스타벅스', '투썸', '이디야', '메가커피', '메가MGC', '컴포즈', '빽다방', '할리스', '파스쿠찌', '엔제리너스', '탐앤탐스', '폴바셋', '커피빈']
+
+        search_points = [{"lat": float(y), "lng": float(x)}]
+        
+        import concurrent.futures
+        def fetch_kw(pt, kw):
+            try:
+                import urllib.parse, requests
+                r_val = int(radius)//2 if int(radius) > 3000 else radius
+                docs = []
+                for p in [1, 2]:
+                    k_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(kw)}&x={pt['lng']}&y={pt['lat']}&radius={r_val}&page={p}"
+                    resp = requests.get(k_url, headers=headers, timeout=3).json()
+                    docs.extend(resp.get('documents', []))
+                    if resp.get('meta', {}).get('is_end', True): break
+                return docs
+            except:
+                return []
+                
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for pt in search_points:
+                for kw in keywords:
+                    futures.append(executor.submit(fetch_kw, pt, kw))
+                    
+        ignore_keywords = ['스타벅스', '투썸', '이디야', '메가커피', '메가MGC', '컴포즈', '빽다방', '할리스', '파스쿠찌', '엔제리너스', '탐앤탐스', '폴바셋', '커피빈']
+        
+        for future in concurrent.futures.as_completed(futures):
+            docs = future.result()
             for d in docs:
                 p_name = d.get('place_name', '')
-                if not any(k in p_name for k in ignore_keywords):
-                    places.append(d)
+                try:
+                    d_lat = float(d.get('y', 0))
+                    d_lng = float(d.get('x', 0))
+                    actual_dist = haversine(float(y), float(x), d_lat, d_lng)
+                    d['distance'] = str(int(actual_dist))
                     
-            if cat_data.get('meta', {}).get('is_end', True):
-                break
+                    if actual_dist <= int(radius) and d['id'] not in seen_ids and not any(k in p_name for k in ignore_keywords):
+                        places.append(d)
+                        seen_ids.add(d['id'])
+                except Exception as e:
+                    pass
+
                 
         if not places:
-            return jsonify({"success": False, "error": f"'{search_query}'(으)로 검색된 결과가 없습니다."})
+            return jsonify({"success": False, "error": f"검색된 카페 결과가 없습니다."})
+            
+        places.sort(key=lambda p: int(p.get('distance', 0)))
+        
+        limit = 80
+        if radius >= 20000: limit = 200
+        elif radius >= 10000: limit = 150
+        elif radius >= 5000: limit = 120
+        
+        if len(places) > limit:
+            places = places[:limit]
             
         results = []
         import concurrent.futures
@@ -636,15 +922,15 @@ def cafe_search():
             
             return item
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-            scraped_places = list(executor.map(scrape_place, places[:50]))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:limit]))
             
         results = sorted(scraped_places, key=lambda k: k.get('trust_score', 0), reverse=True)
         
         return jsonify({
             "success": True, 
             "data": results, 
-            "center": None
+            "center": {"x": x, "y": y}
         })
         
     except Exception as e:
@@ -663,7 +949,9 @@ def clinic():
 def clinic_search():
     data = request.json
     address = data.get('address', '').strip()
-    radius = data.get('radius', '3000')
+    radius = int(data.get('radius', 3000))
+    lat = data.get('lat')
+    lng = data.get('lng')
     import os, urllib.parse, requests
     from flask import jsonify
     
@@ -671,67 +959,92 @@ def clinic_search():
     if not api_key:
         return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
         
-    if not address:
-        return jsonify({"success": False, "error": "지역명 또는 주소를 입력해주세요."})
+    if not address and not (lat and lng):
+        return jsonify({"success": False, "error": "지역명 또는 주소를 입력하거나 현재 위치를 허용해주세요."})
         
     headers = {"Authorization": f"KakaoAK {api_key}"}
     
     try:
-        # 1. 주소 -> 위경도 변환
-        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
-        geo_resp = requests.get(geo_url, headers=headers).json()
-        
-        if not geo_resp.get('documents'):
-            geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+        if lat and lng:
+            x = str(lng)
+            y = str(lat)
+        else:
+            # 1. 주소 -> 위경도 변환
+            geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
             geo_resp = requests.get(geo_url, headers=headers).json()
             
-        if not geo_resp.get('documents'):
-            return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
-            
-        x = geo_resp['documents'][0]['x']
-        y = geo_resp['documents'][0]['y']
+            if not geo_resp.get('documents'):
+                geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+                geo_resp = requests.get(geo_url, headers=headers).json()
+                
+            if not geo_resp.get('documents'):
+                return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+                
+            x = geo_resp['documents'][0]['x']
+            y = geo_resp['documents'][0]['y']
         
-        # 2. HP8(병원) 카테고리 반경 검색 + '한의원' 키워드 병행 검색
         places = []
         seen_ids = set()
         
-        # (1) HP8 카테고리 검색
-        for page in range(1, 3):  # 최대 2페이지(30개)로 줄임 (시간 단축)
-            cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code=HP8&x={x}&y={y}&radius={radius}&page={page}"
-            cat_resp = requests.get(cat_url, headers=headers)
-            cat_data = cat_resp.json()
-            docs = cat_data.get('documents', [])
+        keywords = ["치과", "피부과", "내과", "이비인후과", "안과", "정형외과", "소아과", "한의원", "재활의학과", "통증의학과"]
+        if int(radius) >= 5000:
+            keywords.extend(["성형외과", "산부인과", "비뇨기과", "신경외과", "건강검진", "클리닉"])
             
-            ignore_keywords = ["요양", "동물", "수의", "대학병원", "대학교병원", "의료원", "보건소"]
-            for d in docs:
-                p_name = d.get('place_name', '')
-                pid = d.get('id')
-                if pid not in seen_ids and not any(k in p_name for k in ignore_keywords):
-                    places.append(d)
-                    seen_ids.add(pid)
-                    
-            if cat_data.get('meta', {}).get('is_end', True):
-                break
+
+        search_points = [{"lat": float(y), "lng": float(x)}]
         
-        # (2) 한의원 키워드 검색 (HP8에 안 잡히는 경우가 많음)
-        for page in range(1, 3):  # 최대 2페이지(30개)
-            kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote('한의원')}&x={x}&y={y}&radius={radius}&page={page}"
-            kw_resp = requests.get(kw_url, headers=headers)
-            kw_data = kw_resp.json()
-            docs = kw_data.get('documents', [])
-            
+        import concurrent.futures
+        def fetch_kw(pt, kw):
+            try:
+                import urllib.parse, requests
+                r_val = int(radius)//2 if int(radius) > 3000 else radius
+                docs = []
+                for p in [1, 2]:
+                    k_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(kw)}&x={pt['lng']}&y={pt['lat']}&radius={r_val}&page={p}"
+                    resp = requests.get(k_url, headers=headers, timeout=3).json()
+                    docs.extend(resp.get('documents', []))
+                    if resp.get('meta', {}).get('is_end', True): break
+                return docs
+            except:
+                return []
+                
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for pt in search_points:
+                for kw in keywords:
+                    futures.append(executor.submit(fetch_kw, pt, kw))
+                    
+        ignore_keywords = ["요양", "동물", "수의", "대학병원", "대학교병원", "의료원", "보건소"]
+        
+        for future in concurrent.futures.as_completed(futures):
+            docs = future.result()
             for d in docs:
                 p_name = d.get('place_name', '')
-                pid = d.get('id')
-                if pid not in seen_ids and "한의원" in p_name:
-                    places.append(d)
-                    seen_ids.add(pid)
+                try:
+                    d_lat = float(d.get('y', 0))
+                    d_lng = float(d.get('x', 0))
+                    actual_dist = haversine(float(y), float(x), d_lat, d_lng)
+                    d['distance'] = str(int(actual_dist))
                     
-            if kw_data.get('meta', {}).get('is_end', True):
-                break
+                    if actual_dist <= int(radius) and d['id'] not in seen_ids and not any(k in p_name for k in ignore_keywords):
+                        places.append(d)
+                        seen_ids.add(d['id'])
+                except Exception as e:
+                    pass
+
                 
         if not places:
-            return jsonify({"success": False, "error": "해당 지역 근처에 검색된 병원/클리닉이 없습니다."})
+            return jsonify({"success": False, "error": "해당 반경 내에 검색된 병원/클리닉이 없습니다."})
+            
+        places.sort(key=lambda p: int(p.get('distance', 0)))
+        
+        limit = 80
+        if radius >= 20000: limit = 200
+        elif radius >= 10000: limit = 150
+        elif radius >= 5000: limit = 120
+        
+        if len(places) > limit:
+            places = places[:limit]
             
         import concurrent.futures
         
@@ -806,15 +1119,15 @@ def clinic_search():
             
             return item
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
-            scraped_places = list(executor.map(scrape_place, places[:50]))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=25) as executor:
+            scraped_places = list(executor.map(scrape_place, places[:limit]))
             
         results = sorted(scraped_places, key=lambda k: k.get('trust_score', 0), reverse=True)
         
         return jsonify({
             "success": True, 
             "data": results, 
-            "center": None
+            "center": {"x": x, "y": y}
         })
         
     except Exception as e:
@@ -823,3 +1136,453 @@ def clinic_search():
         return jsonify({"success": False, "error": f"검색 중 오류 발생: {str(e)}"})
 
 
+
+
+@scanner_bp.route('/course')
+def course():
+    import os
+    return render_template('course.html', google_maps_api_key=os.environ.get('GOOGLE_MAPS_API_KEY', ''))
+
+@scanner_bp.route('/api/course/generate', methods=['POST'])
+def course_generate():
+    data = request.json
+    address = data.get('address', '').strip()
+    purpose = data.get('purpose', '로맨틱 데이트')
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "카카오 API 키 누락"})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    import urllib.parse, requests
+    
+    # 주소 -> 좌표
+    geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+    geo_resp = requests.get(geo_url, headers=headers).json()
+    if not geo_resp.get('documents'):
+        geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+        geo_resp = requests.get(geo_url, headers=headers).json()
+    if not geo_resp.get('documents'):
+        return jsonify({"success": False, "error": "주소를 찾을 수 없습니다."})
+        
+    x = geo_resp['documents'][0]['x']
+    y = geo_resp['documents'][0]['y']
+    
+    # 카카오 카테고리 검색: FD6(음식점), CE7(카페), CT1(문화시설), AT4(관광명소), PK6(공원)
+    places_pool = []
+    
+    for cat in ['FD6', 'CE7', 'CT1', 'AT4', 'PK6']:
+        url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code={cat}&x={x}&y={y}&radius=3000&sort=accuracy"
+        resp = requests.get(url, headers=headers).json()
+        docs = resp.get('documents', [])
+        # 카테고리별 상위 5개 추출
+        for d in docs[:5]:
+            places_pool.append({
+                "name": d['place_name'],
+                "category": d['category_group_name'] or d['category_name'],
+                "lat": d['y'],
+                "lng": d['x'],
+                "address": d.get('road_address_name') or d.get('address_name')
+            })
+            
+    # Gemini AI에게 조합 요청
+    import json
+    groq_api_key = os.environ.get('GEMINI_API_KEY') or os.environ.get('GROQ_API_KEY')
+    if not groq_api_key:
+        return jsonify({"success": False, "error": "AI API 키 누락"})
+        
+    prompt = f"""
+다음 장소 후보들을 바탕으로 '{address}' 주변의 '{purpose}' 목적에 맞는 최고의 원데이 코스 3곳(예: 식사 -> 카페 -> 놀거리 등)을 기획해줘.
+장소 후보:
+{json.dumps(places_pool, ensure_ascii=False, indent=2)}
+
+출력은 반드시 다음 JSON 형식으로만 해줘. 마크다운이나 다른 설명은 절대 넣지마.
+{{
+  "summary": "이 코스를 기획한 전체적인 이유와 분위기 요약 (2-3문장)",
+  "course": [
+    {{
+      "name": "장소명",
+      "category": "카테고리명",
+      "lat": "위도",
+      "lng": "경도",
+      "reason": "이 장소를 코스에 넣은 이유 (1문장)"
+    }},
+    ... 3개 작성 ...
+  ]
+}}
+"""
+    try:
+        if os.environ.get('GEMINI_API_KEY'):
+            import google.generativeai as genai
+            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(prompt)
+            raw_text = response.text
+        else:
+            # Fallback to groq
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.5,
+                "response_format": {"type": "json_object"}
+            }
+            resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}", "Content-Type": "application/json"},
+                json=payload
+            ).json()
+            raw_text = resp['choices'][0]['message']['content']
+            
+        # Extract JSON robustly
+        raw_text = raw_text.replace("```json", "").replace("```", "").strip()
+        start_idx = raw_text.find("{")
+        end_idx = raw_text.rfind("}")
+        if start_idx != -1 and end_idx != -1:
+            raw_text = raw_text[start_idx:end_idx+1]
+        result_json = json.loads(raw_text)
+        
+        return jsonify({
+            "success": True,
+            "course": result_json.get("course", []),
+            "summary": result_json.get("summary", "")
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"AI 코스 기획 중 오류 발생: {str(e)}"})
+
+
+@scanner_bp.route('/estate')
+def estate():
+    import os
+    return render_template('estate.html', google_maps_api_key=os.environ.get('GOOGLE_MAPS_API_KEY', ''))
+
+@scanner_bp.route('/api/estate/analyze', methods=['POST'])
+def estate_analyze():
+    data = request.json
+    address = data.get('address', '').strip()
+    radius = data.get('radius', '1000')
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "카카오 API 키 누락"})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    import urllib.parse, requests
+    
+    geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+    geo_resp = requests.get(geo_url, headers=headers).json()
+    if not geo_resp.get('documents'):
+        geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+        geo_resp = requests.get(geo_url, headers=headers).json()
+    if not geo_resp.get('documents'):
+        return jsonify({"success": False, "error": "주소를 찾을 수 없습니다."})
+        
+    x = geo_resp['documents'][0]['x']
+    y = geo_resp['documents'][0]['y']
+    
+    categories = ['MT1', 'CS2', 'PS3', 'SC4', 'SW8', 'HP8', 'PM9', 'PK6', 'CE7']
+    counts = {}
+    top_places = {}
+    places_dict = {}
+    import concurrent.futures
+    
+    def fetch_data(cat):
+        url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code={cat}&x={x}&y={y}&radius={radius}&sort=distance"
+        try:
+            resp = requests.get(url, headers=headers).json()
+            total_count = resp['meta']['total_count']
+            top_place = None
+            docs_list = []
+            if total_count > 0 and resp.get('documents'):
+                docs_list = [{"name": d['place_name'], "distance": d['distance'], "url": d.get('place_url', '#')} for d in resp['documents'][:15]]
+                doc = resp['documents'][0]
+                top_place = {
+                    "name": doc['place_name'],
+                    "distance": doc['distance']
+                }
+            return cat, total_count, top_place, docs_list
+        except Exception as e:
+            print(f"Error fetching {cat}: {e}")
+            return cat, 0, None, []
+            
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        for cat, count, top_place, docs_list in executor.map(fetch_data, categories):
+            counts[cat] = count
+            places_dict[cat] = docs_list
+            if top_place:
+                top_places[cat] = top_place
+            
+    # 점수 계산 (단순 로직)
+    transport = min(100, counts.get('SW8', 0) * 30 + 10)
+    education = min(100, (counts.get('SC4', 0) + counts.get('PS3', 0)) * 15)
+    shopping = min(100, counts.get('MT1', 0) * 40 + counts.get('CE7', 0) * 5)
+    nature = min(100, counts.get('PK6', 0) * 20 + 20)
+    medical = min(100, (counts.get('HP8', 0) + counts.get('PM9', 0)) * 5)
+    convenience = min(100, counts.get('CS2', 0) * 5)
+    
+    scores = {
+        "transport": transport,
+        "education": education,
+        "shopping": shopping,
+        "nature": nature,
+        "medical": medical,
+        "convenience": convenience
+    }
+    total_score = int((transport + education + shopping + nature + medical + convenience) / 6)
+    
+    # Gemini AI 요약
+    import json
+    prompt = f"""
+'{address}' 주변 반경 {radius}m 내의 인프라 데이터입니다.
+- 대형마트: {counts.get('MT1')}개 (가장 가까운 곳: {top_places.get('MT1', {}).get('name', '없음')} - {top_places.get('MT1', {}).get('distance', '')}m)
+- 지하철역: {counts.get('SW8')}개 (가장 가까운 곳: {top_places.get('SW8', {}).get('name', '없음')} - {top_places.get('SW8', {}).get('distance', '')}m)
+- 학교: {counts.get('SC4')}개 (가장 가까운 곳: {top_places.get('SC4', {}).get('name', '없음')} - {top_places.get('SC4', {}).get('distance', '')}m)
+- 공원: {counts.get('PK6')}개 (가장 가까운 곳: {top_places.get('PK6', {}).get('name', '없음')} - {top_places.get('PK6', {}).get('distance', '')}m)
+- 병원: {counts.get('HP8')}개 (가장 가까운 곳: {top_places.get('HP8', {}).get('name', '없음')} - {top_places.get('HP8', {}).get('distance', '')}m)
+- 편의점: {counts.get('CS2')}개, 카페: {counts.get('CE7')}개
+
+위 랜드마크(이름과 거리)를 바탕으로 이곳에 실제로 거주한다면 어떤 느낌일지, 장단점은 무엇일지 "부동산 전문가이자 친근한 이웃"의 말투로 분석 보고서를 작성해주세요.
+반드시 제공된 실제 랜드마크 이름(예: OO역, OO초등학교, OO공원 등)을 구체적으로 언급하며 브리핑해주세요.
+(단락을 나누어 보기 좋게 작성하고 핵심 키워드는 볼드 처리해주세요. 400자 이내)
+"""
+    try:
+        summary_text = "AI 분석을 불러오는 중 오류가 발생했습니다."
+        if os.environ.get('GEMINI_API_KEY'):
+            import google.generativeai as genai
+            genai.configure(api_key=os.environ.get('GEMINI_API_KEY'))
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(prompt)
+            summary_text = response.text
+        else:
+            payload = {
+                "model": "llama-3.3-70b-versatile",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.5
+            }
+            resp = requests.post("https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {os.environ.get('GROQ_API_KEY')}", "Content-Type": "application/json"},
+                json=payload
+            ).json()
+            summary_text = resp['choices'][0]['message']['content']
+    except:
+        pass
+        
+    return jsonify({
+        "success": True,
+        "counts": counts,
+        "top_places": top_places,
+        "places_dict": places_dict,
+        "scores": scores,
+        "total_score": total_score,
+        "summary": summary_text,
+        "center": {"lat": y, "lng": x},
+        "radius": radius
+    })
+
+@scanner_bp.route('/lotto_scanner')
+def lotto_scanner():
+    import os
+    return render_template('lotto.html', google_maps_api_key=os.environ.get('GOOGLE_MAPS_API_KEY', ''))
+
+@scanner_bp.route('/api/lotto/search', methods=['POST'])
+def lotto_search():
+    data = request.json
+    address = data.get('address', '').strip()
+    radius = int(data.get('radius', 3000))
+    lat = data.get('lat')
+    lng = data.get('lng')
+    import os, urllib.parse, requests
+    from flask import jsonify
+    
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "서비스 설정 오류: 카카오 REST API 키가 환경 변수에 등록되지 않았습니다."})
+        
+    if not address and not (lat and lng):
+        return jsonify({"success": False, "error": "지역명을 입력하거나 현재 위치를 허용해주세요."})
+        
+    headers = {"Authorization": f"KakaoAK {api_key}"}
+    
+    try:
+        if lat and lng:
+            x = str(lng)
+            y = str(lat)
+        else:
+            geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(address)}"
+            geo_resp = requests.get(geo_url, headers=headers).json()
+            if not geo_resp.get('documents'):
+                geo_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(address)}"
+                geo_resp = requests.get(geo_url, headers=headers).json()
+            if not geo_resp.get('documents'):
+                return jsonify({"success": False, "error": "해당 주소나 지역을 찾을 수 없습니다."})
+            x = geo_resp['documents'][0]['x']
+            y = geo_resp['documents'][0]['y']
+
+        places = []
+        seen_ids = set()
+        
+        keywords = ["로또명당", "복권방", "스피또"]
+        search_points = [{"lat": float(y), "lng": float(x)}]
+        
+        import concurrent.futures
+        def fetch_kw(pt, kw):
+            try:
+                import urllib.parse, requests
+                r_val = int(radius)//2 if int(radius) > 3000 else radius
+                docs = []
+                for p in [1, 2]:
+                    k_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(kw)}&x={pt['lng']}&y={pt['lat']}&radius={r_val}&page={p}"
+                    resp = requests.get(k_url, headers=headers, timeout=3).json()
+                    docs.extend(resp.get('documents', []))
+                    if resp.get('meta', {}).get('is_end', True): break
+                return docs
+            except:
+                return []
+                
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            for pt in search_points:
+                for kw in keywords:
+                    futures.append(executor.submit(fetch_kw, pt, kw))
+                    
+        for future in concurrent.futures.as_completed(futures):
+            docs = future.result()
+            for d in docs:
+                p_name = d.get('place_name', '')
+                try:
+                    d_lat = float(d.get('y', 0))
+                    d_lng = float(d.get('x', 0))
+                    actual_dist = haversine(float(y), float(x), d_lat, d_lng)
+                    d['distance'] = str(int(actual_dist))
+                    
+                    if actual_dist <= int(radius) and d['id'] not in seen_ids:
+                        places.append(d)
+                        seen_ids.add(d['id'])
+                except Exception as e:
+                    pass
+
+        if not places:
+            return jsonify({"success": False, "error": f"검색된 복권방 결과가 없습니다."})
+            
+        places.sort(key=lambda p: int(p.get('distance', 0)))
+        
+        limit = 80
+        if radius >= 20000: limit = 200
+        elif radius >= 10000: limit = 150
+        elif radius >= 5000: limit = 120
+        
+        if len(places) > limit:
+            places = places[:limit]
+            
+        results = []
+        for p in places:
+            pid = p.get('id')
+            p_name = p.get('place_name')
+            p_url = p.get('place_url')
+            full_cat = p.get('category_name', '')
+            dist_str = p.get('distance', '0')
+            dist = int(dist_str) if dist_str else 0
+            
+            cat_simplified = "기타"
+            if "명당" in p_name: cat_simplified = "로또명당"
+            elif "스피또" in p_name or "연금" in p_name: cat_simplified = "스피또/연금"
+            elif "복권" in p_name or "로또" in p_name: cat_simplified = "일반복권방"
+            
+            # 카카오 API는 rating이 없으므로 N/A 처리, trust_score는 0
+            # 명당 단어가 포함되면 trust_score에 가산점
+            trust = 0
+            if "명당" in p_name: trust += 500
+            
+            item = {
+                'id': pid,
+                'name': p_name,
+                'category': cat_simplified,
+                'full_category': full_cat,
+                'distance': dist,
+                'address': p.get('road_address_name') or p.get('address_name'),
+                'phone': p.get('phone', ''),
+                'x': p.get('x'),
+                'y': p.get('y'),
+                'url': p_url,
+                'rating': "N/A",
+                'total_ratings': 0,
+                'place_id': pid, # Kakao ID instead of Google place_id
+                'photo_url': None,
+                'is_open': None,
+                'trust_score': trust
+            }
+            results.append(item)
+            
+        # trust_score 순으로 다시 정렬
+        results.sort(key=lambda x: x['trust_score'], reverse=True)
+            
+        return jsonify({
+            "success": True, 
+            "data": results, 
+            "center": {"x": x, "y": y}
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})
+
+@scanner_bp.route('/api/lotto/history', methods=['POST'])
+def lotto_history():
+    data = request.json
+    place_name = data.get('place_name')
+    if not place_name:
+        return jsonify({"success": False, "error": "가게 이름이 없습니다."})
+        
+    import os, urllib.parse, requests
+    api_key = os.environ.get('KAKAO_REST_API_KEY')
+    
+    blog_texts = ""
+    if api_key:
+        try:
+            # 카카오 블로그 검색 활용
+            url = f"https://dapi.kakao.com/v2/search/blog?query={urllib.parse.quote(place_name + ' 로또 1등 당첨')}&size=10"
+            headers = {"Authorization": f"KakaoAK {api_key}"}
+            resp = requests.get(url, headers=headers, timeout=5).json()
+            for item in resp.get('documents', []):
+                # HTML 태그 제거
+                title = item.get('title', '').replace('<b>', '').replace('</b>', '')
+                desc = item.get('contents', '').replace('<b>', '').replace('</b>', '')
+                blog_texts += title + " " + desc + "\n"
+        except:
+            pass
+
+    gemini_key = os.environ.get('GEMINI_API_KEY')
+    if not gemini_key:
+        return jsonify({"success": False, "error": "AI API 키가 설정되지 않았습니다."})
+        
+    import google.generativeai as genai
+    genai.configure(api_key=gemini_key)
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    
+    prompt = f"""
+다음은 '{place_name}' 복권방에 대한 최신 블로그 검색 결과입니다:
+{blog_texts}
+
+위 정보를 분석하여 아래 내용을 추출해주세요. 만약 블로그 결과에 당첨 횟수가 명확히 나오지 않으면, '최근 블로그 기록상 명확한 당첨 횟수는 확인되지 않았습니다.'라고 기재해주세요. (환각 금지)
+
+1. 1등 당첨 횟수: 
+2. 2등 당첨 횟수:
+3. 이 가게의 특징 요약:
+
+응답은 유저가 읽기 좋게 짧고 깔끔한 HTML 형식(단락 바꿈시 <br> 활용)으로 작성해주세요. ```html 태그는 빼주세요.
+"""
+    try:
+        response = model.generate_content(prompt)
+        text = response.text.replace('```html', '').replace('```', '').strip()
+        
+        target_score = 50
+        if "1등" in text and ("번" in text or "회" in text):
+            target_score = 95
+            
+        return jsonify({
+            "success": True,
+            "summary": {
+                "target_score": target_score,
+                "recent_vibe": "최근 당첨 이력 AI 스캔 완료",
+                "summary": text,
+                "hashtags": ["로또명당", "1등기원", "대박기원"]
+            }
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)})

@@ -1360,3 +1360,316 @@ def api_polisher():
     return jsonify({"success": success, "result": text, "error": text if not success else ""})
 
 
+@tools_bp.route('/message')
+def message_maker_view():
+    return render_template('message_maker.html')
+
+
+@tools_bp.route('/api/message/generate', methods=['POST'])
+def api_message_generate():
+    data = request.json
+    target = data.get('target', '부모님')
+    context = data.get('context', '')
+    
+    if not context:
+        return jsonify({"success": False, "error": "전달할 내용을 입력해주세요."})
+        
+    api_key = os.environ.get('GEMINI_API_KEY')
+    groq_api_key = os.environ.get('GROQ_API_KEY')
+    
+    if not api_key and not groq_api_key:
+        return jsonify({"success": False, "error": "API 키가 설정되지 않았습니다."})
+        
+    sys_prompt = f"""당신은 세계 최고의 메세지/카카오톡 대필 전문가입니다.
+사용자가 대충 적은 상황(context)을 보고, 받는 대상({target})에게 보내기 딱 좋은 찰떡같은 메세지 3가지 버전을 작성해주세요.
+
+받는 사람(대상): {target}
+사용자의 상황(초안): {context}
+
+[핵심 규칙]
+1. 절대 과하게 오글거리거나 인위적인 문장은 쓰지 마세요. 한국인들이 카카오톡에서 실제로 쓰는 매우 자연스럽고 일상적인 말투(구어체)를 완벽하게 반영하세요.
+2. 장황하게 길게 쓰면 부담스럽습니다. 핵심만 간결하고 깔끔하게 전달하세요.
+3. 대상과의 관계를 고려하여 서로 다른 뉘앙스(예: 담백한 톤, 살짝 애교/유머 있는 톤, 조금 더 정중한 톤 등) 3가지를 만들어주세요.
+4. 이모티콘(이모지)은 너무 남발하지 말고, 한두 개만 적절히 포인트로 넣어주세요.
+
+반드시 다음 JSON 형식으로만 응답하세요. 다른 말은 절대 넣지 마세요.
+{{
+    "options": [
+        {{ "style": "톤 이름 (예: 정중하고 진지한 스타일)", "text": "실제 메시지 내용" }},
+        {{ "style": "톤 이름 (예: 애교 섞인 귀여운 스타일)", "text": "실제 메시지 내용" }},
+        {{ "style": "톤 이름 (예: 짧고 담백한 스타일)", "text": "실제 메시지 내용" }}
+    ]
+}}
+"""
+    success = False
+    result_text = ""
+    
+    if api_key:
+        success, result_text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+        if not success and ("429" in result_text or "exceeded" in result_text.lower()) and groq_api_key:
+            success, result_text = _call_groq_chat(groq_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+    elif groq_api_key:
+        success, result_text = _call_groq_chat(groq_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+        
+    if not success:
+        return jsonify({"success": False, "error": f"AI 통신 오류: {result_text}"})
+        
+    # JSON 파싱
+    if "```json" in result_text:
+        result_text = result_text.split("```json")[1].split("```")[0].strip()
+    elif "```" in result_text:
+        result_text = result_text.split("```")[1].split("```")[0].strip()
+        
+    try:
+        import json
+        parsed = json.loads(result_text)
+        return jsonify({"success": True, "options": parsed.get('options', [])})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"JSON 형식 오류: {str(e)}\n\n원본 응답: {result_text}"})
+
+
+@tools_bp.route('/travel')
+def travel_planner_view():
+    return render_template('travel_planner.html')
+
+
+@tools_bp.route('/api/travel/plan', methods=['POST'])
+def api_travel_plan():
+    data = request.json
+    destination = data.get('destination', '')
+    duration = data.get('duration', '')
+    companion = data.get('companion', '')
+    themes = data.get('themes', [])
+    draft_schedule = data.get('draft_schedule', '').strip()
+    
+    if not destination:
+        return jsonify({"success": False, "error": "목적지를 입력해주세요."})
+        
+    api_key = os.environ.get('GEMINI_API_KEY')
+    groq_api_key = os.environ.get('GROQ_API_KEY')
+    
+    if not api_key and not groq_api_key:
+        return jsonify({"success": False, "error": "API 키가 설정되지 않았습니다."})
+        
+    theme_str = ", ".join(themes)
+    
+    user_draft_text = f"\n[사용자의 기존 여행 계획 (초안)]\n{draft_schedule}\n(주의: 위 초안에 적힌 날짜와 시간, 장소는 반드시! 그대로 유지하고 비어있는 시간이나 세부 설명만 채워주세요.)\n" if draft_schedule else ""
+    
+    sys_prompt = f"""당신은 세계 최고의 여행 가이드이자 여행 플래너입니다.
+사용자가 입력한 목적지, 일정, 동반자, 테마를 바탕으로 완벽한 세부 일정을 기획해야 합니다.
+국내 여행 뿐만 아니라 해외 여행의 경우에도 현지의 유명 랜드마크, 맛집, 동선을 정확하게 고려하여 일정을 짜주세요.
+
+[입력 정보]
+- 목적지: {destination}
+- 기간: {duration}
+- 동반자: {companion}
+- 핵심 테마: {theme_str}
+{user_draft_text}
+
+[출력 JSON 구조 - 반드시 이 구조를 지키세요]
+{{
+  "destination": "{destination}",
+  "budget_tips": [
+    "예상 경비나 환전/결제 관련 팁 1 (구체적인 금액이나 수단 언급)",
+    "경비 팁 2"
+  ],
+  "packing_tips": [
+    "해당 목적지와 기간에 맞는 필수 준비물 1",
+    "준비물 팁 2"
+  ],
+  "days": [
+    {{
+      "day_number": 1,
+      "theme": "1일차 핵심 테마 (예: 현지 도착 및 야경 투어)",
+      "schedule": [
+        {{
+          "time": "14:00 - 15:30",
+          "place_name": "구체적인 장소 이름 (예: 센소지, 신주쿠 교엔, 오설록 티 뮤지엄 등)",
+          "description": "이곳에 가야 하는 이유와 즐길 거리, 메뉴 추천 등 상세한 설명"
+        }}
+      ]
+    }}
+  ]
+}}
+
+[요구사항]
+1. 장소 이름(place_name)은 추후 구글 지도 검색에 용이하도록 정확한 고유 명사(현지어 또는 널리 쓰이는 한국어 명칭)로 적어주세요.
+2. 각 Day마다 아침부터 밤까지 일정이 꽉 차지만 물리적으로 이동 가능한 현실적인 동선이어야 합니다.
+3. {theme_str} 테마가 적극적으로 반영되어야 합니다.
+4. 반드시 마크다운(```json) 없이 순수 JSON 문자열만 응답하세요. 다른 설명은 붙이지 마세요.
+"""
+    success = False
+    result_text = ""
+    
+    if api_key:
+        success, result_text = _call_gemini_chat(api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+        if not success and ("429" in result_text or "exceeded" in result_text.lower()) and groq_api_key:
+            success, result_text = _call_groq_chat(groq_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+    elif groq_api_key:
+        success, result_text = _call_groq_chat(groq_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+        
+    if not success:
+        return jsonify({"success": False, "error": f"AI 통신 오류: {result_text}"})
+        
+    # JSON 파싱
+    if "```json" in result_text:
+        result_text = result_text.split("```json")[1].split("```")[0].strip()
+    elif "```" in result_text:
+        result_text = result_text.split("```")[1].split("```")[0].strip()
+        
+    try:
+        import json
+        parsed = json.loads(result_text)
+        return jsonify({"success": True, "plan": parsed})
+    except Exception as e:
+        return jsonify({"success": False, "error": f"JSON 형식 오류: {str(e)}\n\n원본 응답: {result_text}"})
+
+@tools_bp.route('/meetup')
+def meetup_planner_view():
+    return render_template('meetup.html', google_maps_api_key=os.environ.get('GOOGLE_MAPS_API_KEY', ''))
+
+
+@tools_bp.route('/api/meetup/recommend', methods=['POST'])
+def api_meetup_recommend():
+    data = request.json
+    addresses = data.get('addresses', [])
+    
+    if not addresses or len(addresses) < 2:
+        return jsonify({"success": False, "error": "최소 2개 이상의 출발 주소를 입력해주세요."})
+        
+    kakao_api_key = os.environ.get('KAKAO_REST_API_KEY')
+    if not kakao_api_key:
+        return jsonify({"success": False, "error": "Kakao API 키가 설정되지 않았습니다."})
+        
+    import urllib.parse
+    import requests
+    import math
+    
+    headers = {"Authorization": f"KakaoAK {kakao_api_key}"}
+    
+    locations = []
+    
+    # 1. Geocode all addresses
+    for addr in addresses:
+        if not addr.strip(): continue
+        geo_url = f"https://dapi.kakao.com/v2/local/search/address.json?query={urllib.parse.quote(addr.strip())}"
+        resp = requests.get(geo_url, headers=headers).json()
+        
+        if resp.get('documents'):
+            doc = resp['documents'][0]
+            locations.append({
+                "original": addr.strip(),
+                "name": doc.get('address_name', addr),
+                "lat": float(doc['y']),
+                "lng": float(doc['x'])
+            })
+        else:
+            # Fallback to keyword search
+            kw_url = f"https://dapi.kakao.com/v2/local/search/keyword.json?query={urllib.parse.quote(addr.strip())}"
+            resp_kw = requests.get(kw_url, headers=headers).json()
+            if resp_kw.get('documents'):
+                doc = resp_kw['documents'][0]
+                locations.append({
+                    "original": addr.strip(),
+                    "name": doc.get('place_name', addr),
+                    "lat": float(doc['y']),
+                    "lng": float(doc['x'])
+                })
+            else:
+                return jsonify({"success": False, "error": f"주소를 찾을 수 없습니다: {addr}"})
+                
+    if len(locations) < 2:
+         return jsonify({"success": False, "error": "유효한 주소가 2개 이상 필요합니다."})
+         
+    # 2. Calculate Midpoint (Average of lat/lng)
+    avg_lat = sum(loc['lat'] for loc in locations) / len(locations)
+    avg_lng = sum(loc['lng'] for loc in locations) / len(locations)
+    
+    # 3. Get address for Midpoint
+    coord_url = f"https://dapi.kakao.com/v2/local/geo/coord2address.json?x={avg_lng}&y={avg_lat}"
+    coord_resp = requests.get(coord_url, headers=headers).json()
+    midpoint_address = "중간 지점"
+    if coord_resp.get('documents'):
+        doc = coord_resp['documents'][0]
+        if doc.get('road_address'):
+            midpoint_address = doc['road_address']['address_name']
+        elif doc.get('address'):
+            midpoint_address = doc['address']['address_name']
+            
+    # 4. Find places around midpoint (FD6 - Food, CE7 - Cafe)
+    places = []
+    for category in ['FD6', 'CE7']:
+        cat_url = f"https://dapi.kakao.com/v2/local/search/category.json?category_group_code={category}&x={avg_lng}&y={avg_lat}&radius=2000&sort=distance"
+        cat_resp = requests.get(cat_url, headers=headers).json()
+        if cat_resp.get('documents'):
+             for p in cat_resp['documents'][:15]: # Take top 15 from each
+                 places.append({
+                     "name": p['place_name'],
+                     "category": p['category_name'],
+                     "address": p.get('road_address_name') or p.get('address_name') or "",
+                     "distance": p['distance'],
+                     "url": p['place_url']
+                 })
+                 
+    if not places:
+        return jsonify({"success": False, "error": "중간 지점 근처에 추천할 만한 식당이나 카페를 찾지 못했습니다."})
+        
+    # 5. AI Curation via Gemini
+    ai_api_key = os.environ.get('GEMINI_API_KEY')
+    if not ai_api_key:
+         return jsonify({"success": False, "error": "AI API 키가 설정되지 않았습니다."})
+         
+    places_text = ""
+    for idx, p in enumerate(places):
+        places_text += f"{idx+1}. {p['name']} ({p['category']}) - {p['distance']}m 거리 / 주소: {p['address']}\n"
+        
+    sys_prompt = f"""당신은 친구들의 약속 장소를 정해주는 AI 매니저입니다.
+다수의 사람들이 모이는 중간 지점 근처의 장소 데이터가 주어집니다.
+친구들이 모여서 식사하거나 차를 마시기 가장 좋은 장소 5곳을 선별해주세요. (카페와 식당을 골고루 섞어주세요)
+
+[중간 지점 정보]
+- 위도: {avg_lat}, 경도: {avg_lng}
+- 행정구역: {midpoint_address}
+
+[주변 후보 리스트]
+{places_text}
+
+[출력 형식 - 반드시 JSON 구조만 출력하세요]
+{{
+  "midpoint": {{
+    "lat": {avg_lat},
+    "lng": {avg_lng},
+    "address": "{midpoint_address}"
+  }},
+  "recommendations": [
+    {{
+      "name": "장소 이름",
+      "category": "분류 (예: 카페, 고깃집 등)",
+      "distance": "거리 (문자열로, 예: '500m')",
+      "reason": "약속 장소로 추천하는 이유 (친근한 말투로 1~2문장)"
+    }}
+  ]
+}}
+"""
+    
+    success, result_text = _call_gemini_chat(ai_api_key, [{"role": "user", "content": sys_prompt}], temperature=0.7)
+    
+    if not success:
+         return jsonify({"success": False, "error": f"AI 추천 중 오류가 발생했습니다: {result_text}"})
+         
+    if "```json" in result_text:
+        result_text = result_text.split("```json")[1].split("```")[0].strip()
+    elif "```" in result_text:
+        result_text = result_text.split("```")[1].split("```")[0].strip()
+        
+    try:
+        import json
+        parsed = json.loads(result_text)
+        return jsonify({
+            "success": True, 
+            "midpoint": parsed.get("midpoint", {"lat": avg_lat, "lng": avg_lng, "address": midpoint_address}),
+            "recommendations": parsed.get("recommendations", []),
+            "locations": locations
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": f"JSON 파싱 오류: {str(e)}\n\n원본 응답: {result_text}"})

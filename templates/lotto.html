@@ -3,234 +3,640 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HOT & COLD 로또 교배기</title>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <title>🥐 AI 주변 빵집 스캐너</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Pretendard:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js">
+        let isMapView = false;
+        function toggleMapView() {
+            isMapView = !isMapView;
+            const mapContainer = document.getElementById('mapContainer');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const btnSpan = document.querySelector('#mapToggleBtn span');
+            const btnIcon = document.querySelector('#mapToggleBtn i');
+            
+            if (isMapView) {
+                mapContainer.style.display = 'block';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                resultsGrid.style.display = 'none';
+                btnSpan.textContent = '목록 보기';
+                btnIcon.className = 'fa-solid fa-list';
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                    if (currentCenter) {
+                        map.setCenter({ lat: parseFloat(currentCenter.y), lng: parseFloat(currentCenter.x) });
+                    }
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                btnSpan.textContent = '지도 보기';
+                btnIcon.className = 'fa-solid fa-map-location-dot';
+            }
+        }
+        
+    </script>
     
     <style>
         :root {
             --bg-color: #0b0e14;
             --panel-bg: rgba(22, 27, 34, 0.6);
             --border-color: rgba(255, 255, 255, 0.08);
-            --primary: #10b981;
-            --hot-color: #ff3366;
-            --cold-color: #00f0ff;
+            --primary: #d2691e;
+            --secondary: #e67e22;
             --text-main: #f0f6fc;
             --text-muted: #8b949e;
         }
 
         body {
             margin: 0;
-            font-family: 'Outfit', sans-serif;
+            padding: 0;
+            font-family: 'Pretendard', 'Outfit', sans-serif;
             background-color: var(--bg-color);
-            background-image: radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.1), transparent 50%);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(210, 105, 30, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(230, 126, 34, 0.05), transparent 25%);
             color: var(--text-main);
             min-height: 100vh;
         }
 
+        .navbar {
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 14, 20, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .navbar a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 1.1rem;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover {
+            color: var(--text-main);
+        }
+
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
             padding: 2rem;
         }
 
-        header {
-            text-align: center;
-            margin-bottom: 3rem;
-            animation: fadeInDown 0.8s ease-out;
-        }
-
         h1 {
-            font-size: 3rem;
-            margin: 0 0 1rem 0;
-            background: linear-gradient(135deg, #fff, #10b981);
-            -webkit-background-clip: text;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            background: linear-gradient(135deg, #fff, #e67e22);
             background-clip: text;
+            -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            font-weight: 800;
         }
 
         p.subtitle {
+            text-align: center;
             color: var(--text-muted);
             font-size: 1.1rem;
+            margin-bottom: 3rem;
         }
 
-        .action-panel {
+        /* Search Bar */
+        .search-area {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            position: relative;
+            flex: 1;
+            max-width: 400px;
+        }
+
+        .input-group > i {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        input[type="text"] {
+            width: 100%;
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 2rem;
-            text-align: center;
-            backdrop-filter: blur(10px);
-            margin-bottom: 3rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border-radius: 12px;
+            padding: 1rem 6.5rem 1rem 2.8rem;
+            font-size: 1rem;
+            color: var(--text-main);
+            box-sizing: border-box;
+            outline: none;
+            transition: all 0.3s ease;
         }
 
-        button.generate-btn {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 1.2rem 3rem;
-            border-radius: 50px;
-            font-size: 1.5rem;
-            font-weight: 700;
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(255, 170, 0, 0.2);
+        }
+
+        select {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            font-size: 1rem;
+            color: var(--text-main);
+            outline: none;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
-            display: inline-flex;
-            align-items: center;
-            gap: 15px;
         }
 
-        button.generate-btn:hover {
-            transform: translateY(-5px) scale(1.02);
-            box-shadow: 0 15px 35px rgba(16, 185, 129, 0.6);
+        select:focus {
+            border-color: var(--primary);
+        }
+
+        .geo-btn {
+            position: absolute;
+            right: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 170, 0, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            border-radius: 8px;
+            padding: 0.5rem 0.8rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .geo-btn:hover {
+            background: rgba(255, 170, 0, 0.2);
+            color: #fff;
         }
         
-        button.generate-btn:active {
-            transform: translateY(2px);
+        .geo-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
 
-        /* --- Grid for Results --- */
-        .results-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            display: none; /* hidden initially */
-            animation: fadeIn 0.8s ease-out;
+        button.search-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 170, 0, 0.3);
         }
 
-        .result-card {
+        button.search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 170, 0, 0.4);
+        }
+
+        /* Filter Tabs & Sort Area */
+        .controls-area {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .sort-select {
             background: var(--panel-bg);
             border: 1px solid var(--border-color);
-            border-radius: 24px;
-            padding: 2rem;
-            backdrop-filter: blur(10px);
-            position: relative;
-            overflow: hidden;
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .sort-select:focus {
+            border-color: var(--primary);
         }
 
-        .result-card.hot { border-top: 4px solid var(--hot-color); }
-        .result-card.cold { border-top: 4px solid var(--cold-color); }
-        .result-card.mixed { border-top: 4px solid #a855f7; grid-column: 1 / -1; }
+        .tab {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 0.6rem 1.2rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+        }
+
+        .tab:hover {
+            color: var(--text-main);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .tab.active {
+            background: rgba(255, 170, 0, 0.15);
+            border-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Cards Grid */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .card-thumbnail {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-bottom: 1px solid var(--border-color);
+            background: #1e1e1e;
+        }
+
+        .card-content {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .status-open { background: rgba(46, 204, 113, 0.85); color: white; }
+        .status-closed { background: rgba(231, 76, 60, 0.85); color: white; }
 
         .card-header {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            align-items: flex-start;
+            margin-bottom: 1rem;
         }
 
-        .card-header h2 {
-            margin: 0;
-            font-size: 1.8rem;
+        .category-badge {
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            font-weight: 600;
         }
 
-        .hot h2 { color: var(--hot-color); }
-        .cold h2 { color: var(--cold-color); }
-        .mixed h2 { color: #a855f7; }
-
-        .pool-info {
-            font-size: 0.9rem;
+        .distance-badge {
+            font-size: 0.8rem;
             color: var(--text-muted);
-            margin-bottom: 1.5rem;
-            line-height: 1.5;
-            background: rgba(0,0,0,0.3);
-            padding: 10px 15px;
-            border-radius: 12px;
-        }
-
-        /* --- Lotto Balls --- */
-        .game-row {
             display: flex;
             align-items: center;
+            gap: 0.3rem;
+        }
+
+        .card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 1.3rem;
+            color: var(--text-main);
+        }
+
+        .rating-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: #ffaa00;
+            font-weight: 600;
+            font-size: 0.95rem;
             margin-bottom: 1rem;
-            background: rgba(255,255,255,0.02);
-            padding: 15px;
-            border-radius: 16px;
-            transition: background 0.3s;
+            background: rgba(255, 170, 0, 0.1);
+            padding: 0.3rem 0.6rem;
+            border-radius: 8px;
+        }
+
+        .rating-badge.google-rating {
+            background: rgba(66, 133, 244, 0.15);
+            color: #4285F4;
+            border: 1px solid rgba(66, 133, 244, 0.3);
         }
         
-        .game-row:hover {
-            background: rgba(255,255,255,0.05);
+        .rating-badge.google-rating i {
+            color: #DB4437; /* Google Red */
         }
-
-        .game-label {
-            font-weight: 700;
+        
+        .rating-badge.muted {
+            background: rgba(255, 255, 255, 0.05);
             color: var(--text-muted);
-            width: 70px;
-            font-size: 1.1rem;
+            border: 1px solid var(--border-color);
         }
 
-        .balls {
+        .rating-badge i {
+            font-size: 0.8rem;
+        }
+        
+        .review-count {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-left: 0.3rem;
+            font-weight: 500;
+        }
+
+        .address, .phone {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
             display: flex;
-            gap: 12px;
-            flex: 1;
+            align-items: center;
+            gap: 0.5rem;
         }
 
-        .ball {
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
+        .menu-list {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px dashed rgba(255, 255, 255, 0.15);
+            flex-grow: 1;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .menu-title-label {
+            font-size: 0.75rem;
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        .menu-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .menu-name { color: var(--text-main); }
+        .menu-price { color: var(--primary); font-weight: 600; }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn-action {
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 800;
-            font-size: 1.2rem;
-            color: white;
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
-            box-shadow: inset -5px -5px 15px rgba(0,0,0,0.3), 0 5px 10px rgba(0,0,0,0.4);
-            transition: transform 0.3s;
+            gap: 0.5rem;
+            padding: 0.8rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            color: var(--text-main);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
         }
 
-        .ball:hover {
-            transform: scale(1.15) rotate(5deg);
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        /* Korean Lotto Color Standard */
-        .ball.color-yellow { background: linear-gradient(135deg, #fbc531, #e1b12c); } /* 1-10 */
-        .ball.color-blue   { background: linear-gradient(135deg, #00a8ff, #0097e6); } /* 11-20 */
-        .ball.color-red    { background: linear-gradient(135deg, #e84118, #c23616); } /* 21-30 */
-        .ball.color-gray   { background: linear-gradient(135deg, #718093, #2f3640); } /* 31-40 */
-        .ball.color-green  { background: linear-gradient(135deg, #4cd137, #44bd32); } /* 41-45 */
+        .btn-kakao:hover { color: #FEE500; border-color: rgba(254, 229, 0, 0.3); }
+        .btn-tmap:hover { color: #00A170; border-color: rgba(0, 161, 112, 0.3); }
+        
+        .btn-naver { grid-column: span 1; }
+        .btn-naver:hover { color: #03C75A; border-color: rgba(3, 199, 90, 0.3); }
+        
+        .btn-insta { grid-column: span 1; }
+        .btn-insta:hover { color: #E1306C; border-color: rgba(225, 48, 108, 0.3); }
 
-        .loading-overlay {
-            display: none;
-            margin-top: 2rem;
+        .btn-bookmark { grid-column: span 1; background: rgba(210,105,30,0.1); color: var(--primary); }
+        .btn-bookmark:hover { background: rgba(210,105,30,0.2); }
+        .btn-capture { grid-column: span 1; background: rgba(255,255,255,0.1); }
+
+        .ai-summary-btn {
+            width: 100%;
+            margin-top: 1rem;
+            margin-bottom: 0.5rem;
+            padding: 0.8rem;
+            background: linear-gradient(135deg, rgba(66, 133, 244, 0.15), rgba(219, 68, 55, 0.15));
+            border: 1px dashed rgba(66, 133, 244, 0.5);
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
         }
 
+        .ai-summary-btn:hover {
+            background: linear-gradient(135deg, rgba(66, 133, 244, 0.3), rgba(219, 68, 55, 0.3));
+            border-style: solid;
+        }
+
+        .ai-summary-box {
+            background: rgba(0,0,0,0.3);
+            border-left: 3px solid #4285F4;
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            color: #e8eaed;
+            display: none; /* hidden by default */
+        }
+
+        /* Loading Spinner */
         .loader {
-            width: 48px;
-            height: 48px;
-            border: 5px solid rgba(16, 185, 129, 0.2);
-            border-bottom-color: var(--primary);
+            display: none;
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .loader.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 170, 0, 0.3);
             border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto 1rem auto;
         }
 
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .loader p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
         }
 
-        @keyframes fadeInDown { from { opacity: 0; transform: translateY(-30px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .error-msg {
+            text-align: center;
+            color: var(--secondary);
+            background: rgba(255, 85, 0, 0.1);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: none;
+        }
 
-        /* Responsive */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-muted);
+            display: none;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Mobile Optimization */
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.35rem 0.7rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .preset-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--primary);
+        }
+
         @media (max-width: 768px) {
-            .results-grid { grid-template-columns: 1fr; }
-            h1 { font-size: 2.2rem; }
-            button.generate-btn { width: 100%; box-sizing: border-box; justify-content: center; padding: 1rem; }
-            .ball { width: 38px; height: 38px; font-size: 1rem; }
-            .balls { gap: 8px; }
-            .game-label { width: 50px; font-size: 0.9rem; }
-            .game-row { padding: 10px; }
-            .container { padding: 1rem; }
+            .container {
+                padding: 1rem;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            p.subtitle {
+                font-size: 0.95rem;
+                margin-bottom: 1.5rem;
+            }
+            
+            .input-group {
+                max-width: 100%;
+                width: 100%;
+                flex: 100%;
+            }
+            
+            select {
+                flex: 1;
+            }
+            
+            button.search-btn {
+                flex: 1;
+            }
+            
+            .controls-area {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .filter-tabs {
+                justify-content: flex-start;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                padding-bottom: 0.5rem;
+                width: 100%;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            .filter-tabs::-webkit-scrollbar {
+                height: 4px;
+            }
+            .filter-tabs::-webkit-scrollbar-thumb {
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 4px;
+            }
+            
+            .tab {
+                white-space: nowrap;
+            }
+            
+            .sort-select {
+                width: 100%;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
         }
     
         /* Mobile Optimization */
@@ -251,180 +657,752 @@
             button { word-break: keep-all; }
             img { max-width: 100%; height: auto; }
         }
-</style>
+
+        /* Epic AI Styles */
+        .vibe-check { background: rgba(0,0,0,0.4); border-left: 4px solid #10b981; padding: 0.8rem; border-radius: 4px; margin-bottom: 0.8rem; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px;}
+        .target-score { color: #ffaa00; font-size: 1.1rem; font-weight: 900; }
+        .hashtags-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin: 0.8rem 0; }
+        .hash-pill { background: rgba(255,170,0,0.15); color: #ffaa00; border: 1px solid rgba(255,170,0,0.4); padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap;}
+        .ai-summary-text { line-height: 1.6; color: #e2e8f0; }
+        .purpose-select { background: rgba(0,0,0,0.5); border: 1px solid var(--border-color); color: white; padding: 0.8rem; border-radius: 8px; font-size: 0.95rem; }
+
+        .floating-map-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+            cursor: pointer;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        .floating-map-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255,107,107,0.6);
+        }
+        .map-fullscreen {
+            height: 70vh !important;
+            margin-bottom: 2rem !important;
+            border-radius: 16px !important;
+        }
+
+    
+        #mapLegend {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(20, 25, 35, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: #ddd;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+    </style>
+{% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer>
+        let isMapView = false;
+        function toggleMapView() {
+            isMapView = !isMapView;
+            const mapContainer = document.getElementById('mapContainer');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const btnSpan = document.querySelector('#mapToggleBtn span');
+            const btnIcon = document.querySelector('#mapToggleBtn i');
+            
+            if (isMapView) {
+                mapContainer.style.display = 'block';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                resultsGrid.style.display = 'none';
+                btnSpan.textContent = '목록 보기';
+                btnIcon.className = 'fa-solid fa-list';
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                    if (currentCenter) {
+                        map.setCenter({ lat: parseFloat(currentCenter.y), lng: parseFloat(currentCenter.x) });
+                    }
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                btnSpan.textContent = '지도 보기';
+                btnIcon.className = 'fa-solid fa-map-location-dot';
+            }
+        }
+        
+    </script>
+    {% endif %}
 </head>
 <body>
+
+    <nav class="navbar">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 돌아가기</a>
+    </nav>
+
     <div class="container">
-        <header>
-            <div style="display: flex; gap: 1rem; align-items: center; justify-content: center; margin-bottom: 1rem;">
-                <a href="/" style="color: var(--text-muted); font-size: 1.5rem; text-decoration: none; transition: color 0.3s;"><i class="fa-solid fa-house"></i></a>
-            </div>
-            <h1>HOT & COLD 로또 교배기 <i class="fa-solid fa-clover"></i></h1>
-            <p class="subtitle">역대 가장 많이 당첨된 번호와 가장 안 나온 번호를 교배하여 환상적인 10게임을 추천합니다.</p>
-        </header>
+        <h1>🎯 AI 로또 명당 스캐너</h1>
+        <p class="subtitle">내 주변에 숨어있는 1등 당첨 명당과 복권 성지를 긁어옵니다.</p>
 
-        <div class="action-panel">
-            <div style="display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 2rem; flex-wrap: wrap;">
-                <div style="background: rgba(0,0,0,0.3); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid rgba(255,51,102,0.3);">
-                    <label style="color: var(--hot-color); font-weight: bold; margin-bottom: 5px; display: block;">HOT 번호 추출 개수</label>
-                    <input type="number" id="hotCount" min="0" max="6" value="2" style="width: 60px; padding: 5px; font-size: 1.2rem; text-align: center; background: transparent; border: 1px solid var(--border-color); color: white; border-radius: 6px;"> 개
-                </div>
-                <div style="background: rgba(0,0,0,0.3); padding: 1rem 1.5rem; border-radius: 12px; border: 1px solid rgba(0,240,255,0.3);">
-                    <label style="color: var(--cold-color); font-weight: bold; margin-bottom: 5px; display: block;">COLD 번호 추출 개수</label>
-                    <input type="number" id="coldCount" min="0" max="6" value="2" style="width: 60px; padding: 5px; font-size: 1.2rem; text-align: center; background: transparent; border: 1px solid var(--border-color); color: white; border-radius: 6px;"> 개
-                </div>
+        <div class="search-area">
+            <div class="input-group">
+                <i class="fa-solid fa-location-dot"></i>
+                <input type="text" id="addressInput" placeholder="지역명 입력 (예: 대구, 경주, 부산 수영구)" onkeypress="handleKeyPress(event)">
+                <button type="button" class="geo-btn" onclick="geolocate()" title="내 위치로 찾기">
+                    <i class="fa-solid fa-crosshairs"></i> 현위치
+                </button>
             </div>
-            <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem;">※ HOT과 COLD 개수의 합은 6을 넘을 수 없으며, 모자란 개수는 일반 무작위 번호로 채워집니다.</p>
-            <button class="generate-btn" id="generateBtn" onclick="generateLotto()">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> 내 인생 역전 번호 뽑기
+            <select id="radiusSelect">
+                <option value="1000">1km 이내</option>
+                <option value="3000" selected>3km 이내</option>
+                <option value="5000">5km 이내</option>
+                <option value="10000">10km 이내</option>
+                <option value="20000">20km 이내</option>
+                <option value="20000">30km 이내 (지도 최대)</option>
+            </select>
+            <select id="purposeSelect" class="purpose-select" style="display:none;">
+                <option value="일반(상관없음)">방문 목적 (기본)</option>
+            </select>
+            <button class="search-btn" onclick="performSearch()">
+                <i class="fa-solid fa-magnifying-glass"></i> 명당 스캔 시작
             </button>
-            <div class="loading-overlay" id="loadingOverlay">
-                <span class="loader"></span>
-                <p style="color: var(--primary); font-weight: bold; margin-top: 15px;">우주의 기운을 모으는 중...</p>
-            </div>
         </div>
 
-        <div class="results-grid" id="resultsGrid">
-            <!-- HOT Card -->
-            <div class="result-card hot">
-                <div class="card-header">
-                    <h2>🔥 HOT 조합 (5게임)</h2>
-                    <i class="fa-solid fa-fire fa-2x" style="color: var(--hot-color)"></i>
-                </div>
-                <div class="pool-info">
-                    <strong>사용된 10개 번호 풀 (역대 최고 당첨 최다 10선):</strong><br>
-                    <span id="hotPoolText">...</span>
-                </div>
-                <div id="hotGames">
-                    <!-- Games generated by JS -->
-                </div>
-            </div>
-
-            <!-- COLD Card -->
-            <div class="result-card cold">
-                <div class="card-header">
-                    <h2>❄️ COLD 조합 (5게임)</h2>
-                    <i class="fa-solid fa-snowflake fa-2x" style="color: var(--cold-color)"></i>
-                </div>
-                <div class="pool-info">
-                    <strong>사용된 10개 번호 풀 (역대 최저 당첨 가뭄 10선):</strong><br>
-                    <span id="coldPoolText">...</span>
-                </div>
-                <div id="coldGames">
-                    <!-- Games generated by JS -->
-                </div>
-            </div>
-
-            <!-- MIXED Card -->
-            <div class="result-card mixed">
-                <div class="card-header">
-                    <h2>🧬 사용자 커스텀 MIX 조합 (5게임)</h2>
-                    <i class="fa-solid fa-dna fa-2x" style="color: #a855f7"></i>
-                </div>
-                <div class="pool-info">
-                    <strong>지정하신 HOT 번호 풀과 COLD 번호 풀에서 지정된 갯수만큼 섞어 만든 완전 맞춤형 게임입니다!</strong>
-                </div>
-                <div id="mixedGames">
-                    <!-- Games generated by JS -->
-                </div>
-            </div>
+        <div style="font-size: 0.85rem; color: #888; margin-top: 0.5rem; text-align: center;">
+            <i class="fa-solid fa-circle-info"></i> PC(노트북/데스크탑)에서는 위치가 부정확할 수 있습니다. 정확한 동 이름을 입력하세요.
         </div>
+
+        <div id="errorBox" class="error-msg"></div>
+
+        
+        
+    <div id="mapWrapper" style="position: relative; width: 100%;">
+<div id="mapLegend">
+        <div class="legend-item"><div class="legend-color" style="background: red;"></div> 파워점수 3000+ (최상위)</div>
+        <div class="legend-item"><div class="legend-color" style="background: orange;"></div> 파워점수 1000+ (상위)</div>
+        <div class="legend-item"><div class="legend-color" style="background: yellow;"></div> 파워점수 500+ (중위)</div>
+        <div class="legend-item"><div class="legend-color" style="background: green;"></div> 파워점수 100+ (일반)</div>
+        <div class="legend-item"><div class="legend-color" style="background: blue;"></div> 파워점수 100- (신규/기타)</div>
+    </div>
+<div id="mapContainer" class="map-fullscreen" style="width: 100%; display: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);"></div>
+</div>
+
+        <div class="controls-area" id="controlsArea" style="display: none;">
+            <div class="filter-tabs" id="filterTabs">
+                <div class="tab active" data-cat="all">전체</div>
+                <div class="tab" data-cat="로또명당">로또명당</div>
+                <div class="tab" data-cat="스피또/연금">스피또/연금</div>
+                <div class="tab" data-cat="일반복권방">일반복권방</div>
+                <div class="tab" data-cat="기타">기타</div>
+            </div>
+            
+            <select id="sortSelect" class="sort-select" onchange="renderCards(currentCategory)">
+                <option value="trust" selected>🔥 파워점수 순</option>
+                <option value="distance">가까운 순</option>
+                <option value="rating">별점 높은 순</option>
+                <option value="reviews">리뷰 많은 순</option>
+            </select>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>주변 복권방을 검색하고 명당 데이터를 긁어오는 중입니다...<br>(최대 5~7초 정도 소요될 수 있습니다)</p>
+        </div>
+
+        <div class="empty-state" id="emptyState">
+            <i class="fa-solid fa-bowl-food"></i>
+            <h3>검색된 결과가 없습니다.</h3>
+            <p>검색어나 필터 조건을 변경해보세요.</p>
+        </div>
+
+        <div class="results-grid" id="resultsGrid"></div>
     </div>
 
     <script>
-        function getBallColorClass(num) {
-            if (num <= 10) return 'color-yellow';
-            if (num <= 20) return 'color-blue';
-            if (num <= 30) return 'color-red';
-            if (num <= 40) return 'color-gray';
-            return 'color-green';
+        let allRestaurants = [];
+        let currentCenter = null;
+
+        let map;
+        let markers = [];
+        let infoWindow;
+
+        function initMap() {
+            // Callback for Google Maps
         }
 
-        function createGameRow(gameData, index) {
-            const row = document.createElement('div');
-            row.className = 'game-row';
+        function updateMap(centerData, filteredData) {
+            if (!document.getElementById('mapContainer')) return;
             
-            const label = document.createElement('div');
-            label.className = 'game-label';
-            label.textContent = `${index}게임`;
+            if (typeof google === 'undefined' || !google.maps) {
+                return; // Maps API not loaded
+            }
             
-            const ballsContainer = document.createElement('div');
-            ballsContainer.className = 'balls';
+            if (typeof isMapView !== 'undefined' && isMapView) { document.getElementById('mapContainer').style.display = 'block'; }
             
-            gameData.forEach(num => {
-                const ball = document.createElement('div');
-                ball.className = `ball ${getBallColorClass(num)}`;
-                ball.textContent = num;
-                ballsContainer.appendChild(ball);
+            if (!map) {
+                map = new google.maps.Map(document.getElementById('mapContainer'), {
+                    zoom: 14,
+                    center: { lat: parseFloat(centerData.y), lng: parseFloat(centerData.x) },
+                    styles: [
+                        { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+                        { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+                        { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] }
+                    ],
+                    disableDefaultUI: true,
+                    zoomControl: true
+                });
+                infoWindow = new google.maps.InfoWindow();
+            } else {
+                map.setCenter({ lat: parseFloat(centerData.y), lng: parseFloat(centerData.x) });
+            }
+            
+            // Clear markers
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+            
+            // Add new markers
+                        function getMarkerIcon(score) {
+                let color = "blue";
+                if (score >= 3000) color = "red";
+                else if (score >= 1000) color = "orange";
+                else if (score >= 500) color = "yellow";
+                else if (score >= 100) color = "green";
+                return `http://maps.google.com/mapfiles/ms/icons/${color}-dot.png`;
+            }
+            
+            filteredData.forEach(r => {
+                if(r.y && r.x) {
+                    const marker = new google.maps.Marker({
+                        position: { lat: parseFloat(r.y), lng: parseFloat(r.x) },
+                        map: map,
+                        title: r.name,
+                        icon: getMarkerIcon(r.trust_score || 0),
+                        animation: google.maps.Animation.DROP
+                    });
+                    
+                    marker.addListener('click', () => {
+                        infoWindow.setContent(`<div style="color: black; font-weight: bold; padding: 5px;">${r.name}</div><div style="color: #666; font-size: 0.8rem; padding: 0 5px 5px 5px;">${r.category}</div>`);
+                        infoWindow.open(map, marker);
+                        
+                        // Scroll to card
+                        const card = document.getElementById('card-' + r.place_id);
+                        if(card) {
+                            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            card.style.boxShadow = '0 0 20px var(--primary)';
+                            setTimeout(() => { card.style.boxShadow = ''; }, 2000);
+                        }
+                    });
+                    markers.push(marker);
+                }
             });
-            
-            row.appendChild(label);
-            row.appendChild(ballsContainer);
-            return row;
         }
 
-        async function generateLotto() {
-            const btn = document.getElementById('generateBtn');
-            const loader = document.getElementById('loadingOverlay');
-            const grid = document.getElementById('resultsGrid');
-            const hotValue = parseInt(document.getElementById('hotCount').value) || 0;
-            const coldValue = parseInt(document.getElementById('coldCount').value) || 0;
-            
-            if (hotValue + coldValue > 6) {
-                alert("HOT 번호와 COLD 번호의 합은 6개를 넘을 수 없습니다.");
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                performSearch();
+            }
+        }
+
+        async function geolocate() {
+            if (!navigator.geolocation) {
+                showError("현재 브라우저에서는 위치 기능을 지원하지 않습니다.");
                 return;
             }
             
-            btn.style.display = 'none';
-            loader.style.display = 'block';
-            grid.style.display = 'none';
+            const btn = document.querySelector('.geo-btn');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 탐색중';
+            btn.disabled = true;
+            
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                
+                try {
+                    const res = await fetch('/api/geocode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat, lng })
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                        document.getElementById('addressInput').value = data.address;
+                        hideError();
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i> 완료';
+                        setTimeout(() => {
+                            btn.innerHTML = originalHtml;
+                            btn.disabled = false;
+                            performSearch(lat, lng);
+                        }, 1000);
+                    } else {
+                        showError("현위치 주소 변환에 실패했습니다.");
+                        btn.innerHTML = originalHtml;
+                        btn.disabled = false;
+                    }
+                } catch(e) {
+                    showError("서버와의 통신 오류: " + (e.message || e));
+                    btn.innerHTML = originalHtml;
+                    btn.disabled = false;
+                }
+            }, (error) => {
+                let msg = "위치 접근 권한이 거부되었거나 가져올 수 없습니다.";
+                if (error.code === 1) msg = "위치 정보 접근 권한(위치 서비스)을 허용해주세요.";
+                showError(msg);
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        }
+
+        async function performSearch(lat=null, lng=null) {
+            const address = document.getElementById('addressInput').value.trim();
+            const radius = document.getElementById('radiusSelect').value;
+            
+            if (!address) {
+                showError("지역명을 정확히 입력해주세요.");
+                return;
+            }
+
+            hideError();
+            showLoader();
+            document.getElementById('resultsGrid').innerHTML = '';
+            document.getElementById('controlsArea').style.display = 'none';
+            document.getElementById('emptyState').style.display = 'none';
 
             try {
-                const response = await fetch(`/api/lotto?hot=${hotValue}&cold=${coldValue}`);
+                const reqBody = { address, radius, purpose: document.getElementById('purposeSelect') ? document.getElementById('purposeSelect').value : '기본' };
+                if (lat && lng) { reqBody.lat = lat; reqBody.lng = lng; }
+                const response = await fetch('/api/lotto/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(reqBody)
+                });
+
                 const data = await response.json();
-
-                if (data.success) {
-                    // Slight delay for dramatic UX effect
-                    setTimeout(() => {
-                        document.getElementById('hotPoolText').textContent = data.top_10_pool.join(', ');
-                        document.getElementById('coldPoolText').textContent = data.bottom_10_pool.join(', ');
-                        
-                        const hotGamesDiv = document.getElementById('hotGames');
-                        const coldGamesDiv = document.getElementById('coldGames');
-                        const mixedGamesDiv = document.getElementById('mixedGames');
-                        
-                        hotGamesDiv.innerHTML = '';
-                        coldGamesDiv.innerHTML = '';
-                        mixedGamesDiv.innerHTML = '';
-
-                        data.top_combinations.forEach((comb, idx) => {
-                            hotGamesDiv.appendChild(createGameRow(comb, idx + 1));
-                        });
-
-                        data.bottom_combinations.forEach((comb, idx) => {
-                            coldGamesDiv.appendChild(createGameRow(comb, idx + 1));
-                        });
-
-                        data.mixed_combinations.forEach((comb, idx) => {
-                            mixedGamesDiv.appendChild(createGameRow(comb, idx + 1));
-                        });
-
-                        loader.style.display = 'none';
-                        btn.style.display = 'inline-flex';
-                        btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i> 다시 뽑기';
-                        grid.style.display = 'grid';
-                    }, 800);
-                } else {
-                    alert('서버 에러가 발생했습니다.');
-                    btn.style.display = 'inline-flex';
-                    loader.style.display = 'none';
+                
+                if (!data.success) {
+                    showError(data.error);
+                    hideLoader();
+                    return;
                 }
+
+                allRestaurants = data.data;
+                if(data.center) currentCenter = data.center;
+                hideLoader();
+
+                if (allRestaurants.length === 0) {
+                    document.getElementById('emptyState').style.display = 'block';
+                } else {
+                    document.getElementById('controlsArea').style.display = 'flex';
+                    renderCards('all');
+                }
+
             } catch (err) {
-                alert('네트워크 에러가 발생했습니다.');
-                btn.style.display = 'inline-flex';
-                loader.style.display = 'none';
+                hideLoader();
+                showError("서버와의 통신 중 오류가 발생했습니다.");
             }
         }
+
+        function renderCards(category) {
+            currentCategory = category;
+            const grid = document.getElementById('resultsGrid');
+            grid.innerHTML = '';
+            
+            let filtered = category === 'all' 
+                ? [...allRestaurants] 
+                : allRestaurants.filter(r => r.category === category);
+
+            if (filtered.length === 0) {
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+
+            // 정렬 로직 적용
+            const sortMode = document.getElementById('sortSelect').value;
+            if (sortMode === 'distance') {
+                filtered.sort((a, b) => a.distance - b.distance);
+            } else if (sortMode === 'rating') {
+                filtered.sort((a, b) => {
+                    const getVal = ratingStr => {
+                        if (ratingStr === 'N/A' || ratingStr === '평가 부족' || !ratingStr) return -1;
+                        return parseFloat(ratingStr) || -1;
+                    };
+                    return getVal(b.rating) - getVal(a.rating);
+                });
+            } else if (sortMode === 'reviews') {
+                filtered.sort((a, b) => (b.total_ratings || 0) - (a.total_ratings || 0));
+            } else if (sortMode === 'trust') {
+                filtered.sort((a, b) => (b.trust_score || 0) - (a.trust_score || 0));
+            }
+
+            filtered.forEach(r => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.id = 'card-' + r.place_id;
+                
+                let ratingHtml = '';
+                if (r.rating !== 'N/A' && r.rating !== '평가 부족') {
+                    let reviewCountHtml = r.total_ratings ? `<span class="review-count">(${r.total_ratings})</span>` : '';
+                    ratingHtml = `<div class="rating-badge google-rating" title="구글 리뷰 기반 별점"><i class="fa-brands fa-google"></i> ${r.rating} ${reviewCountHtml}</div>`;
+                } else if (r.rating === '평가 부족') {
+                    ratingHtml = `<div class="rating-badge muted" title="리뷰 수가 부족합니다"><i class="fa-brands fa-google"></i> 평가 부족</div>`;
+                }
+
+                const distStr = r.distance >= 1000 ? (r.distance/1000).toFixed(1) + 'km' : r.distance + 'm';
+                
+                // Thumbnail logic
+                let thumbHtml = '';
+                if (r.photo_url) {
+                    thumbHtml = `<img src="${r.photo_url}" class="card-thumbnail" alt="${r.name} 대표사진" loading="lazy">`;
+                }
+                
+                // Status badge
+                let statusHtml = '';
+                if (r.is_open === true) {
+                    statusHtml = `<div class="status-badge status-open">🟢 영업중</div>`;
+                } else if (r.is_open === false) {
+                    statusHtml = `<div class="status-badge status-closed">🔴 영업종료</div>`;
+                }
+                
+                // Trust Score badge
+                let trustScoreHtml = '';
+                if (r.trust_score && r.trust_score > 0) {
+                    trustScoreHtml = `<div class="rating-badge" style="background: linear-gradient(135deg, rgba(255,170,0,0.1), rgba(255,85,0,0.2)); border: 1px solid rgba(255,170,0,0.3); color: #ffaa00; margin-left: 0.5rem;" title="파워점수 = 별점 x 리뷰수">🔥 파워 점수: <strong>${r.trust_score.toLocaleString()}</strong>점</div>`;
+                }
+                
+                // TMAP Nav Intent
+                const tmapUrl = `tmap://route?goalname=${encodeURIComponent(r.name)}&goalx=${r.x}&goaly=${r.y}`;
+
+                card.innerHTML = `
+                    ${thumbHtml}
+                    ${statusHtml}
+                    <div class="card-content">
+                        <div class="card-header">
+                            <span class="category-badge">${r.category}</span>
+                            <span class="distance-badge" title="검색 위치로부터의 직선거리"><i class="fa-solid fa-ruler-horizontal"></i> ${distStr}</span>
+                        </div>
+                        <h3>${r.name}</h3>
+                        <div>
+                            ${ratingHtml}
+                            ${trustScoreHtml}
+                        </div>
+                        <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
+                        ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
+                        
+                        ${r.place_id ? `
+                        <button class="ai-summary-btn" id="btn-summary-${r.place_id}" onclick="loadAISummary('${r.place_id}', '${r.name}')">
+                            <i class="fa-solid fa-trophy"></i> 당첨 이력 AI 검색
+                        </button>
+                        <div class="ai-summary-box" id="summary-box-${r.place_id}"></div>
+                        <div class="ai-chat-box" id="chat-box-${r.place_id}" style="display: none; margin-top: 0.5rem;">
+                            <div id="chat-history-${r.place_id}" style="margin-bottom: 0.5rem; font-size: 0.85rem; color: #ccc;"></div>
+                            
+                            <div class="preset-questions" style="margin-bottom: 0.5rem; display: flex; gap: 0.4rem; flex-wrap: wrap;" id="preset-${r.place_id}">
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='1등 당첨 이력이 있나요?'; submitChat('${r.place_id}');" class="preset-btn">🏆 1등 당첨</button>
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='이곳이 진짜 명당이 맞나요?'; submitChat('${r.place_id}');" class="preset-btn">🤔 명당여부</button>
+                                <button type="button" onclick="document.getElementById('chat-input-${r.place_id}').value='주차하기 편한가요?'; submitChat('${r.place_id}');" class="preset-btn">🚗 주차</button>
+                            </div>
+
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="chat-input-${r.place_id}" placeholder="직접 질문 입력..." style="flex: 1; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(0,0,0,0.5); color: #fff; padding: 0.5rem;" onkeypress="if(event.key === 'Enter') submitChat('${r.place_id}')">
+                                <button onclick="submitChat('${r.place_id}')" id="btn-chat-${r.place_id}" style="background: var(--primary); color: #000; border: none; border-radius: 8px; padding: 0 0.8rem; cursor: pointer; font-weight: 600;"><i class="fa-solid fa-paper-plane"></i></button>
+                            </div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="button-group">
+                            <a href="https://map.kakao.com/link/to/${r.name},${r.y},${r.x}" target="_blank" class="btn-action btn-kakao">
+                                <i class="fa-solid fa-diamond-turn-right"></i> 카카오맵
+                            </a>
+                            <a href="${tmapUrl}" target="_blank" class="btn-action btn-tmap">
+                                <i class="fa-solid fa-car-side"></i> 티맵
+                            </a>
+                            <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(r.name)}" target="_blank" class="btn-action btn-naver">
+                                <i class="fa-solid fa-n"></i> 블로그 리뷰
+                            </a>
+                            <a href="https://www.instagram.com/explore/tags/${encodeURIComponent(r.name.replace(/\s+/g, ''))}" target="_blank" class="btn-action btn-insta">
+                                <i class="fa-brands fa-instagram"></i> 인스타 리뷰
+                            </a>
+                            <button onclick="saveLottoToArchive('${r.place_id}')" class="btn-action btn-bookmark">
+                                <i class="fa-solid fa-star"></i> 스크랩
+                            </button>
+                            <button onclick="captureLottoCard('${r.place_id}')" class="btn-action btn-capture">
+                                <i class="fa-solid fa-camera"></i> 이미지 캡처
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            });
+            if(currentCenter) updateMap(currentCenter, filtered);
+            const mtb = document.getElementById('mapToggleBtn');
+            if(mtb) mtb.style.display = 'flex';
+        }
+
+        // Tab Filter Logic
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', (e) => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                e.target.classList.add('active');
+                renderCards(e.target.dataset.cat);
+            });
+        });
+
+        function showLoader() { document.getElementById('loader').classList.add('active'); }
+        function hideLoader() { document.getElementById('loader').classList.remove('active'); }
+        function showError(msg) { 
+            const box = document.getElementById('errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+        function hideError() { document.getElementById('errorBox').style.display = 'none'; }
+        
+        async function loadAISummary(placeId, placeName) {
+            const btn = document.getElementById(`btn-summary-${placeId}`);
+            const box = document.getElementById(`summary-box-${placeId}`);
+            
+            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> 요약 중...`;
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/api/lotto/history', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ place_id: placeId, place_name: placeName })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    btn.style.display = 'none';
+                    box.style.display = 'block';
+                    
+                    const sumData = data.summary;
+                    let targetHtml = '';
+                    let vibeHtml = '';
+                    let hashHtml = '';
+                    let mainText = '';
+                    
+                    if (typeof sumData === 'object' && sumData !== null && !sumData.error) {
+                        targetHtml = `<div style="margin-bottom: 8px; font-size:0.95rem;">🎯 목적 적합도: <span class="target-score">${sumData.target_score || 0}점 / 100</span></div>`;
+                        vibeHtml = `<div class="vibe-check">${sumData.recent_vibe || '최근 동향 분석불가'}</div>`;
+                        if (sumData.hashtags && Array.isArray(sumData.hashtags)) {
+                            hashHtml = `<div class="hashtags-wrap">` + sumData.hashtags.map(t => `<span class="hash-pill">${t}</span>`).join('') + `</div>`;
+                        }
+                        mainText = sumData.summary || '';
+                    } else if (typeof sumData === 'string') {
+                        mainText = sumData;
+                    } else if (sumData && sumData.summary) {
+                        mainText = sumData.summary;
+                    }
+                    
+                    box.innerHTML = `
+                        ${targetHtml}
+                        ${vibeHtml}
+                        <div class="ai-summary-text">${String(mainText || '').replace(/\n/g, '<br>')}</div>
+                        ${hashHtml}
+                    `;
+                    document.getElementById(`chat-box-${placeId}`).style.display = 'block';
+                } else {
+                    btn.style.display = 'none';
+                    box.style.display = 'block';
+                    box.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> AI 요약 실패:</span><br>${data.error || '알 수 없는 오류'}`;
+                }
+            } catch(e) {
+                btn.style.display = 'none';
+                box.style.display = 'block';
+                box.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> 통신 오류 발생 <br> ${e.message}</span>`;
+            }
+        }
+        
+        async function submitChat(placeId) {
+            const inputEl = document.getElementById(`chat-input-${placeId}`);
+            const btnEl = document.getElementById(`btn-chat-${placeId}`);
+            const historyEl = document.getElementById(`chat-history-${placeId}`);
+            const question = inputEl.value.trim();
+            
+            if (!question) return;
+            
+            inputEl.value = '';
+            inputEl.disabled = true;
+            btnEl.disabled = true;
+            
+            const qDiv = document.createElement('div');
+            qDiv.innerHTML = `<strong>나:</strong> ${question}`;
+            qDiv.style.marginBottom = '0.3rem';
+            qDiv.style.color = '#fff';
+            historyEl.appendChild(qDiv);
+            
+            const loadingDiv = document.createElement('div');
+            loadingDiv.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> 생각중...`;
+            loadingDiv.style.color = '#ffaa00';
+            historyEl.appendChild(loadingDiv);
+            
+            try {
+                const reqBody = { address, radius, purpose: document.getElementById('purposeSelect') ? document.getElementById('purposeSelect').value : '기본' };
+            if (lat && lng) { reqBody.lat = lat; reqBody.lng = lng; }
+            const res = await fetch('/api/restaurant/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ place_id: placeId, question: question })
+                });
+                const data = await res.json();
+                
+                historyEl.removeChild(loadingDiv);
+                
+                const aDiv = document.createElement('div');
+                aDiv.style.marginBottom = '0.8rem';
+                if (data.success) {
+                    aDiv.innerHTML = `<strong style="color: #4285F4;">🤖 AI:</strong> ${data.answer.replace(/\n/g, '<br>')}`;
+                } else {
+                    aDiv.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> 에러: ${data.error || '알 수 없음'}</span>`;
+                }
+                historyEl.appendChild(aDiv);
+                
+            } catch(e) {
+                historyEl.removeChild(loadingDiv);
+                const errDiv = document.createElement('div');
+                errDiv.innerHTML = `<span style="color:#ffaa00;">통신 오류 발생 <br> ${e.message}</span>`;
+                historyEl.appendChild(errDiv);
+            }
+            
+            inputEl.disabled = false;
+            btnEl.disabled = false;
+            inputEl.focus();
+        }
+
+        function saveLottoToArchive(placeId) {
+            const r = allRestaurants.find(x => x.place_id === placeId);
+            if(!r) return alert("데이터를 찾을 수 없습니다.");
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+            
+            const summaryBox = document.getElementById(`summary-box-${placeId}`);
+            let summaryTxt = "";
+            if(summaryBox && summaryBox.style.display !== 'none') {
+                summaryTxt = summaryBox.innerText.replace('🤖 AI:', '').trim();
+            }
+
+            archive.push({
+                type: 'place',
+                title: r.name,
+                date: dateStr,
+                data: {
+                    address: r.address,
+                    rating: r.rating,
+                    trust_score: r.trust_score,
+                    category: r.category,
+                    ai_summary: summaryTxt || "요약 내역 없음"
+                }
+            });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert("보관함에 성공적으로 스크랩되었습니다!");
+        }
+
+        async function captureLottoCard(placeId) {
+            const cardElement = document.getElementById('card-' + placeId);
+            const r = allRestaurants.find(x => x.place_id === placeId);
+            if(!cardElement) return;
+            try {
+                const buttonGroup = cardElement.querySelector('.button-group');
+                const chatBox = cardElement.querySelector('.ai-chat-box');
+                const summaryBtn = cardElement.querySelector('.ai-summary-btn');
+                
+                const originalButtonGroupDisplay = buttonGroup ? buttonGroup.style.display : null;
+                const originalChatBoxDisplay = chatBox ? chatBox.style.display : null;
+                const originalSummaryBtnDisplay = summaryBtn ? summaryBtn.style.display : null;
+
+                if(buttonGroup) buttonGroup.style.display = 'none';
+                if(chatBox && chatBox.style.display !== 'none') chatBox.style.display = 'none';
+                if(summaryBtn && summaryBtn.style.display !== 'none') summaryBtn.style.display = 'none';
+
+                const canvas = await html2canvas(cardElement, {
+                    backgroundColor: '#161b22',
+                    scale: 2,
+                    useCORS: true
+                });
+
+                if(buttonGroup) buttonGroup.style.display = originalButtonGroupDisplay;
+                if(chatBox) chatBox.style.display = originalChatBoxDisplay;
+                if(summaryBtn) summaryBtn.style.display = originalSummaryBtnDisplay;
+
+                const link = document.createElement('a');
+                link.download = `빵집공유_${r ? r.name : placeId}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert("캡처 중 오류가 발생했습니다: " + err.message);
+            }
+        }
+    
+        let isMapView = false;
+        function toggleMapView() {
+            isMapView = !isMapView;
+            const mapContainer = document.getElementById('mapContainer');
+            const resultsGrid = document.getElementById('resultsGrid');
+            const btnSpan = document.querySelector('#mapToggleBtn span');
+            const btnIcon = document.querySelector('#mapToggleBtn i');
+            
+            if (isMapView) {
+                mapContainer.style.display = 'block';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'flex';
+                resultsGrid.style.display = 'none';
+                btnSpan.textContent = '목록 보기';
+                btnIcon.className = 'fa-solid fa-list';
+                if (map) {
+                    google.maps.event.trigger(map, 'resize');
+                    if (currentCenter) {
+                        map.setCenter({ lat: parseFloat(currentCenter.y), lng: parseFloat(currentCenter.x) });
+                    }
+                }
+            } else {
+                mapContainer.style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                if(document.getElementById('mapLegend')) document.getElementById('mapLegend').style.display = 'none';
+                resultsGrid.style.display = 'grid';
+                btnSpan.textContent = '지도 보기';
+                btnIcon.className = 'fa-solid fa-map-location-dot';
+            }
+        }
+        
     </script>
+
+    <button id="mapToggleBtn" class="floating-map-btn" onclick="toggleMapView()" style="display: none;">
+        <i class="fa-solid fa-map-location-dot"></i> <span>지도 보기</span>
+    </button>
+    
 </body>
 </html>

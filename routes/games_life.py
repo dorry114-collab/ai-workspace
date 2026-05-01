@@ -32,6 +32,102 @@ from extensions import db, limiter
 
 games_life_bp = Blueprint('games_life', __name__)
 
+GROQ_MODEL_CACHE = None
+
+def get_best_groq_model(api_key):
+    global GROQ_MODEL_CACHE
+    if GROQ_MODEL_CACHE:
+        return GROQ_MODEL_CACHE
+    
+    import requests
+    try:
+        url = "https://api.groq.com/openai/v1/models"
+        headers = {"Authorization": f"Bearer {api_key}"}
+        resp = requests.get(url, headers=headers)
+        if resp.status_code == 200:
+            data = resp.json()
+            available_models = [m['id'] for m in data.get('data', [])]
+            for target in ["llama-3.3-70b-versatile", "llama-3.1-70b-versatile", "llama-3.1-8b-instant"]:
+                if target in available_models:
+                    GROQ_MODEL_CACHE = target
+                    return target
+            
+            # Fallback to any llama model
+            llama_models = [m for m in available_models if 'llama' in m.lower()]
+            if llama_models:
+                GROQ_MODEL_CACHE = llama_models[0]
+                return GROQ_MODEL_CACHE
+    except Exception:
+        pass
+        
+    # Ultimate hardcoded fallback
+    return "llama-3.3-70b-versatile"
+
+def _call_groq_chat(api_key, messages, temperature=0.7):
+    import requests
+    model_name = get_best_groq_model(api_key)
+    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "temperature": temperature
+    }
+    
+    try:
+        resp = requests.post(url, headers=headers, json=payload)
+        resp_data = resp.json()
+        
+        if 'error' in resp_data:
+            err_msg = resp_data['error'].get('message', '알 수 없는 오류')
+            return False, f"Groq 통신 실패: {err_msg}"
+            
+        text = resp_data['choices'][0]['message']['content'].strip()
+        return True, text
+    except Exception as e:
+        return False, f"Groq 시스템 오류 발생: {str(e)}"
+
+def _call_gemini_chat(api_key, messages, temperature=0.7):
+    import google.generativeai as genai
+    try:
+        genai.configure(api_key=api_key)
+        
+        system_instruction = ""
+        gemini_messages = []
+        for msg in messages:
+            role = msg['role']
+            content = msg['content']
+            if role == 'system':
+                system_instruction += content + "\n"
+            elif role == 'assistant':
+                gemini_messages.append({"role": "model", "parts": [content]})
+            elif role == 'user':
+                gemini_messages.append({"role": "user", "parts": [content]})
+                
+        model = genai.GenerativeModel(
+            model_name="gemini-2.5-flash",
+            system_instruction=system_instruction.strip() if system_instruction else None
+        )
+        
+        if not gemini_messages:
+            return False, "에러: 보낼 메시지가 없습니다."
+            
+        last_msg = gemini_messages.pop()
+        chat = model.start_chat(history=gemini_messages)
+        
+        response = chat.send_message(
+            last_msg['parts'][0], 
+            generation_config=genai.types.GenerationConfig(temperature=temperature)
+        )
+        return True, response.text
+    except Exception as e:
+        return False, f"Gemini API 오류 발생: {str(e)}"
+
+
 @games_life_bp.route('/novel')
 def novel_maker():
     return render_template('novel.html')
