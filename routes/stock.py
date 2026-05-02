@@ -414,3 +414,125 @@ def stock():
     return render_template('stock.html')
 
 
+@stock_bp.route('/market')
+def market():
+    return render_template('market.html')
+
+@stock_bp.route('/api/stock/market_trend')
+def get_market_trend():
+    try:
+        import FinanceDataReader as fdr
+        import concurrent.futures
+        import datetime
+        import numpy as np
+        import pandas as pd
+        import json
+        
+        df = fdr.StockListing('KRX')
+        df = df[df['Amount'].notna()]
+        df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
+        
+        top_stocks = []
+        for idx, row in df_sorted.iterrows():
+            top_stocks.append({
+                'code': str(row['Code']),
+                'name': str(row['Name']),
+                'market': str(row.get('Market', 'KRX')),
+                'close': float(row['Close']),
+                'changes_ratio': float(row['ChagesRatio']),
+                'volume': int(row['Volume']),
+                'amount': int(row['Amount'])
+            })
+            
+        def fetch_stats(item):
+            try:
+                start_date = (datetime.datetime.now() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
+                hist = fdr.DataReader(item['code'], start_date)
+                if not hist.empty:
+                    hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
+                    delta = hist['Close'].diff()
+                    gain = delta.where(delta > 0, 0)
+                    loss = -delta.where(delta < 0, 0)
+                    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+                    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+                    rs = avg_gain / avg_loss
+                    hist['RSI'] = 100 - (100 / (1 + rs))
+                    
+                    last_row = hist.iloc[-1]
+                    item['sma_20'] = float(last_row['SMA_20']) if not pd.isna(last_row['SMA_20']) else None
+                    item['rsi'] = float(last_row['RSI']) if not pd.isna(last_row['RSI']) else None
+                    item['high_1m'] = float(hist['High'].tail(21).max())
+                    item['low_1m'] = float(hist['Low'].tail(21).min())
+            except Exception as e:
+                pass
+            return item
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            top_stocks = list(executor.map(fetch_stats, top_stocks))
+
+        ai_data = None
+        if os.environ.get('GEMINI_API_KEY'):
+            api_key = os.environ.get('GEMINI_API_KEY')
+            
+            context_lines = []
+            for i, s in enumerate(top_stocks):
+                v_sma = s.get('sma_20')
+                sma_str = f"{v_sma:.0f}" if v_sma is not None else "N/A"
+                v_rsi = s.get('rsi')
+                rsi_str = f"{v_rsi:.1f}" if v_rsi is not None else "N/A"
+                v_high = s.get('high_1m')
+                high_str = f"{v_high:.0f}" if v_high is not None else "N/A"
+                v_low = s.get('low_1m')
+                low_str = f"{v_low:.0f}" if v_low is not None else "N/A"
+                
+                context_lines.append(
+                    f"{i+1}위: {s['name']} (종목코드:{s['code']}, 현재가: {s['close']:.0f}원, 등락률: {s['changes_ratio']:.2f}%, 거래대금: {s['amount']:,}원) "
+                    f"[지표: SMA20={sma_str}, RSI={rsi_str}, 1달최고={high_str}, 1달최저={low_str}]"
+                )
+            context_str = "\n".join(context_lines)
+            
+            sys_role = "당신은 월스트리트의 전설적인 트레이더이자 냉철한 주식 애널리스트입니다. 응답은 반드시 JSON 형식으로만 작성하세요."
+            p_prompt = f"""오늘 한국 주식시장 거래대금 상위 10종목과 그 기술적 지표(최근 1개월 기준)는 다음과 같습니다:
+
+{context_str}
+
+이 데이터를 바탕으로 다음 2가지를 분석해 주세요:
+1. 시장 전체의 흐름과 주도 테마에 대한 전반적인 시황 분석 (마크다운 형식, 3~4문단)
+2. 10개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 한 줄 핵심 근거(1~2문장).
+
+반드시 아래 JSON 형식으로 응답하세요:
+{{
+  "overall_summary": "마크다운 형식의 시황 요약글...",
+  "stock_analysis": [
+    {{
+      "code": "종목코드",
+      "recommendation": "적극 매수, 매수, 관망, 매도 중 택 1",
+      "target_price": 85000,
+      "stop_loss": 75000,
+      "reason": "최근 RSI 과열권 진입 및 단기 저항선 도달로 차익 실현 권고 등..."
+    }}
+  ]
+}}"""
+            messages = [
+                {"role": "system", "content": sys_role},
+                {"role": "user", "content": p_prompt}
+            ]
+            
+            success, text = _call_gemini_chat(api_key, messages, temperature=0.5)
+            if success:
+                try:
+                    if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
+                    elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
+                    ai_data = json.loads(text)
+                except Exception as e:
+                    print(f"JSON Parse Error: {e}\n{text}")
+                    ai_data = None
+                
+        return jsonify({
+            'success': True,
+            'top_stocks': top_stocks,
+            'ai_report': ai_data
+        })
+    except Exception as e:
+        print(f"Market Trend Error: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': str(e)})

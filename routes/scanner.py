@@ -1511,8 +1511,73 @@ def lotto_search():
             }
             results.append(item)
             
-        # trust_score 순으로 다시 정렬
-        results.sort(key=lambda x: x['trust_score'], reverse=True)
+        # --- 당첨 이력 일괄 스캔 로직 (병렬 처리) ---
+        import re
+        def fetch_history(item):
+            place_name = item['name']
+            address = item['address'] or ""
+            region_keyword = ""
+            parts = address.split()
+            if len(parts) >= 2:
+                region_keyword = parts[0] + " " + parts[1] + " "
+            
+            query_str = f"{region_keyword}{place_name} 로또 1등 당첨"
+            blog_texts = ""
+            if api_key:
+                try:
+                    url = f"https://dapi.kakao.com/v2/search/blog?query={urllib.parse.quote(query_str)}&size=5"
+                    resp = requests.get(url, headers=headers, timeout=2).json()
+                    for doc in resp.get('documents', []):
+                        title = doc.get('title', '').replace('<b>', '').replace('</b>', '')
+                        desc = doc.get('contents', '').replace('<b>', '').replace('</b>', '')
+                        blog_texts += title + " " + desc + "\n"
+                except:
+                    pass
+            
+            first_matches = [int(m) for m in re.findall(r'1등\s*(\d+)\s*[번회]', blog_texts)]
+            second_matches = [int(m) for m in re.findall(r'2등\s*(\d+)\s*[번회]', blog_texts)]
+            
+            first_count = max(first_matches) if first_matches else 0
+            second_count = max(second_matches) if second_matches else 0
+            
+            item['first_count'] = first_count
+            item['second_count'] = second_count
+            
+            target_score = 50
+            vibe = "빠른 당첨 이력 스캔 완료"
+            hashtags = ["로또명당", "대박기원"]
+            
+            if first_count > 0:
+                summary_text = f"🎉 <b>1등 당첨: {first_count}번 이상 추정</b><br>"
+                target_score = 95
+                hashtags.append("1등배출점")
+            else:
+                summary_text = f"1등 당첨: 명확한 이력 없음<br>"
+                
+            if second_count > 0:
+                summary_text += f"✨ <b>2등 당첨: {second_count}번 이상 추정</b><br>"
+            else:
+                summary_text += f"2등 당첨: 명확한 이력 없음<br>"
+                
+            if first_count == 0 and second_count == 0:
+                summary_text += "<br>※ 온라인 리뷰상 정확한 당첨 횟수는 추출되지 않았습니다."
+            else:
+                summary_text += "<br>※ 이 곳은 실제 사람들의 리뷰에서도 당첨 인증이 발견되는 명당입니다!"
+                
+            item['ai_summary'] = {
+                "target_score": target_score,
+                "recent_vibe": vibe,
+                "summary": summary_text,
+                "hashtags": hashtags
+            }
+            return item
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=30) as executor:
+            results = list(executor.map(fetch_history, results))
+            
+        # 기본 정렬: 1등 당첨 많은 순 우선, 그 다음 trust_score
+        results.sort(key=lambda x: (x.get('first_count', 0), x['trust_score']), reverse=True)
+        # ----------------------------------------------
             
         return jsonify({
             "success": True, 
@@ -1526,19 +1591,29 @@ def lotto_search():
 def lotto_history():
     data = request.json
     place_name = data.get('place_name')
+    address = data.get('address', '')
     if not place_name:
         return jsonify({"success": False, "error": "가게 이름이 없습니다."})
         
-    import os, urllib.parse, requests
+    import os, urllib.parse, requests, re
     api_key = os.environ.get('KAKAO_REST_API_KEY')
+    
+    # 주소의 앞부분(시/구/동)을 추출하여 검색어에 포함 (정확도 향상)
+    region_keyword = ""
+    if address:
+        parts = address.split()
+        if len(parts) >= 2:
+            region_keyword = parts[0] + " " + parts[1] + " "
+    
+    query_str = f"{region_keyword}{place_name} 로또 1등 당첨"
     
     blog_texts = ""
     if api_key:
         try:
-            # 카카오 블로그 검색 활용
-            url = f"https://dapi.kakao.com/v2/search/blog?query={urllib.parse.quote(place_name + ' 로또 1등 당첨')}&size=10"
+            # 카카오 블로그 검색 활용 (속도 향상을 위해 size=5로 축소 및 timeout=2 설정)
+            url = f"https://dapi.kakao.com/v2/search/blog?query={urllib.parse.quote(query_str)}&size=5"
             headers = {"Authorization": f"KakaoAK {api_key}"}
-            resp = requests.get(url, headers=headers, timeout=5).json()
+            resp = requests.get(url, headers=headers, timeout=2).json()
             for item in resp.get('documents', []):
                 # HTML 태그 제거
                 title = item.get('title', '').replace('<b>', '').replace('</b>', '')
@@ -1547,42 +1622,40 @@ def lotto_history():
         except:
             pass
 
-    gemini_key = os.environ.get('GEMINI_API_KEY')
-    if not gemini_key:
-        return jsonify({"success": False, "error": "AI API 키가 설정되지 않았습니다."})
-        
-    import google.generativeai as genai
-    genai.configure(api_key=gemini_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    # 정규식을 통한 즉각적인 텍스트 추출 (AI 대신)
+    first_matches = [int(m) for m in re.findall(r'1등\s*(\d+)\s*[번회]', blog_texts)]
+    second_matches = [int(m) for m in re.findall(r'2등\s*(\d+)\s*[번회]', blog_texts)]
     
-    prompt = f"""
-다음은 '{place_name}' 복권방에 대한 최신 블로그 검색 결과입니다:
-{blog_texts}
-
-위 정보를 분석하여 아래 내용을 추출해주세요. 만약 블로그 결과에 당첨 횟수가 명확히 나오지 않으면, '최근 블로그 기록상 명확한 당첨 횟수는 확인되지 않았습니다.'라고 기재해주세요. (환각 금지)
-
-1. 1등 당첨 횟수: 
-2. 2등 당첨 횟수:
-3. 이 가게의 특징 요약:
-
-응답은 유저가 읽기 좋게 짧고 깔끔한 HTML 형식(단락 바꿈시 <br> 활용)으로 작성해주세요. ```html 태그는 빼주세요.
-"""
-    try:
-        response = model.generate_content(prompt)
-        text = response.text.replace('```html', '').replace('```', '').strip()
+    first_count = max(first_matches) if first_matches else 0
+    second_count = max(second_matches) if second_matches else 0
+    
+    target_score = 50
+    vibe = "빠른 당첨 이력 스캔 완료"
+    hashtags = ["로또명당", "대박기원"]
+    
+    if first_count > 0:
+        summary_text = f"🎉 <b>1등 당첨: {first_count}번 이상 추정</b><br>"
+        target_score = 95
+        hashtags.append("1등배출점")
+    else:
+        summary_text = f"1등 당첨: 명확한 이력 없음<br>"
         
-        target_score = 50
-        if "1등" in text and ("번" in text or "회" in text):
-            target_score = 95
-            
-        return jsonify({
-            "success": True,
-            "summary": {
-                "target_score": target_score,
-                "recent_vibe": "최근 당첨 이력 AI 스캔 완료",
-                "summary": text,
-                "hashtags": ["로또명당", "1등기원", "대박기원"]
-            }
-        })
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)})
+    if second_count > 0:
+        summary_text += f"✨ <b>2등 당첨: {second_count}번 이상 추정</b><br>"
+    else:
+        summary_text += f"2등 당첨: 명확한 이력 없음<br>"
+        
+    if first_count == 0 and second_count == 0:
+        summary_text += "<br>※ 온라인 리뷰상 정확한 당첨 횟수는 추출되지 않았습니다."
+    else:
+        summary_text += "<br>※ 이 곳은 실제 사람들의 리뷰에서도 당첨 인증이 발견되는 명당입니다!"
+
+    return jsonify({
+        "success": True,
+        "summary": {
+            "target_score": target_score,
+            "recent_vibe": vibe,
+            "summary": summary_text,
+            "hashtags": hashtags
+        }
+    })

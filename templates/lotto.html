@@ -824,7 +824,8 @@
             </div>
             
             <select id="sortSelect" class="sort-select" onchange="renderCards(currentCategory)">
-                <option value="trust" selected>🔥 파워점수 순</option>
+                <option value="wins" selected>🏆 1등 당첨 많은 순</option>
+                <option value="trust">🔥 파워점수 순</option>
                 <option value="distance">가까운 순</option>
                 <option value="rating">별점 높은 순</option>
                 <option value="reviews">리뷰 많은 순</option>
@@ -848,10 +849,12 @@
     <script>
         let allRestaurants = [];
         let currentCenter = null;
-
-        let map;
+        let currentCategory = 'all';
+        let map = null;
         let markers = [];
-        let infoWindow;
+        let infoWindow = null;
+        
+        // Removed autoLoadObserver and loadedSummaries since history is now fetched synchronously
 
         function initMap() {
             // Callback for Google Maps
@@ -889,7 +892,7 @@
             markers = [];
             
             // Add new markers
-                        function getMarkerIcon(score) {
+            function getMarkerIcon(score) {
                 let color = "blue";
                 if (score >= 3000) color = "red";
                 else if (score >= 1000) color = "orange";
@@ -991,6 +994,11 @@
                 return;
             }
 
+            const searchBtn = document.querySelector('.search-btn');
+            const originalBtnHtml = searchBtn.innerHTML;
+            searchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> 스캔중...';
+            searchBtn.disabled = true;
+
             hideError();
             showLoader();
             document.getElementById('resultsGrid').innerHTML = '';
@@ -1026,8 +1034,15 @@
                 }
 
             } catch (err) {
+                console.error(err);
                 hideLoader();
-                showError("서버와의 통신 중 오류가 발생했습니다.");
+                showError("JS Error: " + err.message + " | " + err.stack);
+            } finally {
+                const searchBtn = document.querySelector('.search-btn');
+                if (searchBtn) {
+                    searchBtn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> 명당 스캔 시작';
+                    searchBtn.disabled = false;
+                }
             }
         }
 
@@ -1063,12 +1078,20 @@
                 filtered.sort((a, b) => (b.total_ratings || 0) - (a.total_ratings || 0));
             } else if (sortMode === 'trust') {
                 filtered.sort((a, b) => (b.trust_score || 0) - (a.trust_score || 0));
+            } else if (sortMode === 'wins') {
+                filtered.sort((a, b) => (b.first_count || 0) - (a.first_count || 0));
             }
 
             filtered.forEach(r => {
                 const card = document.createElement('div');
                 card.className = 'card';
                 card.id = 'card-' + r.place_id;
+                
+                if (r.place_id) {
+                    card.dataset.placeId = r.place_id;
+                    card.dataset.placeName = r.name;
+                    card.dataset.placeAddress = r.address;
+                }
                 
                 let ratingHtml = '';
                 if (r.rating !== 'N/A' && r.rating !== '평가 부족') {
@@ -1119,12 +1142,14 @@
                         <div class="address"><i class="fa-solid fa-map-location-dot"></i> ${r.address}</div>
                         ${r.phone ? `<div class="phone"><i class="fa-solid fa-phone"></i> ${r.phone}</div>` : ''}
                         
-                        ${r.place_id ? `
-                        <button class="ai-summary-btn" id="btn-summary-${r.place_id}" onclick="loadAISummary('${r.place_id}', '${r.name}')">
-                            <i class="fa-solid fa-trophy"></i> 당첨 이력 AI 검색
-                        </button>
-                        <div class="ai-summary-box" id="summary-box-${r.place_id}"></div>
-                        <div class="ai-chat-box" id="chat-box-${r.place_id}" style="display: none; margin-top: 0.5rem;">
+                        ${r.ai_summary ? `
+                        <div class="ai-summary-box" id="summary-box-${r.place_id}" style="display: block; margin-top: 0.5rem; text-align: left; font-size: 0.9rem;">
+                            <div style="margin-bottom: 8px; font-size:0.95rem;">🎯 목적 적합도: <span class="target-score">${r.ai_summary.target_score || 0}점 / 100</span></div>
+                            <div class="vibe-check">${r.ai_summary.recent_vibe || ''}</div>
+                            <div class="ai-summary-text">${String(r.ai_summary.summary || '').replace(/\n/g, '<br>')}</div>
+                            ${r.ai_summary.hashtags ? `<div class="hashtags-wrap">${r.ai_summary.hashtags.map(t => `<span class="hash-pill">${t}</span>`).join('')}</div>` : ''}
+                        </div>
+                        <div class="ai-chat-box" id="chat-box-${r.place_id}" style="display: block; margin-top: 0.5rem;">
                             <div id="chat-history-${r.place_id}" style="margin-bottom: 0.5rem; font-size: 0.85rem; color: #ccc;"></div>
                             
                             <div class="preset-questions" style="margin-bottom: 0.5rem; display: flex; gap: 0.4rem; flex-wrap: wrap;" id="preset-${r.place_id}">
@@ -1188,62 +1213,7 @@
         }
         function hideError() { document.getElementById('errorBox').style.display = 'none'; }
         
-        async function loadAISummary(placeId, placeName) {
-            const btn = document.getElementById(`btn-summary-${placeId}`);
-            const box = document.getElementById(`summary-box-${placeId}`);
-            
-            btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> 요약 중...`;
-            btn.disabled = true;
-            
-            try {
-                const res = await fetch('/api/lotto/history', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ place_id: placeId, place_name: placeName })
-                });
-                const data = await res.json();
-                
-                if (data.success) {
-                    btn.style.display = 'none';
-                    box.style.display = 'block';
-                    
-                    const sumData = data.summary;
-                    let targetHtml = '';
-                    let vibeHtml = '';
-                    let hashHtml = '';
-                    let mainText = '';
-                    
-                    if (typeof sumData === 'object' && sumData !== null && !sumData.error) {
-                        targetHtml = `<div style="margin-bottom: 8px; font-size:0.95rem;">🎯 목적 적합도: <span class="target-score">${sumData.target_score || 0}점 / 100</span></div>`;
-                        vibeHtml = `<div class="vibe-check">${sumData.recent_vibe || '최근 동향 분석불가'}</div>`;
-                        if (sumData.hashtags && Array.isArray(sumData.hashtags)) {
-                            hashHtml = `<div class="hashtags-wrap">` + sumData.hashtags.map(t => `<span class="hash-pill">${t}</span>`).join('') + `</div>`;
-                        }
-                        mainText = sumData.summary || '';
-                    } else if (typeof sumData === 'string') {
-                        mainText = sumData;
-                    } else if (sumData && sumData.summary) {
-                        mainText = sumData.summary;
-                    }
-                    
-                    box.innerHTML = `
-                        ${targetHtml}
-                        ${vibeHtml}
-                        <div class="ai-summary-text">${String(mainText || '').replace(/\n/g, '<br>')}</div>
-                        ${hashHtml}
-                    `;
-                    document.getElementById(`chat-box-${placeId}`).style.display = 'block';
-                } else {
-                    btn.style.display = 'none';
-                    box.style.display = 'block';
-                    box.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> AI 요약 실패:</span><br>${data.error || '알 수 없는 오류'}`;
-                }
-            } catch(e) {
-                btn.style.display = 'none';
-                box.style.display = 'block';
-                box.innerHTML = `<span style="color:#ffaa00;"><i class="fa-solid fa-triangle-exclamation"></i> 통신 오류 발생 <br> ${e.message}</span>`;
-            }
-        }
+        // Removed loadAISummary function
         
         async function submitChat(placeId) {
             const inputEl = document.getElementById(`chat-input-${placeId}`);
