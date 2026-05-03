@@ -428,21 +428,59 @@ def get_market_trend():
         import pandas as pd
         import json
         
-        df = fdr.StockListing('KRX')
-        df = df[df['Amount'].notna()]
-        df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
-        
         top_stocks = []
-        for idx, row in df_sorted.iterrows():
-            top_stocks.append({
-                'code': str(row['Code']),
-                'name': str(row['Name']),
-                'market': str(row.get('Market', 'KRX')),
-                'close': float(row['Close']),
-                'changes_ratio': float(row['ChagesRatio']),
-                'volume': int(row['Volume']),
-                'amount': int(row['Amount'])
-            })
+        try:
+            df = fdr.StockListing('KRX')
+            df = df[df['Amount'].notna()]
+            df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
+            
+            for idx, row in df_sorted.iterrows():
+                top_stocks.append({
+                    'code': str(row['Code']).zfill(6),
+                    'name': str(row['Name']),
+                    'market': str(row.get('Market', 'KRX')),
+                    'close': float(row['Close']),
+                    'changes_ratio': float(row['ChagesRatio']),
+                    'volume': int(row['Volume']),
+                    'amount': int(row['Amount'])
+                })
+        except Exception as e:
+            # Fallback for Render deployment (KRX blocks foreign IPs)
+            print(f"KRX Fetch Failed, using fallback: {e}")
+            fallback_codes = [
+                ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("042700", "한미반도체"), 
+                ("068270", "셀트리온"), ("005380", "현대차"), ("000270", "기아"), 
+                ("035420", "NAVER"), ("035720", "카카오"), ("373220", "LG에너지솔루션"), 
+                ("207940", "삼성바이오로직스"), ("104480", "티케이케미칼"), ("012450", "한화에어로스페이스"),
+                ("028300", "HLB"), ("247540", "에코프로비엠"), ("086520", "에코프로")
+            ]
+            today_str = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+            for code, name in fallback_codes:
+                try:
+                    hist = fdr.DataReader(code, today_str)
+                    if not hist.empty:
+                        last_row = hist.iloc[-1]
+                        prev_row = hist.iloc[-2] if len(hist) > 1 else last_row
+                        close = float(last_row['Close'])
+                        prev_close = float(prev_row['Close'])
+                        changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
+                        vol = int(last_row['Volume'])
+                        amt = close * vol
+                        top_stocks.append({
+                            'code': code,
+                            'name': name,
+                            'market': 'KRX',
+                            'close': close,
+                            'changes_ratio': changes_ratio,
+                            'volume': vol,
+                            'amount': amt
+                        })
+                except: pass
+            top_stocks = sorted(top_stocks, key=lambda x: x['amount'], reverse=True)[:10]
+
+        if not top_stocks:
+            return jsonify({'success': False, 'error': 'KRX 서버가 응답하지 않거나 접근이 차단되었습니다 (해외 IP 차단 가능성).'})
+
             
         def fetch_stats(item):
             try:
