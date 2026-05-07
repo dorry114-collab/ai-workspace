@@ -15,6 +15,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0b0e14">
+    <link rel="manifest" href="/static/manifest.json">
     
     <!-- Google Analytics 4 (GA4) 추적 스크립트 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-EVBPHWZ6FK"></script>
@@ -33,6 +34,13 @@
         <div class="stats-badge">
             <i class="fa-solid fa-users"></i> 오늘 방문자: <b>{{ stats.today }}</b>명 <span style="opacity:0.5;margin:0 8px;">|</span> 총 누적: <b>{{ stats.total }}</b>명
         </div>
+        
+        <!-- PWA Install Banner -->
+        <div id="installBanner" style="display: none; background: linear-gradient(90deg, #3b82f6, #a855f7); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: bold; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
+            <span><i class="fa-solid fa-download"></i> 스마트폰 바탕화면에 AI앱 설치하기</span>
+            <span style="background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;">무료</span>
+        </div>
+
         <p>환영합니다. 이용하실 애플리케이션을 선택해주세요.</p>
 
         <!-- Search Filter -->

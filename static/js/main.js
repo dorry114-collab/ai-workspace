@@ -136,3 +136,60 @@ function filterCategory(category) {
         }
     });
 }
+
+// Global Viral Share Logic (Web Share API)
+function shareResult(title, text, url) {
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            text: text,
+            url: url || window.location.href
+        }).then(() => {
+            console.log('Thanks for sharing!');
+        }).catch(console.error);
+    } else {
+        // Fallback: Copy to clipboard
+        navigator.clipboard.writeText(url || window.location.href).then(() => {
+            alert('링크가 클립보드에 복사되었습니다! 친구들에게 공유해보세요.');
+        }).catch(err => {
+            console.error('Failed to copy: ', err);
+            alert('공유하기를 지원하지 않는 브라우저입니다.');
+        });
+    }
+}
+
+// PWA Install Prompt Logic
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    // Prevent the mini-infobar from appearing on mobile
+    e.preventDefault();
+    // Stash the event so it can be triggered later.
+    deferredPrompt = e;
+    
+    // Show the install banner if it exists
+    const installBanner = document.getElementById('installBanner');
+    if (installBanner) {
+        installBanner.style.display = 'flex';
+        
+        installBanner.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                // Show the install prompt
+                deferredPrompt.prompt();
+                // Wait for the user to respond to the prompt
+                const { outcome } = await deferredPrompt.userChoice;
+                console.log(`User response to the install prompt: ${outcome}`);
+                // We've used the prompt, and can't use it again, throw it away
+                deferredPrompt = null;
+                installBanner.style.display = 'none';
+            }
+        });
+    }
+});
+
+// Hide banner if app is already installed
+window.addEventListener('appinstalled', () => {
+    const installBanner = document.getElementById('installBanner');
+    if (installBanner) installBanner.style.display = 'none';
+    deferredPrompt = null;
+    console.log('PWA was installed');
+});

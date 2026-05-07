@@ -19,6 +19,7 @@ from routes.stock import stock_bp
 from routes.tools import tools_bp
 from routes.scanner import scanner_bp
 from routes.games_life import games_life_bp
+from routes.seo import seo_bp
 
 # Global SSL setup from original main.py
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -46,6 +47,7 @@ def create_app():
     app.register_blueprint(tools_bp)
     app.register_blueprint(scanner_bp)
     app.register_blueprint(games_life_bp)
+    app.register_blueprint(seo_bp)
     
     @app.after_request
     def add_header(response):

@@ -1,0 +1,21 @@
+{
+  "name": "AI Workspace (JM LEE)",
+  "short_name": "AI Workspace",
+  "description": "20여 종의 인공지능 툴을 하나의 앱에서",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0e14",
+  "theme_color": "#0b0e14",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8618/8618875.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/8618/8618875.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
