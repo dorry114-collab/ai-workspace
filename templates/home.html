@@ -19,6 +19,9 @@
     
     <!-- Google Analytics 4 (GA4) 추적 스크립트 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-EVBPHWZ6FK"></script>
+    
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8745904104394554" crossorigin="anonymous"></script>
     <script src="/static/js/main.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -31,6 +34,20 @@
 <body>
     <div class="container">
         <h1>AI Workspace</h1>
+        
+        <!-- User Authentication Widget -->
+        <div class="user-auth-widget" style="background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
+            <div id="userInfoArea">
+                <span style="color: #94a3b8; font-size: 0.9rem;"><i class="fa-solid fa-circle-user"></i> 로그인하여 크레딧을 받아보세요!</span>
+            </div>
+            <div id="userActionArea">
+                <a href="/auth/kakao" id="kakaoLoginBtn" style="background: #FEE500; color: #000000; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 5px;">
+                    <i class="fa-solid fa-comment"></i> 카카오 로그인
+                </a>
+                <a href="/auth/logout" id="logoutBtn" style="display: none; color: #94a3b8; text-decoration: none; font-size: 0.8rem; border: 1px solid #475569; padding: 5px 10px; border-radius: 6px;">로그아웃</a>
+            </div>
+        </div>
+
         <div class="stats-badge">
             <i class="fa-solid fa-users"></i> 오늘 방문자: <b>{{ stats.today }}</b>명 <span style="opacity:0.5;margin:0 8px;">|</span> 총 누적: <b>{{ stats.total }}</b>명
         </div>
@@ -389,6 +406,19 @@
     </button>
 
     <script src="/static/js/main.js"></script>
+
+        <!-- AdSense Banner Placeholder (Bottom of App List) -->
+        <div class="ad-placeholder" style="margin-top: 30px; margin-bottom: 80px; text-align: center;">
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-8745904104394554"
+                 data-ad-slot="auto"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>
+                 (adsbygoogle = window.adsbygoogle || []).push({});
+            </script>
+        </div>
 
     <!-- Bottom Nav -->
     <div class="bottom-nav">
