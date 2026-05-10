@@ -28,7 +28,7 @@ def sitemap():
         
     xml.append('</urlset>')
     
-    response = make_response('\\n'.join(xml))
+    response = make_response('\n'.join(xml))
     response.headers['Content-Type'] = 'application/xml'
     return response
 
@@ -41,7 +41,7 @@ def robots():
         "",
         f"Sitemap: {base_url}/sitemap.xml"
     ]
-    response = make_response('\\n'.join(lines))
+    response = make_response('\n'.join(lines))
     response.headers['Content-Type'] = 'text/plain'
     return response
 
