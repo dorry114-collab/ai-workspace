@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MZ 언어 변환기 🎧</title>
+    <!-- 폰트 적용 (Pretendard & 힙한 영문 폰트) -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+    <!-- 아이콘 폰트 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-color: #0f172a; /* 다크 네이비 */
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #8b5cf6; /* 트렌디 퍼플 */
+            --primary-hover: #7c3aed;
+            --accent: #10b981; /* 에메랄드 그린 */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, 'Helvetica Neue', 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.2) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.15) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        h1 {
+            font-family: 'Outfit', 'Pretendard', sans-serif;
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #a78bfa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+            letter-spacing: -1px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            word-break: keep-all;
+        }
+
+        /* 번역기 레이아웃 (좌우 분할) */
+        .translator-wrap {
+            display: flex;
+            gap: 20px;
+            flex-direction: column;
+            animation: fadeIn 1s ease-out 0.2s both;
+        }
+
+        @media (min-width: 768px) {
+            .translator-wrap { flex-direction: row; }
+            .panel { flex: 1; }
+        }
+
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .lang-badge {
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 6px 14px;
+            border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .lang-badge.normal {
+            background: rgba(255,255,255,0.1);
+            color: #e2e8f0;
+        }
+
+        .lang-badge.mz {
+            background: rgba(139, 92, 246, 0.2);
+            color: #c4b5fd;
+            border: 1px solid rgba(139, 92, 246, 0.4);
+        }
+
+        textarea {
+            width: 100%;
+            height: 250px;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-family: inherit;
+            font-size: 1.15rem;
+            line-height: 1.6;
+            resize: none;
+            outline: none;
+        }
+
+        textarea::placeholder {
+            color: #475569;
+        }
+
+        /* 우측 결과창 스크롤 등 */
+        .result-content {
+            height: 250px;
+            overflow-y: auto;
+            font-size: 1.25rem;
+            line-height: 1.7;
+            font-weight: 500;
+            color: #fff;
+            word-break: keep-all;
+            white-space: pre-wrap;
+        }
+
+        .result-content.empty {
+            color: #475569;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+
+        /* 컨트롤 영역 */
+        .panel-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+
+        .char-count {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-icon {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 10px;
+            border-radius: 50%;
+            width: 44px;
+            height: 44px;
+            justify-content: center;
+        }
+        
+        .btn-icon:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* 로딩 애니메이션 */
+        .loader-wrap {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(139, 92, 246, 0.2);
+            border-bottom-color: var(--primary);
+            border-radius: 50%;
+            display: inline-block;
+            box-sizing: border-box;
+            animation: rotation 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 모달 팝업 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>MZ Translator</h1>
+            <p class="subtitle">평범한 문장을 요즘 유행하는 힙한 밈으로 바꿔드려요 🎧</p>
+        </header>
+
+        <div class="translator-wrap">
+            <!-- 입력 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="lang-badge normal">Standard</span>
+                    <button id="clearBtn" class="btn-icon" style="background:transparent; border:none; color:var(--text-muted); padding:0; width:auto; height:auto;" title="지우기">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <textarea id="inputText" placeholder="여기에 꼰대어나 평범한 텍스트를 입력하세요.&#10;&#10;예) 이번 프로젝트 결과가 좋아서 아주 다행입니다. 다들 고생 많으셨습니다."></textarea>
+                <div class="panel-footer">
+                    <span class="char-count" id="charCount">0 / 500</span>
+                    <button id="translateBtn">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> 힙하게 변환
+                    </button>
+                </div>
+            </div>
+
+            <!-- 결과 패널 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span class="lang-badge mz">MZ Vibe ✨</span>
+                </div>
+                
+                <div id="loader" class="loader-wrap">
+                    <span class="loader"></span>
+                    <p style="color:var(--primary); font-weight:700;">트렌드 주입 중...</p>
+                </div>
+
+                <div id="resultContent" class="result-content empty">
+                    번역 결과가 여기에 표시됩니다.
+                </div>
+
+                <div class="panel-footer" style="justify-content: flex-end;">
+                    <div class="action-btns" id="actionBtns" style="display: none;">
+                        <button class="btn-icon" id="copyBtn" title="복사하기">
+                            <i class="fa-regular fa-copy"></i>
+                        </button>
+                        <button class="btn-icon" id="shareBtn" title="이미지로 공유하기">
+                            <i class="fa-solid fa-share-nodes"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">복사되었습니다!</div>
+
+    <!-- html2canvas for image sharing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        const inputText = document.getElementById('inputText');
+        const charCount = document.getElementById('charCount');
+        const translateBtn = document.getElementById('translateBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const resultContent = document.getElementById('resultContent');
+        const loader = document.getElementById('loader');
+        const actionBtns = document.getElementById('actionBtns');
+        const copyBtn = document.getElementById('copyBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const toast = document.getElementById('toast');
+
+        // 글자수 세기
+        inputText.addEventListener('input', () => {
+            const len = inputText.value.length;
+            charCount.textContent = `${len} / 500`;
+            if(len > 500) {
+                inputText.value = inputText.value.substring(0, 500);
+                charCount.textContent = `500 / 500`;
+            }
+        });
+
+        // 지우기
+        clearBtn.addEventListener('click', () => {
+            inputText.value = '';
+            charCount.textContent = `0 / 500`;
+            inputText.focus();
+        });
+
+        // 번역 요청
+        translateBtn.addEventListener('click', async () => {
+            const text = inputText.value.trim();
+            if(!text) {
+                showToast("텍스트를 입력해주세요!", "#ef4444");
+                inputText.focus();
+                return;
+            }
+
+            // UI 변경
+            translateBtn.disabled = true;
+            resultContent.style.display = 'none';
+            actionBtns.style.display = 'none';
+            loader.style.display = 'flex';
+
+            try {
+                const response = await fetch('/api/mz_translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const data = await response.json();
+                
+                loader.style.display = 'none';
+                resultContent.style.display = 'block';
+
+                if(data.success) {
+                    resultContent.classList.remove('empty');
+                    resultContent.textContent = data.translated;
+                    actionBtns.style.display = 'flex';
+                } else {
+                    resultContent.classList.add('empty');
+                    resultContent.textContent = "번역 중 오류가 발생했습니다. 다시 시도해주세요.";
+                }
+            } catch(e) {
+                loader.style.display = 'none';
+                resultContent.style.display = 'block';
+                resultContent.classList.add('empty');
+                resultContent.textContent = "네트워크 오류가 발생했습니다.";
+            } finally {
+                translateBtn.disabled = false;
+            }
+        });
+
+        // 복사 기능
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(resultContent.textContent).then(() => {
+                showToast("번역 내용이 복사되었습니다! ✨");
+            });
+        });
+
+        // 이미지로 저장/공유 (모바일 친화적)
+        shareBtn.addEventListener('click', () => {
+            const panel = resultContent.parentElement;
+            
+            // html2canvas 실행
+            html2canvas(panel, {
+                backgroundColor: '#1e293b',
+                scale: 2,
+                borderRadius: 20
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                
+                // 모바일에서 네이티브 공유가 지원되는 경우
+                if (navigator.share && navigator.canShare) {
+                    canvas.toBlob(async (blob) => {
+                        const file = new File([blob], 'mz_translator.png', { type: 'image/png' });
+                        try {
+                            await navigator.share({
+                                title: 'MZ Translator',
+                                text: '요즘 언어로 번역해봤어요!',
+                                files: [file]
+                            });
+                        } catch(e) {
+                            // 공유 취소 또는 실패시 다운로드 폴백
+                            downloadImage(imgData);
+                        }
+                    });
+                } else {
+                    // 데스크톱: 바로 다운로드
+                    downloadImage(imgData);
+                    showToast("이미지로 저장되었습니다! 📸");
+                }
+            });
+        });
+
+        function downloadImage(dataUrl) {
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `mz_translator_${new Date().getTime()}.png`;
+            a.click();
+        }
+
+        function showToast(msg, color = '#10b981') {
+            toast.textContent = msg;
+            toast.style.background = color;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+    </script>
+</body>
+</html>

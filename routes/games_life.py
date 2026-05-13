@@ -571,10 +571,30 @@ def api_diary_notion():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)})
 
+@games_life_bp.route('/mz_translator')
+def mz_translator_view():
+    return render_template('mz_translator.html')
+
+@games_life_bp.route('/api/mz_translate', methods=['POST'])
+def api_mz_translate():
+    text = request.json.get('text', '')
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({"success": False, "error": "API Key missing"})
+    
+    sys_p = """당신은 트렌드에 극도로 민감한 20대 초반 힙스터 MZ 사원입니다. 
+사용자가 입력하는 딱딱한 꼰대어, 아재개그, 혹은 너무 평범한 텍스트를 요즘 유행하는 최신 밈과 신조어(예: 폼 미쳤다, 완전 럭키비키잖아, 억까, 긁?, 킹받네, 알잘딱깔센, 디토, 뇌빼기 등)를 듬뿍 넣어서 찰진 'MZ 언어'로 번역해주세요. 
+[번역 규칙]
+1. 너무 길게 번역하지 말고 원문의 의미는 통하되 분위기를 완전히 힙하게 바꾸세요.
+2. 어울리는 이모지를 적극적으로 섞어서 작성하세요.
+3. 번역된 텍스트만 출력하세요. 설명이나 부연 설명은 절대 금지."""
+    
+    success, reply = _call_gemini_chat(api_key, [{"role": "user", "content": f"{sys_p}\n\n[입력 텍스트]: {text}"}], 0.8)
+    return jsonify({"success": success, "translated": reply, "error": reply if not success else ""})
+
 if __name__ == '__main__':
     # When hosted on Render, Gunicorn parses the app instance. 
     # This block is for simple local testing via `python main.py`
     import os
     port = int(os.environ.get('PORT', 5002))
     app.run(host='0.0.0.0', port=port, debug=False)
-

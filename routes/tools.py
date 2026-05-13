@@ -1673,3 +1673,7 @@ def api_meetup_recommend():
         })
     except Exception as e:
         return jsonify({"success": False, "error": f"JSON 파싱 오류: {str(e)}\n\n원본 응답: {result_text}"})
+
+@tools_bp.route('/survival_test')
+def survival_test_view():
+    return render_template('viral_test.html')
