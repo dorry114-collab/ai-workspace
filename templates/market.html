@@ -409,6 +409,7 @@
             <h1><i class="fa-solid fa-fire-flame-curved"></i> AI 주식 시장 트렌드 스캐너</h1>
         </div>
         <div class="header-actions">
+            <button class="btn-action" onclick="copyForBlog()" id="btnShare" style="display: none; border-color: var(--gold); color: var(--gold);"><i class="fa-solid fa-copy"></i> 블로그용 복사</button>
             <a href="/stock" class="btn-action"><i class="fa-solid fa-magnifying-glass-chart"></i> 개별 종목 분석</a>
             <button class="btn-action btn-refresh" onclick="fetchMarketTrend()"><i class="fa-solid fa-rotate-right"></i> 최신화</button>
         </div>
@@ -483,6 +484,7 @@
             try {
                 const response = await fetch('/api/stock/market_trend');
                 const data = await response.json();
+                window.marketData = data;
                 
                 if (!data.success) {
                     alert("데이터를 가져오는 중 오류가 발생했습니다: " + data.error);
@@ -585,6 +587,71 @@
                 alert("네트워크 오류가 발생했습니다.");
             } finally {
                 document.getElementById('loader').style.display = 'none';
+                if (window.marketData && window.marketData.success) {
+                    document.getElementById('btnShare').style.display = 'flex';
+                }
+            }
+        }
+
+        async function copyForBlog() {
+            if (!window.marketData || !window.marketData.success) {
+                alert("복사할 데이터가 없습니다.");
+                return;
+            }
+
+            const data = window.marketData;
+            const dateStr = new Date().toLocaleDateString('ko-KR');
+            let content = `# 📈 ${dateStr} 주식 시장 트렌드 스캐너 결과\n\n`;
+
+            if (data.ai_report && data.ai_report.overall_summary) {
+                content += `## 🧠 AI 시장 인사이트\n\n${data.ai_report.overall_summary}\n\n---\n\n`;
+            }
+
+            content += `## 🏆 오늘자 거래대금 TOP 10\n\n`;
+            
+            data.top_stocks.forEach((s, idx) => {
+                const rank = idx + 1;
+                const isUp = s.changes_ratio > 0 ? '+' : '';
+                content += `### ${rank}위: ${s.name} (${s.code})\n`;
+                content += `- **현재가**: ${formatPrice(s.close)} (${isUp}${s.changes_ratio.toFixed(2)}%)\n`;
+                content += `- **거래대금**: ${formatMoney(s.amount)}\n`;
+
+                if (data.ai_report && data.ai_report.stock_analysis) {
+                    const aiStock = data.ai_report.stock_analysis.find(x => x.code === s.code || x.code === s.code.replace('.KS', '').replace('.KQ', ''));
+                    if (aiStock) {
+                        content += `- **🤖 AI 의견**: ${aiStock.recommendation}\n`;
+                        content += `  - 🎯 목표가: ${formatPrice(aiStock.target_price)} | 🛡️ 손절가: ${formatPrice(aiStock.stop_loss)}\n`;
+                        content += `  - 💬 이유: ${aiStock.reason}\n`;
+                    }
+                }
+                content += '\n';
+            });
+
+            content += `> 본 분석은 AI에 의해 자동 생성된 참고용 데이터이며, 투자 결과에 대한 법적 책임을 지지 않습니다.\n`;
+
+            try {
+                await navigator.clipboard.writeText(content);
+                const btn = document.getElementById('btnShare');
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> 복사 완료!';
+                btn.style.backgroundColor = 'rgba(255, 215, 0, 0.2)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.style.backgroundColor = 'transparent';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy!', err);
+                const textArea = document.createElement("textarea");
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert("블로그용 텍스트가 클립보드에 복사되었습니다!");
+                } catch (e) {
+                    alert("복사에 실패했습니다. 수동으로 복사해주세요.");
+                }
+                document.body.removeChild(textArea);
             }
         }
 
