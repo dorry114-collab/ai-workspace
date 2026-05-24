@@ -473,16 +473,26 @@
                 <button type="submit" class="primary-btn" id="extractBtn">추출 시작</button>
             </form>
             
-            <div class="limit-options" style="display: flex; gap: 10px; margin-top: 20px; justify-content: center;">
+            <!-- 개수 선택 -->
+            <div class="limit-options" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; justify-content: center;">
+                <button type="button" class="btn-limit" data-limit="10" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">상위 10개</button>
+                <button type="button" class="btn-limit" data-limit="20" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">상위 20개</button>
+                <button type="button" class="btn-limit" data-limit="30" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">상위 30개</button>
                 <button type="button" class="btn-limit active" data-limit="50" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(0, 240, 255, 0.5); background: rgba(0, 240, 255, 0.1); color: white; cursor: pointer; transition: all 0.2s;">상위 50개</button>
                 <button type="button" class="btn-limit" data-limit="100" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">상위 100개</button>
                 <button type="button" class="btn-limit" data-limit="500" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s;">최대 (500개)</button>
             </div>
 
+            <!-- 정렬 선택 -->
+            <div class="sort-options" style="display: flex; gap: 10px; margin-top: 12px; justify-content: center;">
+                <button type="button" class="btn-sort active" data-sort="views" style="padding: 10px 22px; border-radius: 20px; border: 1px solid rgba(236, 72, 153, 0.5); background: rgba(236, 72, 153, 0.15); color: white; cursor: pointer; transition: all 0.2s; font-size: 0.95rem;"><i class="fa-solid fa-fire" style="margin-right: 6px;"></i>조회수 많은순</button>
+                <button type="button" class="btn-sort" data-sort="date" style="padding: 10px 22px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.2); background: transparent; color: rgba(255, 255, 255, 0.7); cursor: pointer; transition: all 0.2s; font-size: 0.95rem;"><i class="fa-solid fa-clock" style="margin-right: 6px;"></i>최신순</button>
+            </div>
+
             <div id="loadingState" class="loading-state">
                 <div class="loader big-loader"></div>
                 <h2 style="margin:0; font-weight: 500;">유튜브 데이터를 긁어오는 중입니다...</h2>
-                <p style="color: var(--text-secondary);">인기 동영상 상위 50개를 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)</p>
+                <p id="loadingDesc" style="color: var(--text-secondary);">상위 50개를 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)</p>
             </div>
 
             <div id="extractPanel" class="extract-panel">
@@ -512,6 +522,8 @@
 
         // --- Limit Selection Logic ---
         let currentLimit = 50;
+        let currentSort = 'views'; // 'views' or 'date'
+
         document.querySelectorAll('.btn-limit').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 document.querySelectorAll('.btn-limit').forEach(b => {
@@ -521,13 +533,38 @@
                     b.classList.remove('active');
                 });
                 
-                const target = e.target;
+                const target = e.currentTarget;
                 target.style.background = 'rgba(0, 240, 255, 0.1)';
                 target.style.borderColor = 'rgba(0, 240, 255, 0.5)';
                 target.style.color = 'white';
                 target.classList.add('active');
                 
                 currentLimit = parseInt(target.getAttribute('data-limit'));
+            });
+        });
+
+        // --- Sort Selection Logic ---
+        document.querySelectorAll('.btn-sort').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-sort').forEach(b => {
+                    b.style.background = 'transparent';
+                    b.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    b.style.color = 'rgba(255, 255, 255, 0.7)';
+                    b.classList.remove('active');
+                });
+
+                const target = e.currentTarget;
+                currentSort = target.getAttribute('data-sort');
+
+                if (currentSort === 'date') {
+                    target.style.background = 'rgba(139, 92, 246, 0.15)';
+                    target.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                } else {
+                    target.style.background = 'rgba(236, 72, 153, 0.15)';
+                    target.style.borderColor = 'rgba(236, 72, 153, 0.5)';
+                }
+                target.style.color = 'white';
+                target.classList.add('active');
             });
         });
 
@@ -554,12 +591,16 @@
             loadingState.classList.add('show');
             extractPanel.classList.remove('show');
 
+            // Update loading message
+            const sortLabel = currentSort === 'date' ? '최신순' : '조회수 많은순';
+            document.getElementById('loadingDesc').textContent = `상위 ${currentLimit}개를 ${sortLabel}으로 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)`;
+
             try {
                 // Call local Flask Python API
                 const response = await fetch('/api/extract', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ channel_id: value, limit: currentLimit })
+                    body: JSON.stringify({ channel_id: value, limit: currentLimit, sort: currentSort })
                 });
 
                 const data = await response.json();
@@ -576,8 +617,29 @@
 
                     data.data.forEach((video, index) => {
                         let views = Number(video.view_count).toLocaleString();
-                        displayText += `${index + 1}위. [조회수: ${views}회] ${video.title}\n`;
+                        const isDateSort = currentSort === 'date';
+
+                        // 날짜 포맷 처리
+                        let dateStr = '';
+                        if (video.published_at) {
+                            const d = new Date(video.published_at);
+                            dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+                        }
+
+                        if (isDateSort) {
+                            displayText += `${index + 1}위. [업로드: ${dateStr || '날짜미상'}] ${video.title}\n`;
+                        } else {
+                            displayText += `${index + 1}위. [조회수: ${views}회] ${video.title}\n`;
+                        }
                         currentUrlOnlyText += `${video.url}\n`;
+
+                        // 메타 정보 표시 (조회수 + 날짜 모두 표시)
+                        const metaHtml = `
+                            <div style="display:flex; gap: 12px; flex-wrap: wrap; color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">
+                                ${dateStr ? `<span><i class="fa-solid fa-calendar" style="margin-right:4px; color:#a78bfa;"></i>${dateStr}</span>` : ''}
+                                <span><i class="fa-solid fa-eye" style="margin-right:4px; color:#f472b6;"></i>${views}회</span>
+                            </div>
+                        `;
 
                         const card = document.createElement('div');
                         card.className = 'video-card';
@@ -588,7 +650,7 @@
                             <div class="video-info">
                                 <div>
                                     <h4 class="video-title" title="${video.title}">${index + 1}. ${video.title}</h4>
-                                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">조회수 ${views}회</div>
+                                    ${metaHtml}
                                 </div>
                                 <div class="video-actions">
                                     <a href="${video.url}" target="_blank" class="watch-link"><i class="fa-brands fa-youtube"></i> 유튜브 보기</a>

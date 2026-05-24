@@ -33,7 +33,7 @@ from extensions import db, limiter
 tools_bp = Blueprint('tools', __name__)
 
 # --- YOUTUBE EXTRACTOR LOGIC ---
-def extract_channel_videos(channel_input, limit=50):
+def extract_channel_videos(channel_input, limit=50, sort='views'):
     api_key = os.environ.get('YOUTUBE_API_KEY')
     if not api_key:
         return {"success": False, "error": "[필수] 공식 YouTube API 키가 없습니다. Render 설정의 Environment에 가서 YOUTUBE_API_KEY를 등록해주세요."}
@@ -84,7 +84,7 @@ def extract_channel_videos(channel_input, limit=50):
                 # For generic search, order by relevance is usually better, but viewCount works if they want 'popular' videos of that keyword
                 search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&q={sq}&maxResults={q_limit}&order=relevance&type=video&key={api_key}"
             else:
-                search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults={q_limit}&order=viewCount&type=video&key={api_key}"
+                search_url = f"https://www.googleapis.com/youtube/v3/search?part=snippet&channelId={channel_id}&maxResults={q_limit}&order={'date' if sort == 'date' else 'viewCount'}&type=video&key={api_key}"
                 
             if next_page_token:
                 search_url += f"&pageToken={next_page_token}"
@@ -120,11 +120,11 @@ def extract_channel_videos(channel_input, limit=50):
             else:
                 return {"success": False, "error": "해당 채널에 동영상이 존재하지 않거나 가져올 수 없습니다."}
             
-        # 3. Get exact statistics for sorting (Batch API accepts max 50 per request)
+        # 3. Get exact statistics + snippet for sorting (Batch API accepts max 50 per request)
         stats_data_items = []
         for i in range(0, len(video_ids), 50):
             chunk = video_ids[i:i+50]
-            stats_url = f"https://www.googleapis.com/youtube/v3/videos?part=statistics&id={','.join(chunk)}&key={api_key}"
+            stats_url = f"https://www.googleapis.com/youtube/v3/videos?part=statistics,snippet&id={','.join(chunk)}&key={api_key}"
             stats_resp = requests.get(stats_url)
             s_data = stats_resp.json()
             if 'items' in s_data:
@@ -134,15 +134,20 @@ def extract_channel_videos(channel_input, limit=50):
         for item in stats_data_items:
             v_id = item['id']
             views = int(item['statistics'].get('viewCount', 0))
+            published_at = item.get('snippet', {}).get('publishedAt', '')
             results.append({
                 'id': v_id,
                 'title': video_titles.get(v_id, 'No Title'),
                 'url': f"https://www.youtube.com/watch?v={v_id}",
-                'view_count': views
+                'view_count': views,
+                'published_at': published_at
             })
             
-        # 4. Strict absolute sort by viewCount descending
-        results.sort(key=lambda x: x['view_count'], reverse=True)
+        # 4. Sort by selected criterion
+        if sort == 'date':
+            results.sort(key=lambda x: x.get('published_at', ''), reverse=True)
+        else:
+            results.sort(key=lambda x: x['view_count'], reverse=True)
             
         return {"success": True, "data": results[:limit], "channel": channel_input, "is_search": is_search_query}
         
@@ -283,10 +288,11 @@ def extract():
     data = request.json
     channel_id = data.get('channel_id')
     limit = int(data.get('limit', 50))
+    sort = data.get('sort', 'views')  # 'views' or 'date'
     if not channel_id:
         return jsonify({"success": False, "error": "채널명을 입력해주세요."})
     
-    result = extract_channel_videos(channel_id, limit)
+    result = extract_channel_videos(channel_id, limit, sort)
     return jsonify(result)
 
 
