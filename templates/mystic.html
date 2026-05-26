@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔮 AI 운세 종합관</title>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Cinzel:wght@600;700&family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&family=Nanum+Myeongjo:wght@400;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8745904104394554" crossorigin="anonymous"></script>
+
+    <style>
+        /* ============================================================
+           GLOBAL RESET & BASE
+           ============================================================ */
+        :root {
+            --bg: #0d1117;
+            --saju-color: #fbbf24;
+            --tarot-color: #a855f7;
+            --dream-color: #818cf8;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: #f8fafc;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ============================================================
+           STICKY GLOBAL HEADER
+           ============================================================ */
+        .mystic-header {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(13, 17, 23, 0.97);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.8rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .mystic-header .home-link {
+            color: #8b949e;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: color 0.2s;
+            white-space: nowrap;
+        }
+        .mystic-header .home-link:hover { color: #fff; }
+        .mystic-header .home-link i { margin-right: 6px; }
+
+        .mystic-header .header-title {
+            flex: 1;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            background: linear-gradient(90deg, var(--saju-color), var(--tarot-color), var(--dream-color));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+        }
+
+        /* ============================================================
+           TAB BAR
+           ============================================================ */
+        .page-tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(13, 17, 23, 0.95);
+            position: sticky;
+            top: 60px;   /* height of mystic-header */
+            z-index: 90;
+        }
+
+        .page-tab-btn {
+            flex: 1;
+            padding: 14px 8px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #8b949e;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: color 0.2s, border-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .page-tab-btn:hover { color: #e2e8f0; }
+
+        .page-tab-btn.active { color: #fff; border-bottom-color: var(--tab-color, #a855f7); }
+        .page-tab-btn[data-tab="saju"]  { --tab-color: var(--saju-color); }
+        .page-tab-btn[data-tab="tarot"] { --tab-color: var(--tarot-color); }
+        .page-tab-btn[data-tab="dream"] { --tab-color: var(--dream-color); }
+
+        /* ============================================================
+           TAB PANELS
+           ============================================================ */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ============================================================
+           ===  SAJU TAB STYLES  ===
+           ============================================================ */
+        #tab-saju {
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(251, 191, 36, 0.05), transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05), transparent 40%);
+        }
+
+        #tab-saju .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+            font-family: 'Nanum Myeongjo', serif;
+        }
+
+        #tab-saju header { margin-bottom: 2rem; }
+        #tab-saju h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 3rem;
+            color: #fbbf24;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+        }
+        #tab-saju .subtitle { font-size: 1.1rem; color: #94a3b8; line-height: 1.6; }
+
+        #tab-saju .question-box {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        #tab-saju .draw-btn {
+            background: linear-gradient(135deg, #fbbf24, #d97706);
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            font-family: 'Nanum Myeongjo', serif;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(251, 191, 36, 0.3);
+            margin-top: 20px;
+        }
+        #tab-saju .draw-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(251, 191, 36, 0.5); }
+        #tab-saju .draw-btn:disabled { background: #64748b; cursor: not-allowed; box-shadow: none; transform: none; }
+
+        .saju-inputs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .saju-inputs select, .saju-inputs input {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(251, 191, 36, 0.4);
+            color: #fff;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-family: 'Nanum Myeongjo', serif;
+            outline: none;
+        }
+        .saju-inputs select:focus, .saju-inputs input:focus { border-color: #fbbf24; }
+
+        .saju-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+        .saju-tab {
+            padding: 10px 20px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 8px;
+            color: #ccc;
+            cursor: pointer;
+            font-family: 'Nanum Myeongjo', serif;
+            font-size: 1.1rem;
+            transition: 0.3s;
+        }
+        .saju-tab.active {
+            background: #fbbf24;
+            color: #000;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+
+        .saju-result-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .saju-card {
+            background: rgba(15, 23, 42, 0.7);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: left;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .saju-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, transparent, #fbbf24, transparent);
+        }
+        .saju-card h3 {
+            color: #fbbf24;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px dashed rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+        .saju-card p {
+            color: #f1f5f9;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+
+        #tab-saju .loader { display: none; text-align: center; margin: 2rem 0; }
+        #tab-saju .loader i { font-size: 3rem; color: #fbbf24; animation: spin 2s linear infinite; }
+
+        @media (max-width: 768px) {
+            #tab-saju h1 { font-size: 2.2rem; }
+            .saju-result-grid { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 600px) {
+            #tab-saju .container { padding: 1rem; }
+        }
+
+        /* ============================================================
+           ===  TAROT TAB STYLES  ===
+           ============================================================ */
+        #tab-tarot {
+            background-image:
+                radial-gradient(circle at 20% 30%, rgba(168, 85, 247, 0.15), transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(251, 191, 36, 0.1), transparent 40%);
+        }
+
+        #tab-tarot .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+            font-family: 'Nanum Myeongjo', serif;
+            overflow-x: hidden;
+        }
+
+        #tab-tarot header { margin-bottom: 2rem; animation: fadeInDown 1s ease-out; }
+        #tab-tarot h1 {
+            font-family: 'Cinzel', serif;
+            font-size: 3rem;
+            color: #fbbf24;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+        #tab-tarot p.subtitle { color: #cbd5e1; font-size: 1.1rem; line-height: 1.6; }
+
+        #tab-tarot .question-box {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid #a855f7;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .question-input {
+            width: 90%;
+            max-width: 600px;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border: 1px solid rgba(251, 191, 36, 0.5);
+            border-radius: 12px;
+            background: rgba(0,0,0,0.4);
+            color: white;
+            font-family: 'Nanum Myeongjo', serif;
+            outline: none;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s;
+        }
+        .question-input:focus { border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
+
+        #tab-tarot .draw-btn {
+            background: linear-gradient(135deg, #a855f7, #7e22ce);
+            color: white;
+            border: 2px solid #fbbf24;
+            padding: 1rem 3rem;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            font-family: 'Nanum Myeongjo', serif;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        #tab-tarot .draw-btn:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 25px rgba(168, 85, 247, 0.5); }
+        #tab-tarot .draw-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+        .cards-container {
+            display: none;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+            animation: fadeIn 1s ease-out;
+        }
+
+        .card-wrapper { perspective: 1000px; cursor: pointer; }
+        .card-inner {
+            position: relative;
+            width: 100%;
+            padding-bottom: 150%;
+            text-align: center;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+        }
+        .card-wrapper.flipped .card-inner { transform: rotateY(180deg); }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #fbbf24;
+            overflow: hidden;
+        }
+
+        .card-back {
+            background-image: url('/static/img/tarot_back.png');
+            background-size: cover;
+            background-position: center;
+        }
+        .card-back i { display: none; }
+
+        .card-front {
+            background-image: url('/static/img/tarot_front.png');
+            background-size: cover;
+            background-position: center;
+            transform: rotateY(180deg);
+            padding: 1.5rem;
+        }
+        .card-front h3 {
+            color: #fbbf24;
+            font-size: 1.2rem;
+            margin: 0 0 1rem 0;
+            font-family: 'Cinzel', serif;
+            background: rgba(0,0,0,0.6);
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+        .card-front p {
+            color: #e2e8f0;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 0;
+            word-break: keep-all;
+            background: rgba(0,0,0,0.6);
+            padding: 10px;
+            border-radius: 12px;
+        }
+
+        .reading-result {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(168, 85, 247, 0.4);
+            border-radius: 20px;
+            padding: 2.5rem;
+            margin-top: 2rem;
+            text-align: left;
+            display: none;
+            animation: fadeIn 1.5s ease-out;
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.2);
+        }
+        .reading-result h2 {
+            color: #a855f7;
+            text-align: center;
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+        .reading-text { color: #f8fafc; font-size: 1.15rem; line-height: 2.0; white-space: pre-wrap; }
+
+        #tab-tarot .loader { display: none; text-align: center; margin: 2rem 0; }
+        #tab-tarot .loader i { font-size: 3rem; color: #fbbf24; animation: spin 2s linear infinite; }
+
+        @media (max-width: 768px) {
+            .cards-container { grid-template-columns: 1fr; max-width: 300px; margin: 0 auto 3rem auto; }
+            #tab-tarot h1 { font-size: 2.2rem; }
+            .question-input { width: 100%; }
+        }
+        @media (max-width: 600px) {
+            #tab-tarot .container { padding: 1rem; }
+        }
+
+        /* ============================================================
+           ===  DREAM TAB STYLES  ===
+           ============================================================ */
+        #tab-dream {
+            background-image: radial-gradient(circle at 50% 20%, rgba(139, 92, 246, 0.15), transparent 60%);
+        }
+
+        #tab-dream .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            font-family: 'Gowun Dodum', sans-serif;
+        }
+
+        #tab-dream header h1 {
+            font-family: 'Noto Serif KR', serif;
+            font-size: 3rem;
+            color: #d8b4fe;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 15px rgba(216, 180, 254, 0.3);
+        }
+
+        .input-panel {
+            background: rgba(18, 25, 48, 0.8);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 24px;
+            padding: 2.5rem;
+            margin: 2rem 0;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+
+        #tab-dream textarea {
+            width: 100%;
+            height: 150px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            color: #fff;
+            padding: 1.5rem;
+            border-radius: 16px;
+            font-family: 'Gowun Dodum', sans-serif;
+            font-size: 1.1rem;
+            resize: none;
+            box-sizing: border-box;
+        }
+        #tab-dream textarea:focus {
+            outline: none;
+            border-color: #d8b4fe;
+            box-shadow: 0 0 15px rgba(216, 180, 254, 0.2);
+        }
+
+        .btn-analyze {
+            background: linear-gradient(135deg, #7c3aed, #4f46e5);
+            color: white;
+            border: none;
+            padding: 1rem 3rem;
+            border-radius: 30px;
+            font-size: 1.2rem;
+            margin-top: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Noto Serif KR', serif;
+        }
+        .btn-analyze:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(124, 58, 237, 0.4); }
+
+        .result-panel {
+            display: none;
+            animation: fadeIn 1s ease-out;
+            margin-top: 3rem;
+            text-align: left;
+        }
+
+        .dream-card {
+            background: rgba(18, 25, 48, 0.8);
+            border-left: 4px solid #8b5cf6;
+            padding: 2rem;
+            border-radius: 16px;
+            margin-bottom: 2rem;
+        }
+        .dream-card h3 {
+            color: #d8b4fe;
+            margin-top: 0;
+            font-family: 'Noto Serif KR', serif;
+            font-size: 1.4rem;
+        }
+        .dream-card p {
+            line-height: 1.8;
+            font-size: 1.1rem;
+            color: #cbd5e1;
+            white-space: pre-wrap;
+            margin: 0;
+        }
+
+        .lotto-box {
+            background: linear-gradient(to right, rgba(251, 191, 36, 0.1), transparent);
+            border-left: 4px solid #f59e0b;
+        }
+        .lotto-box h3 { color: #fcd34d; }
+
+        #tab-dream .loader { display: none; margin: 2rem 0; color: #d8b4fe; text-align: center; }
+        #tab-dream .loader i { font-size: 3rem; animation: spin 3s linear infinite; }
+
+        @media (max-width: 600px) {
+            #tab-dream .container { padding: 1rem; }
+        }
+
+        /* ============================================================
+           SHARED KEYFRAMES
+           ============================================================ */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <!-- ================================================================
+         GLOBAL HEADER
+         ================================================================ -->
+    <header class="mystic-header">
+        <a href="/" class="home-link"><i class="fa-solid fa-arrow-left"></i> 홈으로</a>
+        <h1 class="header-title">🔮 AI 운세 종합관</h1>
+        <!-- spacer to balance flex -->
+        <span style="width:80px;"></span>
+    </header>
+
+    <!-- ================================================================
+         TAB BAR
+         ================================================================ -->
+    <nav class="page-tab-bar" role="tablist">
+        <button class="page-tab-btn active" data-tab="saju"  onclick="switchTab('saju',  this)">📜 사주팔자</button>
+        <button class="page-tab-btn"        data-tab="tarot" onclick="switchTab('tarot', this)">🔮 타로 카드</button>
+        <button class="page-tab-btn"        data-tab="dream" onclick="switchTab('dream', this)">🌙 꿈 해몽</button>
+    </nav>
+
+    <!-- ================================================================
+         TAB PANEL: SAJU
+         ================================================================ -->
+    <div class="tab-panel active" id="tab-saju" role="tabpanel">
+        <div class="container">
+            <header>
+                <h1>The Oriental Oracle</h1>
+                <p class="subtitle">모든 운명은 천체의 기운에 새겨져 있습니다.<br>당신의 생년월일과 시간을 통해 명리학과 주역의 통찰을 만나보세요.</p>
+            </header>
+
+            <div class="question-box" id="sajuInputBox">
+                <p style="margin-bottom: 20px; color: #cbd5e1; font-size: 1.1rem;">당신의 태어난 우주의 기운을 입력해주세요.</p>
+                <div class="saju-inputs">
+                    <select id="sajuCalendar">
+                        <option value="양력">양력</option>
+                        <option value="음력">음력</option>
+                    </select>
+                    <select id="sajuYear"></select>
+                    <select id="sajuMonth"></select>
+                    <select id="sajuDay"></select>
+                    <select id="sajuTime"></select>
+                    <select id="sajuGender">
+                        <option value="남성">남성</option>
+                        <option value="여성">여성</option>
+                    </select>
+                </div>
+                <br>
+                <button class="draw-btn" id="sajuBtn" onclick="analyzeSaju()">
+                    <i class="fa-solid fa-yin-yang"></i> 주역 명리 분석 시작
+                </button>
+            </div>
+
+            <div class="loader" id="sajuLoader">
+                <i class="fa-solid fa-yin-yang"></i>
+                <p style="color: #fbbf24; margin-top: 15px;">천체의 기운과 오행을 맞추는 중입니다...</p>
+            </div>
+
+            <div id="sajuTabsContainer" style="display: none; animation: fadeIn 1s;">
+                <div class="saju-tabs" id="sajuTabs">
+                    <div class="saju-tab active" onclick="showSajuTab('daily', this)">일간(오늘)</div>
+                    <div class="saju-tab" onclick="showSajuTab('weekly', this)">주간(이번주)</div>
+                    <div class="saju-tab" onclick="showSajuTab('monthly', this)">월간(이번달)</div>
+                    <div class="saju-tab" onclick="showSajuTab('yearly', this)">년간(올해)</div>
+                </div>
+
+                <div class="saju-result-grid" id="sajuResultGrid">
+                    <!-- 총평 -->
+                    <div class="saju-card" style="grid-column: 1 / -1; border-color: #fbbf24;">
+                        <h3 id="resTitle" style="font-size: 1.5rem; justify-content: center;"><i class="fa-solid fa-sun" style="color: #fcd34d;"></i> 총평</h3>
+                        <p id="resSummary" style="font-size: 1.15rem; text-align: center;">...</p>
+                    </div>
+                    <!-- 디테일 4대 영역 -->
+                    <div class="saju-card">
+                        <h3><i class="fa-solid fa-coins" style="color: #fbbf24;"></i> 금전운</h3>
+                        <p id="resWealth">...</p>
+                    </div>
+                    <div class="saju-card">
+                        <h3><i class="fa-solid fa-building" style="color: #94a3b8;"></i> 회사/직장운</h3>
+                        <p id="resCareer">...</p>
+                    </div>
+                    <div class="saju-card">
+                        <h3><i class="fa-solid fa-heart" style="color: #f43f5e;"></i> 연애운</h3>
+                        <p id="resLove">...</p>
+                    </div>
+                    <div class="saju-card">
+                        <h3><i class="fa-solid fa-users" style="color: #3b82f6;"></i> 인간관계 운</h3>
+                        <p id="resPeople">...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 3rem; display: none;" id="sajuReloadBtn">
+                <button class="draw-btn" onclick="shareResult('신점 명리 사주 결과', '나의 올해 운세와 사주팔자를 확인해보세요!', window.location.href)" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: #ffcc00; color: #000; margin: 5px;">
+                    <i class="fa-solid fa-share-nodes"></i> 결과 공유하기
+                </button>
+                <button class="draw-btn" onclick="captureAndDownloadSaju('sajuResultGrid')" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: #22c55e; margin: 5px;">
+                    <i class="fa-solid fa-camera"></i> 이미지 저장
+                </button>
+                <button class="draw-btn" onclick="saveToArchive('saju')" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: #3b82f6; margin: 5px;">
+                    <i class="fa-solid fa-star"></i> 보관함 저장
+                </button>
+                <button class="draw-btn" onclick="resetSaju()" style="font-size: 1rem; padding: 0.8rem 1.5rem; margin: 5px;">
+                    <i class="fa-solid fa-rotate-right"></i> 다시 입력
+                </button>
+            </div>
+        </div>
+
+        <!-- AdSense Banner -->
+        <div style="margin: 30px auto; max-width: 600px; text-align: center;">
+            <ins class="adsbygoogle"
+                 style="display:block"
+                 data-ad-client="ca-pub-8745904104394554"
+                 data-ad-slot="auto"
+                 data-ad-format="auto"
+                 data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        </div>
+    </div><!-- /tab-saju -->
+
+
+    <!-- ================================================================
+         TAB PANEL: TAROT
+         ================================================================ -->
+    <div class="tab-panel" id="tab-tarot" role="tabpanel">
+        <div class="container">
+            <header>
+                <h1>The Oracle</h1>
+                <p class="subtitle">모든 해답은 이미 당신 안에 있습니다.<br>마음을 비우고, 우주의 기운이 담긴 타로 카드를 통해 길을 찾아보세요.</p>
+            </header>
+
+            <div class="question-box" id="tarotQuestionBox">
+                <input type="text" id="questionInput" class="question-input" placeholder="어떤 고민이 있으신가요? (예: 올해 이직해도 될까요?)" autocomplete="off">
+                <br>
+                <button class="draw-btn" id="drawBtn" onclick="drawCards()">
+                    <i class="fa-solid fa-sparkles"></i> 운명의 카드 3장 뽑기
+                </button>
+            </div>
+
+            <div class="loader" id="tarotLoader">
+                <i class="fa-solid fa-sun"></i>
+                <p style="color: #fbbf24; margin-top: 15px;">운명의 흐름을 읽는 중입니다...</p>
+            </div>
+
+            <div class="cards-container" id="cardsContainer">
+                <div class="card-wrapper" id="card1" onclick="flipCard(1)">
+                    <div class="card-inner">
+                        <div class="card-face card-back"><i class="fa-solid fa-moon"></i></div>
+                        <div class="card-face card-front" style="border-color: #60a5fa;">
+                            <h3>[ 과거의 투영 ]</h3>
+                            <p id="cardName1">...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-wrapper" id="card2" onclick="flipCard(2)">
+                    <div class="card-inner">
+                        <div class="card-face card-back"><i class="fa-solid fa-star"></i></div>
+                        <div class="card-face card-front" style="border-color: #34d399;">
+                            <h3>[ 현재의 직면 ]</h3>
+                            <p id="cardName2">...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card-wrapper" id="card3" onclick="flipCard(3)">
+                    <div class="card-inner">
+                        <div class="card-face card-back"><i class="fa-solid fa-sun"></i></div>
+                        <div class="card-face card-front" style="border-color: #f472b6;">
+                            <h3>[ 미래의 계시 ]</h3>
+                            <p id="cardName3">...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="reading-result" id="readingResult">
+                <div id="captureAreaTarot" style="background: #0f172a; padding: 20px; border-radius: 12px; margin-bottom: 2rem;">
+                    <h2><i class="fa-solid fa-crystal-ball"></i> 신탁의 해설</h2>
+                    <div class="reading-text" id="readingText"></div>
+                </div>
+
+                <div style="text-align: center; display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+                    <button class="draw-btn" onclick="shareResult('AI 타로 상담소', '인공지능 타로 마스터가 읽어주는 소름 돋는 타로 해석 결과를 확인해보세요!', window.location.href)" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: rgba(251, 191, 36, 0.2); border-color: #fbbf24; color: #fbbf24;">
+                        <i class="fa-solid fa-share-nodes"></i> 결과 공유하기
+                    </button>
+                    <button class="draw-btn" onclick="captureAndDownloadTarot()" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.3); color: white;">
+                        <i class="fa-solid fa-camera"></i> 이미지로 캡처
+                    </button>
+                    <button class="draw-btn" onclick="saveToArchiveTarot()" style="font-size: 1rem; padding: 0.8rem 1.5rem; background: rgba(251, 191, 36, 0.1); border-color: #fbbf24; color: #fbbf24;">
+                        <i class="fa-solid fa-star"></i> 보관함에 저장
+                    </button>
+                    <button class="draw-btn" onclick="resetTarot()" style="font-size: 1rem; padding: 0.8rem 1.5rem;">
+                        <i class="fa-solid fa-rotate-right"></i> 새로운 질문하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div><!-- /tab-tarot -->
+
+
+    <!-- ================================================================
+         TAB PANEL: DREAM
+         ================================================================ -->
+    <div class="tab-panel" id="tab-dream" role="tabpanel">
+        <div class="container">
+            <header style="margin-top: 2rem;">
+                <h1><i class="fa-solid fa-cloud-moon"></i> 무의식의 거울, 꿈 해몽기</h1>
+                <p style="color: #94a3b8; font-size: 1.1rem;">간밤의 꿈은 우연이 아닙니다. 길몽인지, 당신의 스트레스인지 AI가 읽어드립니다.</p>
+            </header>
+
+            <div class="input-panel" id="inputPanel">
+                <div style="text-align: right; margin-bottom: 10px;">
+                    <button type="button" onclick="fillRandomDream()" style="background: rgba(139, 92, 246, 0.2); border: 1px solid #8b5cf6; color: #d8b4fe; padding: 5px 12px; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-family: 'Gowun Dodum', sans-serif; transition: 0.3s;">
+                        <i class="fa-solid fa-dice"></i> 예시 꿈 채워보기
+                    </button>
+                </div>
+                <textarea id="dreamInput" placeholder="예: 이빨이 와르르 빠졌는데 피는 안 났어요... 누군가에게 쫓기는 꿈을 꿨어요. (자세히 적을수록 정확합니다)"></textarea>
+                <button class="btn-analyze" onclick="analyzeDream()"><i class="fa-solid fa-wand-magic-sparkles"></i> 무의식 해독하기</button>
+            </div>
+
+            <div class="loader" id="dreamLoader">
+                <i class="fa-solid fa-star-and-crescent"></i>
+                <p>꿈의 잔상을 쫓는 중입니다...</p>
+            </div>
+
+            <div class="result-panel" id="resultPanel">
+                <div class="dream-card">
+                    <h3><i class="fa-solid fa-yin-yang"></i> 전통적 해몽 (길몽/흉몽)</h3>
+                    <p id="resTradition">...</p>
+                </div>
+                <div class="dream-card">
+                    <h3><i class="fa-solid fa-brain"></i> 심리학적 무의식 분석</h3>
+                    <p id="resPsycho">...</p>
+                </div>
+                <div class="dream-card lotto-box">
+                    <h3><i class="fa-solid fa-clover"></i> 우주의 기운이 담긴 추천 번호 6개</h3>
+                    <p id="resLotto" style="font-size: 1.3rem; font-weight: bold; letter-spacing: 5px;">...</p>
+                </div>
+                <div style="text-align:center; margin-top:2rem;">
+                    <button class="btn-analyze" onclick="resetDream()" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">다시 해석하기</button>
+                </div>
+            </div>
+        </div>
+    </div><!-- /tab-dream -->
+
+
+    <!-- ================================================================
+         SCRIPTS
+         ================================================================ -->
+    <script>
+        /* ------------------------------------------------------------------
+           TAB SWITCHER
+           ------------------------------------------------------------------ */
+        function switchTab(tabName, btnEl) {
+            // Hide all panels, deactivate all buttons
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.page-tab-btn').forEach(b => b.classList.remove('active'));
+
+            document.getElementById('tab-' + tabName).classList.add('active');
+            btnEl.classList.add('active');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==================================================================
+           SAJU LOGIC
+           ================================================================== */
+        let globalSajuData = null;
+
+        // Date dropdowns init
+        (function initSajuDropdowns() {
+            const y = document.getElementById('sajuYear');
+            for (let i = 1940; i <= 2026; i++) {
+                const opt = document.createElement('option');
+                opt.value = i; opt.innerText = i + '년';
+                if (i === 1983) opt.selected = true;
+                y.appendChild(opt);
+            }
+            const m = document.getElementById('sajuMonth');
+            for (let i = 1; i <= 12; i++) {
+                const opt = document.createElement('option');
+                const v = i < 10 ? '0' + i : i;
+                opt.value = v; opt.innerText = i + '월';
+                if (i === 12) opt.selected = true;
+                m.appendChild(opt);
+            }
+            const d = document.getElementById('sajuDay');
+            for (let i = 1; i <= 31; i++) {
+                const opt = document.createElement('option');
+                const v = i < 10 ? '0' + i : i;
+                opt.value = v; opt.innerText = i + '일';
+                if (i === 29) opt.selected = true;
+                d.appendChild(opt);
+            }
+            const t = document.getElementById('sajuTime');
+            const times = [
+                '모름', '자시 (23시~01시)', '축시 (01시~03시)', '인시 (03시~05시)', '묘시 (05시~07시)',
+                '진시 (07시~09시)', '사시 (09시~11시)', '오시 (11시~13시)', '미시 (13시~15시)',
+                '신시 (15시~17시)', '유시 (17시~19시)', '술시 (19시~21시)', '해시 (21시~23시)'
+            ];
+            for (let i = 0; i < times.length; i++) {
+                const opt = document.createElement('option');
+                opt.value = times[i]; opt.innerText = times[i];
+                t.appendChild(opt);
+            }
+        })();
+
+        async function analyzeSaju() {
+            const calendar = document.getElementById('sajuCalendar').value;
+            const dateStr = document.getElementById('sajuYear').value + '-' +
+                            document.getElementById('sajuMonth').value + '-' +
+                            document.getElementById('sajuDay').value;
+            const time   = document.getElementById('sajuTime').value;
+            const gender = document.getElementById('sajuGender').value;
+
+            document.getElementById('sajuBtn').disabled = true;
+            document.getElementById('sajuLoader').style.display = 'block';
+            document.getElementById('sajuTabsContainer').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/saju/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ calendar, date: dateStr, time, gender })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    globalSajuData = data.data;
+
+                    document.getElementById('sajuLoader').style.display = 'none';
+                    document.getElementById('sajuInputBox').style.display = 'none';
+                    document.getElementById('sajuTabsContainer').style.display = 'block';
+                    document.getElementById('sajuReloadBtn').style.display = 'block';
+
+                    showSajuTab('daily', document.querySelector('.saju-tab'));
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (e) {
+                alert('명리 분석 중 에러가 발생했습니다: ' + e.message);
+                document.getElementById('sajuBtn').disabled = false;
+                document.getElementById('sajuLoader').style.display = 'none';
+            }
+        }
+
+        function showSajuTab(tabName, el) {
+            if (!globalSajuData) return;
+
+            if (el) {
+                document.querySelectorAll('.saju-tab').forEach(t => t.classList.remove('active'));
+                el.classList.add('active');
+            }
+
+            const d = globalSajuData[tabName];
+            let titleIcon = '', titleText = '';
+            if (tabName === 'daily')   { titleIcon = 'fa-calendar-day';  titleText = '오늘(일간)의 총운'; }
+            if (tabName === 'weekly')  { titleIcon = 'fa-calendar-week'; titleText = '이번 주(주간)의 총운'; }
+            if (tabName === 'monthly') { titleIcon = 'fa-calendar-days'; titleText = '이번 달(월간) 총운'; }
+            if (tabName === 'yearly')  { titleIcon = 'fa-calendar';      titleText = '올해(년간) 총운'; }
+
+            document.getElementById('resTitle').innerHTML = `<i class="fa-solid ${titleIcon}" style="color: #fcd34d;"></i> ${titleText}`;
+            document.getElementById('resSummary').textContent = d.summary;
+            document.getElementById('resWealth').textContent  = d.wealth;
+            document.getElementById('resCareer').textContent  = d.career;
+            document.getElementById('resLove').textContent    = d.love;
+            document.getElementById('resPeople').textContent  = d.people;
+        }
+
+        function saveToArchive(type) {
+            if (!globalSajuData) { alert('저장할 데이터가 없습니다.'); return; }
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            archive.push({
+                id: Date.now(),
+                type,
+                title: `주역 명리 분석 (${document.getElementById('sajuYear').value}-${document.getElementById('sajuMonth').value}-${document.getElementById('sajuDay').value})`,
+                date: new Date().toLocaleString('ko-KR'),
+                data: globalSajuData
+            });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert('보관함에 성공적으로 저장되었습니다! 홈 화면의 보관함 메뉴에서 확인 가능합니다.');
+        }
+
+        async function captureAndDownloadSaju(targetId) {
+            const captureArea = document.getElementById(targetId);
+            if (!captureArea) return;
+            try {
+                const canvas = await html2canvas(captureArea, { backgroundColor: '#1a1a2e', scale: 2 });
+                const link = document.createElement('a');
+                link.download = 'AI사주_신점결과.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert('캡처 중 오류가 발생했습니다: ' + err.message);
+            }
+        }
+
+        function resetSaju() {
+            globalSajuData = null;
+            document.getElementById('sajuInputBox').style.display = 'block';
+            document.getElementById('sajuTabsContainer').style.display = 'none';
+            document.getElementById('sajuReloadBtn').style.display = 'none';
+            document.getElementById('sajuBtn').disabled = false;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==================================================================
+           TAROT LOGIC
+           ================================================================== */
+        let flippedCount = 0;
+        let aiFullReading = '';
+
+        async function drawCards() {
+            const q = document.getElementById('questionInput').value.trim();
+            if (!q) { alert('고민을 먼저 입력해주세요!'); return; }
+
+            document.getElementById('drawBtn').disabled = true;
+            document.getElementById('tarotLoader').style.display = 'block';
+
+            try {
+                const response = await fetch('/api/tarot/draw', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: q })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('cardName1').textContent = data.cards[0];
+                    document.getElementById('cardName2').textContent = data.cards[1];
+                    document.getElementById('cardName3').textContent = data.cards[2];
+                    aiFullReading = data.reading;
+
+                    document.getElementById('tarotLoader').style.display = 'none';
+                    const cc = document.getElementById('cardsContainer');
+                    cc.style.display = 'grid';
+                    document.getElementById('tarotQuestionBox').style.display = 'none';
+
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (e) {
+                alert('해석 중 에러가 발생했습니다: ' + e.message);
+                document.getElementById('drawBtn').disabled = false;
+                document.getElementById('tarotLoader').style.display = 'none';
+            }
+        }
+
+        function flipCard(id) {
+            const el = document.getElementById('card' + id);
+            if (!el.classList.contains('flipped')) {
+                el.classList.add('flipped');
+                flippedCount++;
+
+                if (flippedCount === 3) {
+                    setTimeout(() => {
+                        const rr = document.getElementById('readingResult');
+                        rr.style.display = 'block';
+                        document.getElementById('readingText').textContent = aiFullReading;
+                        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                    }, 1000);
+                }
+            }
+        }
+
+        function saveToArchiveTarot() {
+            if (!aiFullReading) { alert('저장할 신탁이 없습니다.'); return; }
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' +
+                            String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                            String(now.getDate()).padStart(2, '0');
+            archive.push({ type: 'tarot', title: '나의 타로 상담 결과', date: dateStr, data: aiFullReading });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert('보관함에 성공적으로 저장되었습니다!');
+        }
+
+        async function captureAndDownloadTarot() {
+            const captureArea = document.getElementById('captureAreaTarot');
+            try {
+                const canvas = await html2canvas(captureArea, { backgroundColor: '#1a1a2e', scale: 2 });
+                const link = document.createElement('a');
+                link.download = 'AI타로결과.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (err) {
+                alert('캡처 중 오류가 발생했습니다: ' + err.message);
+            }
+        }
+
+        function resetTarot() {
+            flippedCount = 0;
+            aiFullReading = '';
+            document.getElementById('tarotQuestionBox').style.display = 'block';
+            document.getElementById('cardsContainer').style.display = 'none';
+            document.getElementById('readingResult').style.display = 'none';
+            document.getElementById('drawBtn').disabled = false;
+            document.getElementById('questionInput').value = '';
+            ['card1','card2','card3'].forEach(id => {
+                document.getElementById(id).classList.remove('flipped');
+            });
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==================================================================
+           DREAM LOGIC
+           ================================================================== */
+        async function analyzeDream() {
+            const dream = document.getElementById('dreamInput').value.trim();
+            if (!dream) { alert('꿈 내용을 적어주세요.'); return; }
+
+            document.getElementById('inputPanel').style.display = 'none';
+            document.getElementById('dreamLoader').style.display = 'block';
+
+            try {
+                const res = await fetch('/api/dream/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dream })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('resTradition').innerHTML = data.data.tradition;
+                    document.getElementById('resPsycho').innerHTML    = data.data.psycho;
+                    document.getElementById('resLotto').innerHTML      = data.data.lotto;
+
+                    document.getElementById('dreamLoader').style.display = 'none';
+                    document.getElementById('resultPanel').style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (e) {
+                alert(e.message);
+                document.getElementById('inputPanel').style.display = 'block';
+                document.getElementById('dreamLoader').style.display = 'none';
+            }
+        }
+
+        const sampleDreams = [
+            '하늘을 날고 있었는데 갑자기 투명한 바다 속으로 푹 빠졌어요. 숨쉬기가 힘들지는 않았고 주변에 엄청 큰 거북이들이 헤엄쳐 다녔습니다.',
+            '화장실을 찾는데 계속 문이 잠겨있거나 너무 더러워서 볼일을 못 보고 참다가 깼어요.',
+            '이빨이 흔들리더니 갑자기 입 안에서 와르르 쏟아져 내렸어요. 피는 하나도 안 났고 너무 당황해서 깼습니다.',
+            '누군지 모르는 검은 그림자에게 계속 쫓기고 있었어요. 발이 안 떨어져서 도망가기 너무 힘들었어요.'
+        ];
+
+        function fillRandomDream() {
+            const ta = document.getElementById('dreamInput');
+            const randomText = sampleDreams[Math.floor(Math.random() * sampleDreams.length)];
+            ta.value = '';
+            let i = 0;
+            const typeWriter = setInterval(() => {
+                if (i < randomText.length) { ta.value += randomText.charAt(i); i++; }
+                else { clearInterval(typeWriter); }
+            }, 30);
+        }
+
+        function resetDream() {
+            document.getElementById('inputPanel').style.display = 'block';
+            document.getElementById('resultPanel').style.display = 'none';
+            document.getElementById('dreamInput').value = '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        /* ==================================================================
+           SHARED UTILITY
+           ================================================================== */
+        function shareResult(title, text, url) {
+            if (navigator.share) {
+                navigator.share({ title, text, url }).catch(() => {});
+            } else {
+                navigator.clipboard.writeText(url)
+                    .then(() => alert('링크가 클립보드에 복사되었습니다!'))
+                    .catch(() => alert('공유 기능을 지원하지 않는 브라우저입니다.'));
+            }
+        }
+    </script>
+</body>
+</html>

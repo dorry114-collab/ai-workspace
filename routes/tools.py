@@ -1778,9 +1778,157 @@ def api_kakao_reply():
             'replies': replies
         })
 
+
     except json.JSONDecodeError as je:
         return jsonify({'success': False, 'error': f'AI 응답 파싱 오류입니다. 다시 시도해주세요.'})
     except Exception as e:
         print(f"Kakao Reply Error: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': f'분석 중 오류가 발생했습니다: {str(e)}'})
+
+
+# ═══════════════════════════════════════════════════════════════
+#  통합 앱 라우트 (8개 그룹 통합)
+# ═══════════════════════════════════════════════════════════════
+
+from flask import redirect
+
+# ── 1. 🗺️ AI 동네 탐색기 (restaurant + cafe + bakery + clinic)
+@tools_bp.route('/local')
+def local_view():
+    google_maps_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    return render_template('local.html', google_maps_api_key=google_maps_api_key)
+
+# ── 2. 📍 AI 종합 플래너 (travel + course + meetup)
+@tools_bp.route('/planner')
+def planner_view():
+    google_maps_api_key = os.environ.get('GOOGLE_MAPS_API_KEY', '')
+    return render_template('planner.html', google_maps_api_key=google_maps_api_key)
+
+# ── 3. 🎥 AI 유튜브 스튜디오 (youtube + youtube_summary)
+@tools_bp.route('/youtube_studio')
+def youtube_studio_view():
+    return render_template('youtube_studio.html')
+
+# ── 4. 📈 AI 주식 분석기 (market + stock)
+@tools_bp.route('/invest')
+def invest_view():
+    return render_template('invest.html')
+
+# ── 5. 💬 AI 메시지 마스터 (kakao_reply + message + polisher)
+@tools_bp.route('/message_hub')
+def message_hub_view():
+    return render_template('message_hub.html')
+
+# ── 6. 🔮 AI 운세 종합관 (saju + tarot + dream)
+@tools_bp.route('/mystic')
+def mystic_view():
+    return render_template('mystic.html')
+
+# ── 7. 🥗 AI 건강 코치 (diet + chef)
+@tools_bp.route('/health')
+def health_view():
+    return render_template('health.html')
+
+# ── 8. 👁️ AI 비주얼 분석 (face + fashion)
+@tools_bp.route('/vision_ai')
+def vision_ai_view():
+    return render_template('vision_ai.html')
+
+
+# ═══════════════════════════════════════════════════════════════
+#  기존 URL → 새 URL Redirect (북마크/공유 링크 보호)
+# ═══════════════════════════════════════════════════════════════
+
+# 로컬 탐색기 redirects
+@tools_bp.route('/restaurant')
+def redirect_restaurant():
+    return redirect('/local?tab=restaurant', code=301)
+
+@tools_bp.route('/cafe')
+def redirect_cafe():
+    return redirect('/local?tab=cafe', code=301)
+
+@tools_bp.route('/bakery')
+def redirect_bakery():
+    return redirect('/local?tab=cafe', code=301)
+
+@tools_bp.route('/clinic')
+def redirect_clinic():
+    return redirect('/local?tab=clinic', code=301)
+
+# 플래너 redirects
+@tools_bp.route('/travel')
+def redirect_travel():
+    return redirect('/planner?tab=travel', code=301)
+
+@tools_bp.route('/course')
+def redirect_course():
+    return redirect('/planner?tab=course', code=301)
+
+@tools_bp.route('/meetup')
+def redirect_meetup():
+    return redirect('/planner?tab=meetup', code=301)
+
+# 유튜브 스튜디오 redirects
+@tools_bp.route('/youtube')
+def redirect_youtube():
+    return redirect('/youtube_studio?tab=extract', code=301)
+
+@tools_bp.route('/youtube_summary')
+def redirect_youtube_summary():
+    return redirect('/youtube_studio?tab=summary', code=301)
+
+# 주식 분석기 redirects
+@tools_bp.route('/market')
+def redirect_market():
+    return redirect('/invest?tab=market', code=301)
+
+@tools_bp.route('/stock')
+def redirect_stock():
+    return redirect('/invest?tab=stock', code=301)
+
+# 메시지 마스터 redirects
+@tools_bp.route('/kakao_reply')
+def redirect_kakao_reply():
+    return redirect('/message_hub?tab=kakao', code=301)
+
+@tools_bp.route('/message')
+def redirect_message():
+    return redirect('/message_hub?tab=maker', code=301)
+
+@tools_bp.route('/polisher')
+def redirect_polisher():
+    return redirect('/message_hub?tab=polisher', code=301)
+
+# 운세 종합관 redirects
+@tools_bp.route('/saju')
+def redirect_saju():
+    return redirect('/mystic?tab=saju', code=301)
+
+@tools_bp.route('/tarot')
+def redirect_tarot():
+    return redirect('/mystic?tab=tarot', code=301)
+
+@tools_bp.route('/dream')
+def redirect_dream():
+    return redirect('/mystic?tab=dream', code=301)
+
+# 건강 코치 redirects
+@tools_bp.route('/diet')
+def redirect_diet():
+    return redirect('/health?tab=diet', code=301)
+
+@tools_bp.route('/chef')
+def redirect_chef():
+    return redirect('/health?tab=chef', code=301)
+
+# 비주얼 분석 redirects
+@tools_bp.route('/face')
+def redirect_face():
+    return redirect('/vision_ai?tab=face', code=301)
+
+@tools_bp.route('/fashion')
+def redirect_fashion():
+    return redirect('/vision_ai?tab=fashion', code=301)
+
 

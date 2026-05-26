@@ -4,455 +4,702 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Workspace - JM LEE</title>
-    
-    <!-- Open Graph & Meta Tags -->
+    <meta name="description" content="AI 주식 분석, 사주·타로, 카카오 답장, 유튜브 스튜디오, 동네 탐색 등 20여 종의 AI 툴을 하나로.">
     <meta property="og:title" content="AI Workspace - Antigravity">
-    <meta property="og:description" content="AI 주식 분석부터 사주, 타로, 쇼츠 메이커, 로컬 스캐너까지 20여 종의 인공지능 툴을 하나의 작업 공간에서.">
-    <meta property="og:image" content="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80">
+    <meta property="og:description" content="AI 주식 분석부터 사주, 타로, 카카오 답장, 유튜브 스튜디오까지 — 하나의 AI 작업 공간.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80">
     <meta property="og:type" content="website">
-    
-    <!-- PWA 및 모바일 웹앱 최적화 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0b0e14">
     <link rel="manifest" href="/static/manifest.json">
-    
-    <!-- Google Analytics 4 (GA4) 추적 스크립트 -->
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-EVBPHWZ6FK"></script>
-    
-    <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8745904104394554" crossorigin="anonymous"></script>
     <script src="/static/js/main.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <link rel="stylesheet" href="/static/css/style.css">
+
+    <style>
+        :root {
+            --bg: #0b0e14;
+            --surface: rgba(22, 27, 34, 0.7);
+            --border: rgba(255,255,255,0.07);
+            --text: #f0f6fc;
+            --muted: #8b949e;
+            --radius: 20px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 10% 0%, rgba(99,102,241,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 100%, rgba(236,72,153,0.07) 0%, transparent 50%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ── Top Bar ── */
+        .top-bar {
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(11,14,20,0.9);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 1.5rem;
+            height: 60px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .logo {
+            font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #fff 30%, #a78bfa);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .logo span { font-weight: 300; opacity: 0.6; }
+        .top-right { display: flex; align-items: center; gap: 12px; }
+        .stats-pill {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 0.82rem;
+            color: var(--muted);
+            display: flex; align-items: center; gap: 6px;
+        }
+        .stats-pill b { color: #a78bfa; }
+        .kakao-login-btn {
+            background: #FEE500; color: #000;
+            border: none; border-radius: 10px;
+            padding: 7px 14px; font-size: 0.85rem;
+            font-weight: 700; cursor: pointer;
+            text-decoration: none; display: inline-flex;
+            align-items: center; gap: 6px;
+            font-family: 'Outfit', sans-serif;
+            transition: 0.2s;
+        }
+        .kakao-login-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(254,229,0,0.3); }
+
+        /* ── Hero ── */
+        .hero {
+            padding: 3.5rem 1.5rem 2rem;
+            text-align: center;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .hero-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(167,139,250,0.1);
+            border: 1px solid rgba(167,139,250,0.3);
+            border-radius: 20px; padding: 6px 16px;
+            font-size: 0.82rem; color: #a78bfa;
+            font-weight: 600; margin-bottom: 1.2rem;
+            letter-spacing: 0.3px;
+        }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3rem);
+            font-weight: 800; line-height: 1.15;
+            letter-spacing: -1px;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff 0%, #e2e8f0 60%, #a78bfa 100%);
+            -webkit-background-clip: text; background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero p {
+            color: var(--muted); font-size: 1.05rem; line-height: 1.7;
+            margin-bottom: 1.8rem;
+        }
+
+        /* ── Search ── */
+        .search-wrap {
+            max-width: 560px; margin: 0 auto 1.5rem;
+            position: relative;
+        }
+        .search-wrap i {
+            position: absolute; left: 18px; top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted); font-size: 1rem; pointer-events: none;
+        }
+        .search-input {
+            width: 100%;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 14px 18px 14px 48px;
+            font-size: 1rem; color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            outline: none;
+            transition: 0.2s;
+        }
+        .search-input:focus {
+            border-color: rgba(167,139,250,0.4);
+            background: rgba(255,255,255,0.08);
+            box-shadow: 0 0 0 3px rgba(167,139,250,0.1);
+        }
+        .search-input::placeholder { color: rgba(139,148,158,0.5); }
+
+        /* ── Category Filter ── */
+        .cat-filter {
+            display: flex; gap: 8px; justify-content: center;
+            flex-wrap: wrap; padding: 0 1rem 2rem;
+            max-width: 800px; margin: 0 auto;
+        }
+        .cat-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            color: var(--muted);
+            border-radius: 20px; padding: 8px 18px;
+            font-size: 0.88rem; font-weight: 600;
+            cursor: pointer; transition: 0.2s;
+            font-family: 'Outfit', sans-serif;
+        }
+        .cat-btn:hover { color: var(--text); background: rgba(255,255,255,0.09); }
+        .cat-btn.active {
+            background: rgba(167,139,250,0.15);
+            border-color: rgba(167,139,250,0.4);
+            color: #c4b5fd;
+        }
+
+        /* ── App Grid ── */
+        .main-content {
+            max-width: 1100px; margin: 0 auto;
+            padding: 0 1rem 6rem;
+        }
+
+        .section-label {
+            font-size: 0.78rem; font-weight: 700; letter-spacing: 1.5px;
+            color: var(--muted); text-transform: uppercase;
+            margin: 2rem 0 1rem 4px;
+            display: flex; align-items: center; gap: 10px;
+        }
+        .section-label::after {
+            content: ''; flex: 1; height: 1px;
+            background: var(--border);
+        }
+
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 14px;
+        }
+
+        /* ── App Card ── */
+        .app-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.4rem 1.5rem;
+            text-decoration: none; color: inherit;
+            display: flex; align-items: flex-start; gap: 1rem;
+            transition: all 0.25s;
+            position: relative; overflow: hidden;
+            cursor: pointer;
+        }
+        .app-card::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at top left, var(--card-glow, rgba(167,139,250,0.06)), transparent 60%);
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .app-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.12); }
+        .app-card:hover::before { opacity: 1; }
+
+        .card-icon {
+            width: 52px; height: 52px; flex-shrink: 0;
+            border-radius: 14px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem;
+            background: var(--icon-bg, rgba(167,139,250,0.12));
+            border: 1px solid var(--icon-border, rgba(167,139,250,0.2));
+        }
+        .card-body { flex: 1; min-width: 0; }
+        .card-title {
+            font-size: 1rem; font-weight: 700;
+            color: #e6edf3; margin-bottom: 4px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .new-badge {
+            background: linear-gradient(135deg, #ec4899, #a855f7);
+            color: #fff; font-size: 0.65rem; font-weight: 800;
+            padding: 2px 7px; border-radius: 20px;
+            letter-spacing: 0.5px;
+        }
+        .merged-badge {
+            background: rgba(34,197,94,0.15);
+            color: #22c55e; font-size: 0.65rem; font-weight: 700;
+            padding: 2px 7px; border-radius: 20px;
+            border: 1px solid rgba(34,197,94,0.25);
+        }
+        .card-desc {
+            font-size: 0.85rem; color: var(--muted);
+            line-height: 1.55; word-break: keep-all;
+        }
+        .card-tags {
+            display: flex; gap: 5px; flex-wrap: wrap;
+            margin-top: 8px;
+        }
+        .tag {
+            font-size: 0.72rem; padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(139,148,158,0.8);
+            border: 1px solid var(--border);
+        }
+
+        /* ── PWA Banner ── */
+        .pwa-banner {
+            display: none;
+            background: linear-gradient(135deg, #3b82f6, #a855f7);
+            border-radius: 14px; padding: 14px 20px;
+            margin: 0 1rem 1.5rem;
+            cursor: pointer;
+            align-items: center; justify-content: space-between;
+            font-weight: 700; font-size: 0.95rem;
+            box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+        }
+        .pwa-banner .pwa-badge {
+            background: rgba(0,0,0,0.25); padding: 4px 12px;
+            border-radius: 20px; font-size: 0.82rem;
+        }
+
+        /* ── Footer ── */
+        .footer {
+            text-align: center; padding: 2rem 1rem;
+            color: rgba(139,148,158,0.4); font-size: 0.82rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Hidden ── */
+        .app-card.hidden { display: none; }
+        .section-group.hidden { display: none; }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            .hero { padding: 2.5rem 1.2rem 1.5rem; }
+            .hero h1 { font-size: 1.9rem; }
+            .app-grid { grid-template-columns: 1fr; gap: 10px; }
+            .top-bar { padding: 0 1rem; }
+            .stats-pill { display: none; }
+            .logo { font-size: 1.1rem; }
+        }
+        @media (min-width: 768px) {
+            .app-card.featured {
+                grid-column: span 2;
+                flex-direction: row;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>AI Workspace</h1>
-        
-        <!-- User Authentication Widget -->
-        <div class="user-auth-widget" style="background: rgba(30, 41, 59, 0.5); padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(255,255,255,0.1);">
-            <div id="userInfoArea">
-                <span style="color: #94a3b8; font-size: 0.9rem;"><i class="fa-solid fa-circle-user"></i> 로그인하여 크레딧을 받아보세요!</span>
-            </div>
-            <div id="userActionArea">
-                <a href="/auth/kakao" id="kakaoLoginBtn" style="background: #FEE500; color: #000000; padding: 8px 15px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 0.9rem; display: inline-flex; align-items: center; gap: 5px;">
-                    <i class="fa-solid fa-comment"></i> 카카오 로그인
-                </a>
-                <a href="/auth/logout" id="logoutBtn" style="display: none; color: #94a3b8; text-decoration: none; font-size: 0.8rem; border: 1px solid #475569; padding: 5px 10px; border-radius: 6px;">로그아웃</a>
-            </div>
+
+<!-- ── Top Bar ── -->
+<header class="top-bar">
+    <div class="logo">AI<span>workspace</span></div>
+    <div class="top-right">
+        <div class="stats-pill">
+            <i class="fa-solid fa-users"></i>
+            오늘 <b>{{ stats.today }}</b>명 · 누적 <b>{{ stats.total }}</b>명
         </div>
-
-        <div class="stats-badge">
-            <i class="fa-solid fa-users"></i> 오늘 방문자: <b>{{ stats.today }}</b>명 <span style="opacity:0.5;margin:0 8px;">|</span> 총 누적: <b>{{ stats.total }}</b>명
+        <div id="userActionArea">
+            <a href="/auth/kakao" id="kakaoLoginBtn" class="kakao-login-btn">
+                <i class="fa-solid fa-comment"></i> 카카오 로그인
+            </a>
+            <a href="/auth/logout" id="logoutBtn" style="display:none; color:var(--muted); text-decoration:none; font-size:0.85rem; border:1px solid rgba(255,255,255,0.1); padding:6px 12px; border-radius:8px;">로그아웃</a>
         </div>
-        
-        <!-- PWA Install Banner -->
-        <div id="installBanner" style="display: none; background: linear-gradient(90deg, #3b82f6, #a855f7); color: white; padding: 12px 20px; border-radius: 12px; margin-bottom: 20px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-weight: bold; box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);">
-            <span><i class="fa-solid fa-download"></i> 스마트폰 바탕화면에 AI앱 설치하기</span>
-            <span style="background: rgba(0,0,0,0.3); padding: 5px 12px; border-radius: 20px; font-size: 0.85rem;">무료</span>
-        </div>
+    </div>
+</header>
 
-        <p>환영합니다. 이용하실 애플리케이션을 선택해주세요.</p>
+<!-- ── PWA Banner ── -->
+<div class="pwa-banner" id="installBanner">
+    <span><i class="fa-solid fa-download"></i> 바탕화면 앱으로 설치하기</span>
+    <span class="pwa-badge">무료</span>
+</div>
 
-        <!-- Search Filter -->
-        <div class="search-container">
-            <input type="text" id="appSearchInput" placeholder="무엇을 찾으시나요? (예: 빵집, 병원, 사주, 유튜브...)" oninput="filterApps()">
-            <i class="fa-solid fa-magnifying-glass"></i>
-        </div>
+<!-- ── Hero ── -->
+<section class="hero">
+    <div class="hero-badge">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Powered by Gemini AI
+    </div>
+    <h1>모든 AI 툴,<br>하나의 공간에서</h1>
+    <p>주식 분석, 카카오 답장, 사주·타로, 유튜브 스튜디오,<br>동네 탐색까지 — 16가지 AI 앱이 여기 있습니다.</p>
 
-        <!-- Category Tabs -->
-        <div class="category-tabs">
-            <button class="cat-btn active" data-category="all" onclick="filterCategory('all')">전체보기</button>
-            <button class="cat-btn" data-category="local" onclick="filterCategory('local')">로컬 스캐너</button>
-            <button class="cat-btn" data-category="utility" onclick="filterCategory('utility')">유틸리티 & 툴</button>
-            <button class="cat-btn" data-category="game" onclick="filterCategory('game')">미니 게임</button>
-            <button class="cat-btn" data-category="life" onclick="filterCategory('life')">라이프스타일</button>
-        </div>
+    <!-- Search -->
+    <div class="search-wrap">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="search-input" id="searchInput"
+               placeholder="앱 검색... (예: 사주, 유튜브, 주식, 맛집)"
+               oninput="filterApps(this.value)">
+    </div>
+</section>
 
-        
-        <!-- Favorites Section -->
-        <div id="favoritesSection" style="display: none; width: 100%;">
-            <div class="section-title" style="border-left-color: var(--primary);">⭐ 즐겨찾기</div>
-            <div class="cards" id="favoritesContainer"></div>
-            <div class="section-divider"></div>
-        </div>
+<!-- ── Category Filter ── -->
+<div class="cat-filter">
+    <button class="cat-btn active" data-cat="all" onclick="setCategory('all')">🌟 전체</button>
+    <button class="cat-btn" data-cat="local" onclick="setCategory('local')">📍 로컬 & 여행</button>
+    <button class="cat-btn" data-cat="finance" onclick="setCategory('finance')">📊 정보 & 분석</button>
+    <button class="cat-btn" data-cat="comm" onclick="setCategory('comm')">💬 소통 & 언어</button>
+    <button class="cat-btn" data-cat="life" onclick="setCategory('life')">🌙 운세 & 라이프</button>
+    <button class="cat-btn" data-cat="create" onclick="setCategory('create')">🎨 AI 창작 도구</button>
+    <button class="cat-btn" data-cat="game" onclick="setCategory('game')">🎮 게임</button>
+</div>
 
-        <div class="section-title" style="border-left-color: #ffaa00;">로컬 스캐너 (맛집 / 카페 / 병원)</div>
-        <div class="cards">
-            <a href="/restaurant" id="card_restaurant" class="card" data-type="restaurant">
-                <div class="pin-btn" data-id="card_restaurant" onclick="togglePin(event, 'card_restaurant')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-solid fa-utensils"></i></div>
-                <h2>AI 주변 맛집 스캐너</h2>
-                <div class="description">
-                    주소를 입력하면 5km/10km 이내의 음식점을 찾아 한식, 중식 등으로 분류하고, 별점과 메인 메뉴까지 모아서 보여줍니다.
-                </div>
-            </a>
-            
-            <a href="/bakery" id="card_bakery" class="card" data-type="bakery">
-                <div class="pin-btn" data-id="card_bakery" onclick="togglePin(event, 'card_bakery')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-solid fa-bread-slice"></i></div>
-                <h2>🥐 AI 주변 빵집 스캐너</h2>
-                <div class="description">
-                    거친 비바람 속에서도 최고의 빵집과 디저트 카페만을 정밀 타격하여 스캔해냅니다. 숨은 빵집 매니아를 위한 전용 플랫폼.
-                </div>
-            </a>
+<!-- ── Main App Grid ── -->
+<main class="main-content">
 
-            <a href="/cafe" id="card_cafe" class="card" data-type="cafe">
-                <div class="pin-btn" data-id="card_cafe" onclick="togglePin(event, 'card_cafe')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-solid fa-mug-hot"></i></div>
-                <h2>☕ AI 주변 카페 스캐너</h2>
-                <div class="description">
-                    대형 프랜차이즈는 빼고, 감성 충만한 로스터리와 감성 카페만을 찾아냅니다. 카공족, 데이트 장소를 위한 필수 앱입니다.
+    <!-- 로컬 & 여행 -->
+    <div class="section-group" data-cat="local">
+        <div class="section-label">📍 로컬 & 여행</div>
+        <div class="app-grid">
+
+            <a href="/local" class="app-card featured" data-cat="local"
+               data-keywords="맛집 카페 빵집 베이커리 병원 클리닉 동네 로컬 주변"
+               style="--card-glow:rgba(255,170,0,0.08); --icon-bg:rgba(255,170,0,0.12); --icon-border:rgba(255,170,0,0.2);">
+                <div class="card-icon">🗺️</div>
+                <div class="card-body">
+                    <div class="card-title">AI 동네 탐색기 <span class="merged-badge">4-in-1</span></div>
+                    <div class="card-desc">주변 맛집·카페·빵집·병원을 한 곳에서. 위치 기반 AI 탐색과 리뷰 요약까지.</div>
+                    <div class="card-tags"><span class="tag">맛집</span><span class="tag">카페</span><span class="tag">베이커리</span><span class="tag">병원</span></div>
                 </div>
             </a>
 
-            <a href="/lotto_scanner" id="card_lotto_scanner" class="card" data-type="local" style="--card-color: #facc15;">
-                <div class="pin-btn" data-id="card_lotto_scanner" onclick="togglePin(event, 'card_lotto_scanner')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.3)); color: #facc15;"><i class="fa-solid fa-gem"></i></div>
-                <h2>🎯 AI 로또 명당 스캐너</h2>
-                <div class="description">
-                    주변의 로또 명당과 스피또 성지를 검색하고, 당첨 횟수(1등, 2등)를 AI가 긁어와서 한 눈에 보여줍니다.
+            <a href="/planner" class="app-card featured" data-cat="local"
+               data-keywords="여행 플래너 코스 원데이 약속 중간지점 만남"
+               style="--card-glow:rgba(6,182,212,0.08); --icon-bg:rgba(6,182,212,0.12); --icon-border:rgba(6,182,212,0.2);">
+                <div class="card-icon">📍</div>
+                <div class="card-body">
+                    <div class="card-title">AI 종합 플래너 <span class="merged-badge">3-in-1</span></div>
+                    <div class="card-desc">해외여행 일정, 원데이 코스, 약속 중간 지점 찾기를 한 앱에서.</div>
+                    <div class="card-tags"><span class="tag">여행</span><span class="tag">원데이코스</span><span class="tag">중간지점</span></div>
                 </div>
             </a>
 
-            <a href="/clinic" id="card_clinic" class="card" data-type="clinic" style="--card-color: #3b82f6;">
-                <div class="pin-btn" data-id="card_clinic" onclick="togglePin(event, 'card_clinic')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3));"><i class="fa-solid fa-house-medical"></i></div>
-                <h2>🏥 AI 병원/클리닉 스캐너</h2>
-                <div class="description">
-                    광고 후기를 거르고 과잉 진료 없는 양심적인 병원(피부과, 치과, 안과, 내과 등)을 찾아줍니다.
+            <a href="/estate" class="app-card" data-cat="local"
+               data-keywords="부동산 임장 매물 아파트"
+               style="--card-glow:rgba(251,191,36,0.08); --icon-bg:rgba(251,191,36,0.12); --icon-border:rgba(251,191,36,0.2);">
+                <div class="card-icon">🏢</div>
+                <div class="card-body">
+                    <div class="card-title">AI 부동산 스캐너</div>
+                    <div class="card-desc">임장 전 AI로 지역 매물과 시세를 빠르게 분석합니다.</div>
+                    <div class="card-tags"><span class="tag">부동산</span><span class="tag">임장</span></div>
                 </div>
             </a>
 
-            <a href="/course" id="card_course" class="card" data-type="course" style="--card-color: #a855f7;">
-                <div class="pin-btn" data-id="card_course" onclick="togglePin(event, 'card_course')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.3));"><i class="fa-solid fa-map-location-dot"></i></div>
-                <h2>🗺️ AI 원데이 코스 플래너</h2>
-                <div class="description">
-                    데이트, 부모님 동반 등 방문 목적만 입력하면 완벽한 하루 동선(맛집➡️카페➡️놀거리)을 짜드립니다.
+            <a href="/lotto_scanner" class="app-card" data-cat="local"
+               data-keywords="로또 명당 판매점"
+               style="--card-glow:rgba(234,179,8,0.08); --icon-bg:rgba(234,179,8,0.12); --icon-border:rgba(234,179,8,0.2);">
+                <div class="card-icon">🎯</div>
+                <div class="card-body">
+                    <div class="card-title">AI 로또 명당 스캐너</div>
+                    <div class="card-desc">당첨 확률이 높은 로또 판매점을 주변에서 찾아드립니다.</div>
+                    <div class="card-tags"><span class="tag">로또</span><span class="tag">명당</span></div>
                 </div>
             </a>
 
-            <a href="/travel" id="card_travel" class="card" data-type="travel" style="--card-color: #06b6d4;">
-                <div class="pin-btn" data-id="card_travel" onclick="togglePin(event, 'card_travel')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(6, 182, 212, 0.3));"><i class="fa-solid fa-plane"></i></div>
-                <h2>✈️ AI 맞춤형 여행 플래너</h2>
-                <div class="description">
-                    해외부터 국내까지! 목적지와 일정만 고르면 AI가 완벽한 일자별 동선과 필수 준비물, 예상 경비 가이드를 세워드립니다.
-                </div>
-            </a>
-
-            <a href="/meetup" id="card_meetup" class="card" data-type="local" style="--card-color: #f97316;">
-                <div class="pin-btn" data-id="card_meetup" onclick="togglePin(event, 'card_meetup')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(249, 115, 22, 0.3)); color: #f97316;"><i class="fa-solid fa-location-crosshairs"></i></div>
-                <h2>📍 중간 지점 약속 플래너</h2>
-                <div class="description">
-                    친구들의 출발 주소를 입력하면 지리적으로 가장 공평한 중간 지점을 계산하고, 주변의 약속 잡기 좋은 추천 장소를 알려줍니다.
-                </div>
-            </a>
-
-            <a href="/estate" id="card_estate" class="card" data-type="estate" style="--card-color: #10b981;">
-                <div class="pin-btn" data-id="card_estate" onclick="togglePin(event, 'card_estate')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3));"><i class="fa-solid fa-building-user"></i></div>
-                <h2>🏢 AI 부동산/임장 스캐너</h2>
-                <div class="description">
-                    거주 예정인 동네나 아파트 단지의 교통, 상권, 학군, 병원 인프라를 분석하고 육각형 지표로 보여줍니다.
-                </div>
-            </a>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="section-title">유틸리티 & 툴</div>
-        <div class="cards">
-            <a href="/kakao_reply" id="card_kakao_reply" class="card" data-type="utility" style="--card-color: #FEE500;">
-                <div class="pin-btn" data-id="card_kakao_reply" onclick="togglePin(event, 'card_kakao_reply')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(254,229,0,0.4)); color: #FEE500;"><i class="fa-solid fa-comment-dots"></i></div>
-                <h2>💬 AI 카톡 답장 추천기</h2>
-                <div class="description">
-                    카카오톡 대화 캡처를 올리면 AI가 맥락을 파악하고, 친근하게·쿨하게·유머있게 등 분위기별 최적 답장 보기를 만들어드립니다. <span style="color:#FEE500;font-weight:bold;">(NEW)</span>
-                </div>
-            </a>
-            <a href="/message" id="card_message" class="card" data-type="message" style="--card-color: #ec4899;">
-                <div class="pin-btn" data-id="card_message" onclick="togglePin(event, 'card_message')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.3));"><i class="fa-solid fa-envelope-open-text"></i></div>
-                <h2>💬 AI 찰떡 메세지 메이커</h2>
-                <div class="description">
-                    부모님, 애인, 직장상사 등 대상에게 전할 말을 대충 쓰면 AI가 가장 알맞은 3가지 버전의 카톡/메일 내용으로 다듬어 줍니다.
-                </div>
-            </a>
-            <a href="/english" id="card_english" class="card" data-type="english" style="--card-color: #22c55e;">
-                <div class="pin-btn" data-id="card_english" onclick="togglePin(event, 'card_english')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(34, 197, 94, 0.3));"><i class="fa-solid fa-graduation-cap"></i></div>
-                <h2>대화형 AI 영어 회화 튜터</h2>
-                <div class="description">
-                    롤플레잉 방식으로 영어 회화를 배웁니다. 틀린 영어를 쓰면 즉시 멈추고 정확한 표현을 객관식으로 교정해주는 똑똑한 과외선생님.
-                </div>
-            </a>
-            
-            <a href="/shopping" id="card_shopping" class="card" data-type="shopping" style="--card-color: #facc15;">
-                <div class="pin-btn" data-id="card_shopping" onclick="togglePin(event, 'card_shopping')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.3)); color: #facc15;"><i class="fa-solid fa-cart-arrow-down"></i></div>
-                <h2>🛒 AI 쇼핑 호구 방지기</h2>
-                <div class="description">
-                    허위/과장 리뷰를 걷어내고, 소비자들이 꼽은 '진짜 치명적 단점 3가지'와 '핵심 장점 3가지'를 AI가 요약하여 구매 결정을 돕습니다.
-                </div>
-            </a>
-            
-            <a href="/shorts" id="card_shorts" class="card" data-type="shorts" style="--card-color: #ef4444;">
-                <div class="pin-btn" data-id="card_shorts" onclick="togglePin(event, 'card_shorts')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.3));"><i class="fa-solid fa-video"></i></div>
-                <h2>🎬 AI 유튜브 쇼츠 메이커</h2>
-                <div class="description">
-                    주제만 입력하면 AI가 대본을 적고, 목소리(TTS)를 입힌 뒤 배경 영상을 찾아 1분짜리 쇼츠 MP4를 자동 렌더링/추출합니다.
-                </div>
-            </a>
-
-            <a href="/youtube" id="card_youtube" class="card" data-type="youtube">
-                <div class="pin-btn" data-id="card_youtube" onclick="togglePin(event, 'card_youtube')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-brands fa-youtube"></i></div>
-                <h2>주요 채널 영상 추출기</h2>
-                <div class="description">
-                    특정 유튜브 채널의 인기 영상을 분석하고, NotebookLM 등에서 활용 가능한 포맷으로 제목과 주소를 빠르게 복사/추출 가능합니다.
-                </div>
-            </a>
-
-            <a href="/youtube_summary" id="card_youtubesummary" class="card" data-type="youtube">
-                <div class="pin-btn" data-id="card_youtubesummary" onclick="togglePin(event, 'card_youtubesummary')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.4)); color: #f472b6;"><i class="fa-solid fa-bolt"></i></div>
-                <h2>AI 유튜브 영상 요약기</h2>
-                <div class="description">
-                    유튜브 영상 내용을 즉시 분석하여 핵심 요약, 시각화 마인드맵, 타임라인, 다정한 용어 사전, Q&A 챗봇 등 5종 프리미엄 지식 리포트를 제공합니다.
-                </div>
-            </a>
-            
-            <a href="/market" id="card_market" class="card" data-type="stock" style="--card-color: #ff0055;">
-                <div class="pin-btn" data-id="card_market" onclick="togglePin(event, 'card_market')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(255, 0, 85, 0.4)); color: #ff0055;"><i class="fa-solid fa-fire-flame-curved"></i></div>
-                <h2>AI 주식 시장 트렌드 스캐너</h2>
-                <div class="description">
-                    한국 주식시장에서 당일 가장 돈이 몰리는 거래대금 TOP 10을 뽑아내고, AI가 주도 테마와 흐름을 날카롭게 분석해 줍니다. <span style="color:#ef4444;font-weight:bold;">(NEW)</span>
-                </div>
-            </a>
-            
-            <a href="/stock" id="card_stock" class="card" data-type="stock">
-                <div class="pin-btn" data-id="card_stock" onclick="togglePin(event, 'card_stock')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-solid fa-chart-line"></i></div>
-                <h2>AI 주식 기술적 분석 차트</h2>
-                <div class="description">
-                    과거 데이터를 바탕으로 이동평균, 볼린저 밴드, 지지저항 터널을 그려내어 1개월 향후 예측 및 백테스트 결과를 나타냅니다.
-                </div>
-            </a>
-            
-            <a href="/prompt" id="card_prompt" class="card" data-type="prompt">
-                <div class="pin-btn" data-id="card_prompt" onclick="togglePin(event, 'card_prompt')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-                <h2>AI 프롬프트 최적화기</h2>
-                <div class="description">
-                    아이디어를 건네주면 AI가 5가지 역질문을 통해 의도를 파악하고, 구글 Gemini가 가장 기가막힌 마스터 프롬프트를 짜드립니다.
-                </div>
-            </a>
-
-            <a href="/lotto" id="card_lotto" class="card" data-type="lotto">
-                <div class="pin-btn" data-id="card_lotto" onclick="togglePin(event, 'card_lotto')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box"><i class="fa-solid fa-clover"></i></div>
-                <h2>HOT & COLD 로또 교배기</h2>
-                <div class="description">
-                    역대 가장 당첨 많이/적게 된 번호 10개만 따로 추출하여, 그 안에서 기가 막힌 5게임씩 총 10게임 조합을 직관적인 UI로 찍어냅니다.
-                </div>
-            </a>
-
-            <a href="/chef" id="card_chef" class="card" data-type="tool" style="--card-color: #f97316;">
-                <div class="pin-btn" data-id="card_chef" onclick="togglePin(event, 'card_chef')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(249, 115, 22, 0.3)); color: #fb923c;"><i class="fa-solid fa-fire-burner"></i></div>
-                <h2>🍳 AI 냉장고 파먹기 셰프</h2>
-                <div class="description">
-                    남은 식재료를 입력하면 뒷골목 사이다 셰프가 기상천외한 자취 요리 레시피를 만들어줍니다.
-                </div>
-            </a>
-            
-            <a href="/polisher" id="card_polisher" class="card" data-type="tool" style="--card-color: #3b82f6;">
-                <div class="pin-btn" data-id="card_polisher" onclick="togglePin(event, 'card_polisher')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3)); color: #60a5fa;"><i class="fa-solid fa-file-signature"></i></div>
-                <h2>👔 AI 텍스트 탈곡기</h2>
-                <div class="description">
-                    분노의 문장을 극존칭 비즈니스 메일이나 단호한 내용증명 톤으로 완벽히 마사지(?) 해줍니다.
-                </div>
-            </a>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="section-title" style="border-left-color: #8b5cf6;">🎮 미니 게임</div>
-        <div class="cards">
-            <a href="/game_office" id="card_gameoffice" class="card" data-type="game" style="--card-color: #8b5cf6;">
-                <div class="pin-btn" data-id="card_gameoffice" onclick="togglePin(event, 'card_gameoffice')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.3));"><i class="fa-solid fa-briefcase"></i></div>
-                <h2>💼 회사원 키우기 (웹 게임)</h2>
-                <div class="description">
-                    26세 신입사원으로 입사하여 100세까지 한 평생 자산을 불려나가는 클리커/방치형 모의 시뮬레이션 게임입니다.
-                </div>
-            </a>
-            <a href="/novel" id="card_novel" class="card" data-type="game" style="--card-color: #d946ef;">
-                <div class="pin-btn" data-id="card_novel" onclick="togglePin(event, 'card_novel')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(217, 70, 239, 0.3));"><i class="fa-solid fa-book-journal-whills"></i></div>
-                <h2>📖 무한의 AI 소설 (TRPG)</h2>
-                <div class="description">
-                    설정을 던져주면 AI가 마스터가 되어 상황을 만듭니다. 질문에 대답하며 끝이 없는 나만의 소설을 직접 만들어 보세요.
-                </div>
-            </a>
-
-            <a href="/tarot" id="card_tarot" class="card" data-type="game" style="--card-color: #6366f1;">
-                <div class="pin-btn" data-id="card_tarot" onclick="togglePin(event, 'card_tarot')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(99, 102, 241, 0.4)); color: #818cf8;"><i class="fa-solid fa-moon"></i></div>
-                <h2>🔮 AI 타로 상담소</h2>
-                <div class="description">
-                    고민을 털어놓고 3장의 카드를 뽑아보세요. 제미나이가 타로 마스터로 빙의하여 소름 돋는 인생 해설을 제공합니다.
-                </div>
-            </a>
-            
-            <a href="/saju" id="card_saju" class="card" data-type="game" style="--card-color: #fbbf24;">
-                <div class="pin-btn" data-id="card_saju" onclick="togglePin(event, 'card_saju')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(251, 191, 36, 0.4)); color: #fbbf24;"><i class="fa-solid fa-yin-yang"></i></div>
-                <h2>📜 신점 명리 사주</h2>
-                <div class="description">
-                    당신의 생년월일과 시간을 통해 명리학과 주역의 통찰을 만나보세요. 뼈 때리는 평생의 기운을 정확히 짚어냅니다.
-                </div>
-            </a>
-            
-            <a href="/face" id="card_face" class="card" data-type="game" style="--card-color: #d4af37;">
-                <div class="pin-btn" data-id="card_face" onclick="togglePin(event, 'card_face')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(212, 175, 55, 0.4)); color: #d4af37;"><i class="fa-solid fa-eye"></i></div>
-                <h2>👑 매운맛 AI 관상가</h2>
-                <div class="description">
-                    내가 왕이 될 상인가? 얼굴 사진을 올리면 AI가 재물운, 직장운을 팩트폭행 해드립니다. <span style="color:#ef4444;font-weight:bold;">(NEW)</span>
-                </div>
-            </a>
-        </div>
-
-        <div class="section-divider"></div>
-
-        <div class="section-title" style="border-left-color: #f43f5e;">💖 라이프스타일 & 멘탈 케어 <span style="font-size:0.8rem; background:#f43f5e; color:#fff; border-radius:10px; padding:3px 8px; vertical-align:middle; font-weight:bold;">NEW!</span></div>
-        <div class="cards">
-            <a href="/love" id="card_love" class="card" data-type="life" style="--card-color: #ec4899;">
-                <div class="pin-btn" data-id="card_love" onclick="togglePin(event, 'card_love')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.4)); color: #f472b6;"><i class="fa-solid fa-heart-crack"></i></div>
-                <h2>💌 AI 카톡 썸 판독기</h2>
-                <div class="description">
-                    그린라이트일까 어장관리일까? 카톡 대화 캡처를 올리면 냉철한 AI 연애코치가 뼈 때리는 팩트 폭행을 날려드립니다. <span style="color:#ef4444;font-weight:bold;">(HOT)</span>
-                </div>
-            </a>
-            
-            <a href="/diet" id="card_diet" class="card" data-type="life" style="--card-color: #8add36;">
-                <div class="pin-btn" data-id="card_diet" onclick="togglePin(event, 'card_diet')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(138, 221, 54, 0.2)); color: #8add36;"><i class="fa-solid fa-fire"></i></div>
-                <h2>🥗 지옥의 다이어트 코치</h2>
-                <div class="description">
-                    오늘 먹은 음식 사진이나 배달 영수증을 올려보세요. 호랑이 PT 선생님이 눈물 쏙 빠지게 팩폭하고 속죄 처방을 내립니다.
-                </div>
-            </a>
-            <a href="/diary" id="card_diary" class="card" data-type="life" style="--card-color: #3b82f6;">
-                <div class="pin-btn" data-id="card_diary" onclick="togglePin(event, 'card_diary')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.3)); color: #60a5fa;"><i class="fa-solid fa-book"></i></div>
-                <h2>📝 티키타카 자동 일기장</h2>
-                <div class="description">
-                    티키타카 대화 3번만 하면, AI가 우아한 에세이로 포장하여 내 비밀 노션(Notion)에 꽂아줍니다! <span style="color:#ef4444;font-weight:bold;">(강추)</span>
-                </div>
-            </a>
-            <a href="/dream" id="card_dream" class="card" data-type="life" style="--card-color: #a855f7;">
-                <div class="pin-btn" data-id="card_dream" onclick="togglePin(event, 'card_dream')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(168, 85, 247, 0.3)); color: #d8b4fe;"><i class="fa-solid fa-cloud-moon"></i></div>
-                <h2>🌙 AI 몽환의 꿈 해몽가</h2>
-                <div class="description">
-                    간밤의 꿈을 해석해 전통적 길몽 여부, 심리학적 무의식 파악, 그리고 행운의 추천 로또 번호 6개를 찍어줍니다.
-                </div>
-            </a>
-            <a href="/therapist" id="card_therapist" class="card" data-type="life" style="--card-color: #10b981;">
-                <div class="pin-btn" data-id="card_therapist" onclick="togglePin(event, 'card_therapist')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3)); color: #34d399;"><i class="fa-solid fa-leaf"></i></div>
-                <h2>🎋 AI 힐링 대나무숲</h2>
-                <div class="description">
-                    오늘 하루 쌓인 울분을 적어보세요. 무조건 내 편이 되어주고 마음을 위로해주는 따뜻한 숲지기가 기다립니다.
-                </div>
-            </a>
-            <a href="/fashion" id="card_fashion" class="card" data-type="life" style="--card-color: #ec4899;">
-                <div class="pin-btn" data-id="card_fashion" onclick="togglePin(event, 'card_fashion')"><i class="fa-solid fa-thumbtack" style="transform: rotate(45deg);"></i></div>
-                <div class="icon-box" style="filter: drop-shadow(0 0 15px rgba(236, 72, 153, 0.3)); color: #f472b6;"><i class="fa-solid fa-camera"></i></div>
-                <h2>📸 AI 패션 & 관상 평가소</h2>
-                <div class="description">
-                    [Vision API 장착] 자신의 착장이나 얼굴 사진을 올리면 AI가 매의 눈으로 스캔하여 무자비하게 팩트 폭행 점수를 매겨드립니다.
-                </div>
-            </a>
-        </div>
-
-        <div class="section-divider"></div>
-        <div class="section-title" style="border-left-color: #10b981;">💬 피드백 및 방명록</div>
-        <div class="comment-board">
-            <div class="comment-input-box">
-                <input type="text" id="cAuthor" placeholder="닉네임 (익명)" maxlength="20">
-                <textarea id="cText" placeholder="여기에 사이트 개선점이나 응원 메시지를 자유롭게 남겨주세요!" rows="3"></textarea>
-                <button onclick="submitComment()">등록하기</button>
-            </div>
-            <div id="commentList" class="comment-list">
-                <div style='text-align:center;color:gray;padding:1rem;'>불러오는 중...</div>
-            </div>
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div class="toast-container" id="toastContainer"></div>
+    <!-- 정보 & 분석 -->
+    <div class="section-group" data-cat="finance">
+        <div class="section-label">📊 정보 & 분석</div>
+        <div class="app-grid">
 
-    <!-- Scroll To Top Button -->
-    <button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
-        <i class="fa-solid fa-arrow-up"></i>
-    </button>
+            <a href="/invest" class="app-card featured" data-cat="finance"
+               data-keywords="주식 시장 트렌드 종목 차트 기술적 분석 코스피 코스닥"
+               style="--card-glow:rgba(239,68,68,0.08); --icon-bg:rgba(239,68,68,0.12); --icon-border:rgba(239,68,68,0.2);">
+                <div class="card-icon">📈</div>
+                <div class="card-body">
+                    <div class="card-title">AI 주식 분석기 <span class="merged-badge">2-in-1</span></div>
+                    <div class="card-desc">시장 거래대금 트렌드와 개별 종목 기술적 차트 분석을 한 화면에서.</div>
+                    <div class="card-tags"><span class="tag">시장트렌드</span><span class="tag">종목분석</span><span class="tag">차트</span></div>
+                </div>
+            </a>
 
-    <script src="/static/js/main.js"></script>
+            <a href="/youtube_studio" class="app-card featured" data-cat="finance"
+               data-keywords="유튜브 영상 요약 인기영상 추출 채널"
+               style="--card-glow:rgba(239,68,68,0.08); --icon-bg:rgba(239,68,68,0.12); --icon-border:rgba(239,68,68,0.2);">
+                <div class="card-icon">🎥</div>
+                <div class="card-body">
+                    <div class="card-title">AI 유튜브 스튜디오 <span class="merged-badge">2-in-1</span></div>
+                    <div class="card-desc">채널 인기 영상 URL 추출과 AI 영상 요약·분석을 한 곳에서.</div>
+                    <div class="card-tags"><span class="tag">영상요약</span><span class="tag">인기영상추출</span></div>
+                </div>
+            </a>
 
-        <!-- AdSense Banner Placeholder (Bottom of App List) -->
-        <div class="ad-placeholder" style="margin-top: 30px; margin-bottom: 80px; text-align: center;">
-            <ins class="adsbygoogle"
-                 style="display:block"
-                 data-ad-client="ca-pub-8745904104394554"
-                 data-ad-slot="auto"
-                 data-ad-format="auto"
-                 data-full-width-responsive="true"></ins>
-            <script>
-                 (adsbygoogle = window.adsbygoogle || []).push({});
-            </script>
+            <a href="/shopping" class="app-card" data-cat="finance"
+               data-keywords="쇼핑 가격 비교 호구 방지 최저가"
+               style="--card-glow:rgba(16,185,129,0.08); --icon-bg:rgba(16,185,129,0.12); --icon-border:rgba(16,185,129,0.2);">
+                <div class="card-icon">🛒</div>
+                <div class="card-body">
+                    <div class="card-title">AI 쇼핑 호구 방지기</div>
+                    <div class="card-desc">구매 전 AI가 가격 적정성, 사기 여부를 분석해 드립니다.</div>
+                    <div class="card-tags"><span class="tag">쇼핑</span><span class="tag">가격비교</span></div>
+                </div>
+            </a>
+
         </div>
-
-    <!-- Bottom Nav -->
-    <div class="bottom-nav">
-        <a href="/" class="nav-item active">
-            <i class="fa-solid fa-house"></i>
-            <span>홈</span>
-        </a>
-        <a href="/shopping" class="nav-item">
-            <i class="fa-solid fa-shield-halved"></i>
-            <span>호구방지</span>
-        </a>
-        <a href="/saju" class="nav-item">
-            <i class="fa-solid fa-yin-yang"></i>
-            <span>운세</span>
-        </a>
-        <a href="/archive" class="nav-item">
-            <i class="fa-solid fa-star"></i>
-            <span>보관함</span>
-        </a>
     </div>
 
-    <!-- Global Loader -->
-    <div id="globalLoader">
-        <div class="loader-spinner"></div>
-        <div class="loader-text" id="globalLoaderText">AI가 작업 중입니다...</div>
+    <!-- 소통 & 언어 -->
+    <div class="section-group" data-cat="comm">
+        <div class="section-label">💬 소통 & 언어</div>
+        <div class="app-grid">
+
+            <a href="/message_hub" class="app-card featured" data-cat="comm"
+               data-keywords="카카오 답장 메시지 문자 텍스트 다듬기 탈곡기"
+               style="--card-glow:rgba(236,72,153,0.08); --icon-bg:rgba(236,72,153,0.12); --icon-border:rgba(236,72,153,0.2);">
+                <div class="card-icon">💬</div>
+                <div class="card-body">
+                    <div class="card-title">AI 메시지 마스터 <span class="merged-badge">3-in-1</span></div>
+                    <div class="card-desc">카톡 답장 추천, 새 메시지 작성, 텍스트 문체 변환을 한 앱에서.</div>
+                    <div class="card-tags"><span class="tag">카톡답장</span><span class="tag">메시지작성</span><span class="tag">문체변환</span></div>
+                </div>
+            </a>
+
+            <a href="/love" class="app-card" data-cat="comm"
+               data-keywords="카카오 썸 연애 대화 판독 감정"
+               style="--card-glow:rgba(236,72,153,0.08); --icon-bg:rgba(236,72,153,0.12); --icon-border:rgba(236,72,153,0.2);">
+                <div class="card-icon">💌</div>
+                <div class="card-body">
+                    <div class="card-title">AI 카톡 썸 판독기</div>
+                    <div class="card-desc">카카오톡 대화를 업로드하면 AI가 상대방의 감정과 호감도를 분석합니다.</div>
+                    <div class="card-tags"><span class="tag">썸</span><span class="tag">연애</span><span class="tag">감정분석</span></div>
+                </div>
+            </a>
+
+            <a href="/english" class="app-card" data-cat="comm"
+               data-keywords="영어 회화 튜터 학습 스피킹"
+               style="--card-glow:rgba(59,130,246,0.08); --icon-bg:rgba(59,130,246,0.12); --icon-border:rgba(59,130,246,0.2);">
+                <div class="card-icon">🎓</div>
+                <div class="card-body">
+                    <div class="card-title">AI 영어 회화 튜터</div>
+                    <div class="card-desc">AI 원어민과 실시간 대화 연습. 발음, 문법, 표현 피드백까지.</div>
+                    <div class="card-tags"><span class="tag">영어</span><span class="tag">회화</span><span class="tag">스피킹</span></div>
+                </div>
+            </a>
+
+        </div>
     </div>
 
+    <!-- 운세 & 라이프 -->
+    <div class="section-group" data-cat="life">
+        <div class="section-label">🌙 운세 & 라이프</div>
+        <div class="app-grid">
+
+            <a href="/mystic" class="app-card featured" data-cat="life"
+               data-keywords="사주 타로 꿈 해몽 운세 점 신점 명리"
+               style="--card-glow:rgba(168,85,247,0.08); --icon-bg:rgba(168,85,247,0.12); --icon-border:rgba(168,85,247,0.2);">
+                <div class="card-icon">🔮</div>
+                <div class="card-body">
+                    <div class="card-title">AI 운세 종합관 <span class="merged-badge">3-in-1</span></div>
+                    <div class="card-desc">사주팔자, 타로 카드, 꿈 해몽을 하나의 앱에서. 동양·서양 운세 모두.</div>
+                    <div class="card-tags"><span class="tag">사주</span><span class="tag">타로</span><span class="tag">꿈해몽</span></div>
+                </div>
+            </a>
+
+            <a href="/health" class="app-card featured" data-cat="life"
+               data-keywords="다이어트 식단 냉장고 셰프 요리 건강 칼로리"
+               style="--card-glow:rgba(34,197,94,0.08); --icon-bg:rgba(34,197,94,0.12); --icon-border:rgba(34,197,94,0.2);">
+                <div class="card-icon">🥗</div>
+                <div class="card-body">
+                    <div class="card-title">AI 건강 코치 <span class="merged-badge">2-in-1</span></div>
+                    <div class="card-desc">지옥의 다이어트 코치와 냉장고 파먹기 셰프. 식단과 요리를 AI가 책임집니다.</div>
+                    <div class="card-tags"><span class="tag">다이어트</span><span class="tag">레시피</span><span class="tag">냉장고파먹기</span></div>
+                </div>
+            </a>
+
+            <a href="/diary" class="app-card" data-cat="life"
+               data-keywords="일기 대화 기록 자동"
+               style="--card-glow:rgba(251,191,36,0.08); --icon-bg:rgba(251,191,36,0.12); --icon-border:rgba(251,191,36,0.2);">
+                <div class="card-icon">📝</div>
+                <div class="card-body">
+                    <div class="card-title">티키타카 AI 일기장</div>
+                    <div class="card-desc">AI가 질문을 던지며 대화하듯 오늘 하루 일기를 자동으로 작성합니다.</div>
+                    <div class="card-tags"><span class="tag">일기</span><span class="tag">대화형</span></div>
+                </div>
+            </a>
+
+            <a href="/therapist" class="app-card" data-cat="life"
+               data-keywords="힐링 대나무숲 고민 상담 익명"
+               style="--card-glow:rgba(16,185,129,0.08); --icon-bg:rgba(16,185,129,0.12); --icon-border:rgba(16,185,129,0.2);">
+                <div class="card-icon">🌱</div>
+                <div class="card-body">
+                    <div class="card-title">AI 힐링 대나무숲</div>
+                    <div class="card-desc">익명으로 고민을 털어놓으면 AI가 공감하고 따뜻한 조언을 건넵니다.</div>
+                    <div class="card-tags"><span class="tag">심리상담</span><span class="tag">힐링</span></div>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- AI 창작 도구 -->
+    <div class="section-group" data-cat="create">
+        <div class="section-label">🎨 AI 창작 도구</div>
+        <div class="app-grid">
+
+            <a href="/vision_ai" class="app-card featured" data-cat="create"
+               data-keywords="관상 얼굴 패션 스타일 이미지 분석 외모"
+               style="--card-glow:rgba(212,175,55,0.08); --icon-bg:rgba(212,175,55,0.12); --icon-border:rgba(212,175,55,0.2);">
+                <div class="card-icon">👁️</div>
+                <div class="card-body">
+                    <div class="card-title">AI 비주얼 분석 <span class="merged-badge">2-in-1</span></div>
+                    <div class="card-desc">AI 관상 분석과 패션 평가. 사진 한 장으로 외모와 스타일 피드백을.</div>
+                    <div class="card-tags"><span class="tag">관상</span><span class="tag">패션평가</span><span class="tag">이미지분석</span></div>
+                </div>
+            </a>
+
+            <a href="/shorts" class="app-card" data-cat="create"
+               data-keywords="쇼츠 유튜브 숏폼 영상 스크립트 제작"
+               style="--card-glow:rgba(239,68,68,0.08); --icon-bg:rgba(239,68,68,0.12); --icon-border:rgba(239,68,68,0.2);">
+                <div class="card-icon">🎬</div>
+                <div class="card-body">
+                    <div class="card-title">AI 쇼츠 메이커</div>
+                    <div class="card-desc">주제만 입력하면 AI가 유튜브 쇼츠 스크립트와 영상 기획안을 만들어 드립니다.</div>
+                    <div class="card-tags"><span class="tag">쇼츠</span><span class="tag">숏폼</span><span class="tag">스크립트</span></div>
+                </div>
+            </a>
+
+            <a href="/prompt" class="app-card" data-cat="create"
+               data-keywords="프롬프트 최적화 AI 챗GPT 질문"
+               style="--card-glow:rgba(99,102,241,0.08); --icon-bg:rgba(99,102,241,0.12); --icon-border:rgba(99,102,241,0.2);">
+                <div class="card-icon">🤖</div>
+                <div class="card-body">
+                    <div class="card-title">AI 프롬프트 최적화기</div>
+                    <div class="card-desc">내 프롬프트를 AI가 분석하고 더 효과적인 버전으로 재작성해 드립니다.</div>
+                    <div class="card-tags"><span class="tag">프롬프트</span><span class="tag">최적화</span></div>
+                </div>
+            </a>
+
+            <a href="/lotto" class="app-card" data-cat="create"
+               data-keywords="로또 번호 추첨 HOT COLD 교배"
+               style="--card-glow:rgba(234,179,8,0.08); --icon-bg:rgba(234,179,8,0.12); --icon-border:rgba(234,179,8,0.2);">
+                <div class="card-icon">🍀</div>
+                <div class="card-body">
+                    <div class="card-title">HOT&COLD 로또 교배기</div>
+                    <div class="card-desc">빈도 분석 기반으로 HOT 번호와 COLD 번호를 교배해 최적의 조합을 생성합니다.</div>
+                    <div class="card-tags"><span class="tag">로또</span><span class="tag">번호생성</span></div>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+    <!-- 게임 -->
+    <div class="section-group" data-cat="game">
+        <div class="section-label">🎮 AI 게임</div>
+        <div class="app-grid">
+
+            <a href="/game_office" class="app-card" data-cat="game"
+               data-keywords="회사원 키우기 게임 육성 시뮬"
+               style="--card-glow:rgba(99,102,241,0.08); --icon-bg:rgba(99,102,241,0.12); --icon-border:rgba(99,102,241,0.2);">
+                <div class="card-icon">💼</div>
+                <div class="card-body">
+                    <div class="card-title">회사원 키우기</div>
+                    <div class="card-desc">AI 직장 시뮬레이션. 취업부터 퇴직까지 회사원의 일생을 플레이합니다.</div>
+                    <div class="card-tags"><span class="tag">육성게임</span><span class="tag">시뮬레이션</span></div>
+                </div>
+            </a>
+
+            <a href="/novel" class="app-card" data-cat="game"
+               data-keywords="소설 TRPG 무한 AI 이야기 스토리"
+               style="--card-glow:rgba(168,85,247,0.08); --icon-bg:rgba(168,85,247,0.12); --icon-border:rgba(168,85,247,0.2);">
+                <div class="card-icon">📖</div>
+                <div class="card-body">
+                    <div class="card-title">무한 AI 소설 (TRPG)</div>
+                    <div class="card-desc">내 선택이 이야기를 바꾸는 AI 인터랙티브 소설. 무한히 이어지는 모험.</div>
+                    <div class="card-tags"><span class="tag">TRPG</span><span class="tag">인터랙티브</span><span class="tag">소설</span></div>
+                </div>
+            </a>
+
+        </div>
+    </div>
+
+</main>
+
+<footer class="footer">
+    © 2026 AI Workspace by JM LEE · Powered by Gemini AI
+</footer>
+
+<script>
+    // ── 카테고리 필터
+    function setCategory(cat) {
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector(`.cat-btn[data-cat="${cat}"]`).classList.add('active');
+
+        document.querySelectorAll('.section-group').forEach(g => {
+            if (cat === 'all' || g.dataset.cat === cat) {
+                g.classList.remove('hidden');
+            } else {
+                g.classList.add('hidden');
+            }
+        });
+        document.getElementById('searchInput').value = '';
+    }
+
+    // ── 검색 필터
+    function filterApps(query) {
+        const q = query.toLowerCase().trim();
+        document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        document.querySelector('.cat-btn[data-cat="all"]').classList.add('active');
+
+        document.querySelectorAll('.section-group').forEach(g => g.classList.remove('hidden'));
+
+        if (!q) {
+            document.querySelectorAll('.app-card').forEach(c => c.classList.remove('hidden'));
+            return;
+        }
+
+        document.querySelectorAll('.app-card').forEach(card => {
+            const title = card.querySelector('.card-title')?.textContent.toLowerCase() || '';
+            const desc = card.querySelector('.card-desc')?.textContent.toLowerCase() || '';
+            const keywords = (card.dataset.keywords || '').toLowerCase();
+            if (title.includes(q) || desc.includes(q) || keywords.includes(q)) {
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        });
+
+        // 섹션 내 모든 카드가 hidden이면 섹션도 숨김
+        document.querySelectorAll('.section-group').forEach(g => {
+            const visible = g.querySelectorAll('.app-card:not(.hidden)').length;
+            g.classList.toggle('hidden', visible === 0);
+        });
+    }
+
+    // ── PWA
+    let deferredPrompt;
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();
+        deferredPrompt = e;
+        const banner = document.getElementById('installBanner');
+        banner.style.display = 'flex';
+        banner.addEventListener('click', () => {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then(() => { banner.style.display = 'none'; });
+        });
+    });
+
+    // ── GA4
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date()); gtag('config', 'G-EVBPHWZ6FK');
+
+    // ── Kakao Auth
+    (async () => {
+        try {
+            const res = await fetch('/auth/status');
+            const d = await res.json();
+            if (d.logged_in) {
+                document.getElementById('kakaoLoginBtn').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'inline-flex';
+            }
+        } catch {}
+    })();
+</script>
 </body>
 </html>

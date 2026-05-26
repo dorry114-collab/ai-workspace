@@ -1,0 +1,1532 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>📍 AI 종합 플래너</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Outfit:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% if google_maps_api_key %}
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMapCallback" async defer></script>
+    {% endif %}
+    <style>
+        /* ===== GLOBAL / TAB SHELL ===== */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            background: #0d1117;
+            font-family: 'Outfit', 'Pretendard', 'Inter', sans-serif;
+            color: #f0f6fc;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        .page-header {
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(13,17,23,0.95);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .page-header a {
+            color: #8b949e;
+            text-decoration: none;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            transition: color 0.2s;
+        }
+        .page-header a:hover { color: #fff; }
+        .page-header .header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .page-tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(13,17,23,0.9);
+            position: sticky;
+            top: 65px;
+            z-index: 49;
+            backdrop-filter: blur(10px);
+        }
+        .page-tab-btn {
+            flex: 1;
+            padding: 14px 10px;
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: color 0.2s, border-bottom-color 0.2s;
+            border-bottom: 3px solid transparent;
+            font-family: inherit;
+            white-space: nowrap;
+        }
+        .page-tab-btn.active {
+            color: #06b6d4;
+            border-bottom-color: #06b6d4;
+        }
+        .page-tab-btn:hover:not(.active) {
+            color: #cbd5e1;
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ============================================================
+           TAB 1 — ✈️ 여행 플래너  (prefix: t-)
+           ============================================================ */
+        #tab-travel {
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(59,130,246,0.08), transparent 30%),
+                radial-gradient(circle at 90% 80%, rgba(6,182,212,0.08), transparent 30%);
+        }
+
+        #tab-travel .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        #tab-travel h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #06b6d4, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+        }
+
+        #tab-travel .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 2.5rem;
+            font-size: 1.05rem;
+        }
+
+        .t-ticket-panel {
+            background: #121824;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .t-ticket-panel::before, .t-ticket-panel::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 30px;
+            height: 30px;
+            background-color: #080c16;
+            border-radius: 50%;
+            transform: translateY(-50%);
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 1;
+        }
+        .t-ticket-panel::before { left: -16px; border-left-color: transparent; border-top-color: transparent; transform: translateY(-50%) rotate(45deg); }
+        .t-ticket-panel::after { right: -16px; border-right-color: transparent; border-bottom-color: transparent; transform: translateY(-50%) rotate(45deg); }
+
+        .t-form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media(max-width: 650px) { .t-form-grid { grid-template-columns: 1fr; } }
+
+        .t-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .t-form-group label {
+            font-weight: 600;
+            color: #bae6fd;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .t-form-control {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-family: inherit;
+            font-size: 1.05rem;
+            outline: none;
+            transition: all 0.3s;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        select.t-form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%2394a3b8%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem top 50%;
+            background-size: 0.65rem auto;
+        }
+        .t-form-control:focus { border-color: #3b82f6; box-shadow: 0 0 10px rgba(59,130,246,0.2); }
+
+        .t-chips-container { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; }
+        .t-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+        }
+        .t-chip:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .t-chip.active {
+            background: rgba(6,182,212,0.2);
+            border-color: #06b6d4;
+            color: #22d3ee;
+        }
+
+        .t-generate-btn {
+            background: linear-gradient(135deg, #3b82f6, #06b6d4);
+            color: white;
+            border: none;
+            padding: 1.2rem;
+            border-radius: 12px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            margin-top: 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 5px 15px rgba(6,182,212,0.3);
+            font-family: inherit;
+        }
+        .t-generate-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(6,182,212,0.5); }
+        .t-generate-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .t-loader { display: none; text-align: center; padding: 3rem 0; }
+        .t-loader.active { display: block; }
+        .t-airplane-spinner {
+            font-size: 2.5rem;
+            color: #06b6d4;
+            animation: t-flyAround 2s infinite ease-in-out;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+        @keyframes t-flyAround {
+            0% { transform: translate(-30px, 10px) rotate(-10deg); opacity: 0; }
+            50% { transform: translate(0, -10px) rotate(15deg); opacity: 1; }
+            100% { transform: translate(30px, 10px) rotate(40deg); opacity: 0; }
+        }
+
+        .t-error-msg {
+            display: none;
+            background: rgba(239,68,68,0.1);
+            border-left: 4px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            font-weight: 500;
+        }
+
+        .t-result-container { display: none; }
+
+        .t-summary-card {
+            background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(6,182,212,0.1));
+            border: 1px solid rgba(6,182,212,0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        @media(max-width: 600px) { .t-summary-card { grid-template-columns: 1fr; } }
+
+        .t-summary-section h3 {
+            color: #22d3ee;
+            font-size: 1.1rem;
+            margin: 0 0 1rem 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .t-summary-section ul { margin: 0; padding-left: 1.2rem; color: #e2e8f0; line-height: 1.6; }
+        .t-summary-section li { margin-bottom: 6px; }
+
+        .t-timeline {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 3rem;
+        }
+        .t-timeline::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0; width: 2px;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .t-day-header {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #fff;
+            margin: 2rem 0 1rem -2rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .t-day-header .t-badge {
+            background: #3b82f6;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 1rem;
+        }
+        .t-day-desc { color: #94a3b8; font-size: 1rem; font-weight: 400; }
+
+        .t-timeline-item {
+            position: relative;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .t-timeline-item:hover { transform: translateX(5px); border-color: rgba(59,130,246,0.4); }
+
+        .t-timeline-dot {
+            position: absolute;
+            left: -2.35rem;
+            top: 1.5rem;
+            width: 14px;
+            height: 14px;
+            background: #080c16;
+            border: 3px solid #06b6d4;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .t-item-time { color: #f59e0b; font-weight: 700; margin-bottom: 0.3rem; font-size: 0.95rem; }
+        .t-item-title { font-size: 1.25rem; color: #fff; margin: 0 0 0.5rem 0; font-weight: 700; }
+        .t-item-desc { color: #cbd5e1; line-height: 1.6; margin-bottom: 1rem; font-size: 0.95rem; }
+
+        .t-map-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #bae6fd;
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: background 0.2s;
+        }
+        .t-map-link:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+        /* Timetable */
+        .t-uni-wrapper {
+            margin-bottom: 3rem;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            overflow-x: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .t-uni-header-row { display: flex; margin-left: 50px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.5rem; }
+        .t-uni-day-header { flex: 1; min-width: 120px; text-align: center; font-weight: 700; color: #06b6d4; font-size: 1.1rem; }
+        .t-uni-body { display: flex; position: relative; margin-top: 10px; }
+        .t-uni-time-axis { width: 50px; flex-shrink: 0; position: relative; }
+        .t-uni-time-label { position: absolute; transform: translateY(-50%); font-size: 0.8rem; color: #94a3b8; text-align: right; width: 40px; }
+        .t-uni-day-cols-container { display: flex; flex: 1; position: relative; }
+        .t-uni-grid-line { position: absolute; left: 0; right: 0; border-top: 1px dashed rgba(255,255,255,0.1); z-index: 1; }
+        .t-uni-day-col { flex: 1; min-width: 120px; position: relative; border-right: 1px solid rgba(255,255,255,0.05); }
+        .t-uni-day-col:last-child { border-right: none; }
+        .t-uni-block {
+            position: absolute;
+            left: 4px; right: 4px;
+            border-radius: 8px;
+            padding: 8px;
+            font-size: 0.85rem;
+            overflow: hidden;
+            z-index: 2;
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        .t-uni-block:hover { transform: scale(1.03); z-index: 10; box-shadow: 0 6px 15px rgba(0,0,0,0.4); }
+        .t-uni-block-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+            line-height: 1.2;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        /* ============================================================
+           TAB 2 — 🗺️ 원데이 코스  (prefix: c-)
+           ============================================================ */
+        #tab-course {
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(168,85,247,0.08), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(236,72,153,0.08), transparent 25%);
+        }
+
+        #tab-course .c-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        @media(max-width: 600px) { #tab-course .c-container { padding: 1rem; } }
+
+        #tab-course h1 {
+            font-size: 2.3rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #fff, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #tab-course .c-subtitle {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 3rem;
+            font-size: 1.05rem;
+        }
+
+        .c-search-area {
+            background: #161b22;
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            gap: 12px;
+            margin-bottom: 2rem;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+        }
+        .c-input-group {
+            display: flex;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 0 1rem;
+            flex: 2;
+            min-width: 250px;
+        }
+        .c-input-group i { color: #a855f7; }
+        .c-input-group input {
+            background: transparent;
+            border: none;
+            color: white;
+            padding: 1rem;
+            width: 100%;
+            font-size: 1rem;
+            outline: none;
+            font-family: inherit;
+        }
+        .c-geo-btn {
+            background: rgba(168,85,247,0.2);
+            color: #d8b4fe;
+            border: 1px solid rgba(168,85,247,0.4);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        .c-geo-btn:hover { background: rgba(168,85,247,0.4); }
+
+        .c-select {
+            flex: 1;
+            min-width: 150px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+            appearance: none;
+            font-family: inherit;
+        }
+
+        .c-search-btn {
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 4px 15px rgba(168,85,247,0.4);
+            flex: 1;
+            min-width: 150px;
+            font-family: inherit;
+        }
+        .c-search-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(168,85,247,0.6); }
+
+        .c-loader { display: none; text-align: center; padding: 4rem 0; }
+        .c-loader.active { display: block; }
+        .c-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #a855f7;
+            border-radius: 50%;
+            animation: c-spin 1s linear infinite;
+            margin: 0 auto 1.5rem;
+        }
+        @keyframes c-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .c-error-msg {
+            display: none;
+            background: rgba(239,68,68,0.1);
+            border-left: 4px solid #ef4444;
+            color: #ef4444;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+
+        .c-course-container {
+            display: none;
+            background: #161b22;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            margin-top: 2rem;
+        }
+        .c-course-header { text-align: center; margin-bottom: 2rem; }
+        .c-course-header h2 { font-size: 1.8rem; color: #fff; margin-bottom: 0.5rem; }
+        .c-vibe-summary {
+            background: rgba(168,85,247,0.1);
+            border: 1px solid rgba(168,85,247,0.3);
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 12px;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .c-timeline { position: relative; padding-left: 3rem; }
+        .c-timeline::before {
+            content: '';
+            position: absolute;
+            left: 11px; top: 0; bottom: 0; width: 2px;
+            background: linear-gradient(to bottom, #a855f7, #ec4899);
+        }
+        @media(max-width: 600px) {
+            .c-timeline { padding-left: 2rem; }
+            .c-timeline-number { left: -2rem; width: 20px; height: 20px; font-size: 0.8rem; }
+            .c-search-area { flex-direction: column; }
+            .c-input-group, .c-select, .c-search-btn { width: 100%; box-sizing: border-box; }
+        }
+
+        .c-timeline-item { position: relative; margin-bottom: 2.5rem; }
+        .c-timeline-item:last-child { margin-bottom: 0; }
+        .c-timeline-number {
+            position: absolute;
+            left: -3rem;
+            width: 24px; height: 24px;
+            background: #0b0f19;
+            border: 2px solid #a855f7;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; color: #a855f7; font-size: 0.9rem; z-index: 2;
+        }
+        .c-place-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+        .c-place-card:hover { transform: translateY(-3px); border-color: rgba(168,85,247,0.5); }
+        .c-place-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .c-place-title { font-size: 1.4rem; font-weight: 700; color: #fff; margin: 0 0 0.3rem 0; }
+        .c-place-category { display: inline-block; background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; color: #94a3b8; }
+        .c-place-desc { color: #cbd5e1; line-height: 1.6; font-size: 0.95rem; margin-bottom: 1rem; }
+        .c-place-footer { display: flex; gap: 10px; flex-wrap: wrap; }
+        .c-btn-action {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            display: flex; align-items: center; gap: 6px;
+            transition: background 0.3s ease;
+        }
+        .c-btn-action:hover { background: rgba(255,255,255,0.15); }
+
+        .c-map-container {
+            width: 100%;
+            height: 400px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.1);
+            margin-top: 2rem;
+            display: none;
+        }
+
+        /* ============================================================
+           TAB 3 — 📍 약속 중간지점  (prefix: m-)
+           ============================================================ */
+        #tab-meetup {
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(236,72,153,0.12) 0%, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        #tab-meetup .m-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 3rem 1.5rem;
+        }
+
+        #tab-meetup h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #3b82f6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        #tab-meetup .m-subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 1.05rem;
+            margin-bottom: 3rem;
+        }
+
+        .m-planner-panel {
+            background: rgba(30,41,59,0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 2.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+            margin-bottom: 3rem;
+        }
+
+        .m-address-list { display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem; }
+
+        .m-address-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0,0,0,0.2);
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+        .m-address-item:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+
+        .m-address-icon {
+            width: 30px; height: 30px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #3b82f6, #ec4899);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 0.9rem; flex-shrink: 0;
+        }
+
+        .m-form-control {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: #fff;
+            font-size: 1rem;
+            padding: 8px;
+            outline: none;
+            font-family: inherit;
+        }
+        .m-form-control::placeholder { color: #64748b; }
+
+        .m-btn-remove {
+            background: transparent;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+            font-family: inherit;
+        }
+        .m-btn-remove:hover { background: rgba(239,68,68,0.1); }
+
+        .m-btn-add {
+            background: rgba(255,255,255,0.05);
+            border: 1px dashed rgba(255,255,255,0.1);
+            color: #94a3b8;
+            width: 100%;
+            padding: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            font-family: inherit;
+        }
+        .m-btn-add:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.3); }
+
+        .m-generate-btn {
+            background: linear-gradient(135deg, #3b82f6, #ec4899);
+            color: white;
+            border: none;
+            padding: 1.2rem 2rem;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 2rem;
+            transition: all 0.3s;
+            box-shadow: 0 10px 20px rgba(236,72,153,0.3);
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            font-family: inherit;
+        }
+        .m-generate-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 25px rgba(236,72,153,0.4); }
+        .m-generate-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+
+        .m-error-msg {
+            background: rgba(239,68,68,0.1);
+            border-left: 4px solid #ef4444;
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .m-result-container { display: none; animation: m-fadeIn 0.8s ease-out forwards; }
+        @keyframes m-fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .m-map-card {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 3rem;
+        }
+        .m-map-header {
+            padding: 1.5rem;
+            background: rgba(255,255,255,0.02);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+        }
+        .m-midpoint-badge {
+            background: rgba(245,158,11,0.15);
+            color: #f59e0b;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        .m-midpoint-address { font-size: 1.5rem; font-weight: 700; color: #fff; }
+
+        #meetup-map { width: 100%; height: 400px; background: #cbd5e1; }
+
+        .m-recommend-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex; align-items: center; gap: 12px;
+        }
+        .m-recommend-title i { color: #ec4899; }
+
+        .m-rec-card {
+            background: #1e293b;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .m-rec-card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.2); box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        .m-rec-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: linear-gradient(to bottom, #3b82f6, #ec4899); }
+
+        .m-rec-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .m-rec-name { font-size: 1.3rem; font-weight: 700; color: #fff; }
+        .m-rec-category { background: rgba(255,255,255,0.1); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; color: #94a3b8; }
+        .m-rec-distance { color: #f59e0b; font-weight: 600; font-size: 0.9rem; margin-bottom: 8px; }
+        .m-rec-reason { color: #cbd5e1; font-size: 0.95rem; line-height: 1.5; background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-top: 10px; }
+
+        .m-loader { display: none; text-align: center; padding: 4rem 0; }
+        .m-loader.active { display: block; }
+        .m-spinner {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #3b82f6, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: m-spin 2s linear infinite;
+            margin-bottom: 1rem;
+            display: inline-block;
+        }
+        @keyframes m-spin { 100% { transform: rotate(360deg); } }
+
+    </style>
+</head>
+<body>
+
+    <!-- ===== GLOBAL HEADER ===== -->
+    <header class="page-header">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로</a>
+        <span class="header-title">📍 AI 종합 플래너</span>
+    </header>
+
+    <!-- ===== TAB BAR ===== -->
+    <nav class="page-tab-bar">
+        <button class="page-tab-btn active" onclick="switchTab('travel', this)">✈️ 여행 플래너</button>
+        <button class="page-tab-btn" onclick="switchTab('course', this)">🗺️ 원데이 코스</button>
+        <button class="page-tab-btn" onclick="switchTab('meetup', this)">📍 약속 중간지점</button>
+    </nav>
+
+    <!-- ================================================================
+         TAB 1 : ✈️ 여행 플래너
+    ================================================================ -->
+    <div class="tab-panel active" id="tab-travel">
+        <div class="container">
+            <h1>✈️ AI 맞춤형 여행 플래너</h1>
+            <p class="subtitle">국내부터 해외까지, 일자별 완벽한 동선과 필수 팁을 기획해드립니다.</p>
+
+            <div class="t-ticket-panel">
+                <div id="t-errorBox" class="t-error-msg"></div>
+
+                <div class="t-form-grid">
+                    <div class="t-form-group" style="grid-column: 1 / -1;">
+                        <label><i class="fa-solid fa-plane-departure"></i> 여행 목적지 (어디로 떠나시나요?)</label>
+                        <input type="text" id="t-destination" class="t-form-control" placeholder="예: 도쿄, 일본 / 제주도 / 파리, 프랑스">
+                    </div>
+
+                    <div class="t-form-group">
+                        <label><i class="fa-regular fa-calendar-days"></i> 여행 기간</label>
+                        <select id="t-duration" class="t-form-control">
+                            <option value="1박 2일">1박 2일</option>
+                            <option value="2박 3일" selected>2박 3일</option>
+                            <option value="3박 4일">3박 4일</option>
+                            <option value="4박 5일">4박 5일</option>
+                            <option value="5박 6일">5박 6일</option>
+                            <option value="6박 7일">6박 7일</option>
+                            <option value="당일치기">당일치기</option>
+                        </select>
+                    </div>
+
+                    <div class="t-form-group">
+                        <label><i class="fa-solid fa-user-group"></i> 동반자</label>
+                        <select id="t-companion" class="t-form-control">
+                            <option value="혼자서">혼자서 🎒</option>
+                            <option value="친구와 함께">친구와 함께 🍻</option>
+                            <option value="연인과 함께">연인/배우자와 함께 💕</option>
+                            <option value="아이 동반 가족">아이 동반 가족 👶</option>
+                            <option value="부모님 동반 가족">부모님 동반 👨‍👩‍👧</option>
+                        </select>
+                    </div>
+
+                    <div class="t-form-group" style="grid-column: 1 / -1;">
+                        <label><i class="fa-solid fa-star"></i> 여행 테마 (복수 선택 가능)</label>
+                        <div class="t-chips-container" id="t-themeChips">
+                            <div class="t-chip active">먹방 투어 🍔</div>
+                            <div class="t-chip">사진 명소 📸</div>
+                            <div class="t-chip">힐링/휴양 🌴</div>
+                            <div class="t-chip">액티비티 🏄‍♂️</div>
+                            <div class="t-chip">가성비 여행 💸</div>
+                            <div class="t-chip">쇼핑 🛍️</div>
+                            <div class="t-chip">역사/문화 🏛️</div>
+                        </div>
+                    </div>
+
+                    <div class="t-form-group" style="grid-column: 1 / -1;">
+                        <label><i class="fa-solid fa-clipboard-list"></i> 내 여행 계획 (선택사항)</label>
+                        <textarea id="t-draftSchedule" class="t-form-control" style="min-height: 120px; resize: vertical;" placeholder="이미 세워둔 일정이나 비행기/호텔 시간표가 있다면 자유롭게 복사해서 붙여넣어주세요. AI가 이 일정을 기반으로 빈 시간을 채우고 완벽하게 다듬어 줍니다! (예: 5/20 14:00 비행기 출발...)"></textarea>
+                    </div>
+                </div>
+
+                <button class="t-generate-btn" id="t-generateBtn" onclick="travel_generatePlan()">
+                    <i class="fa-solid fa-plane"></i> AI 여행 일정 만들기
+                </button>
+            </div>
+
+            <div class="t-loader" id="t-loader">
+                <i class="fa-solid fa-plane t-airplane-spinner"></i>
+                <p style="color: #94a3b8; line-height: 1.6;">
+                    최적의 비행 노선과 동선을 검색 중입니다...<br>
+                    해외 데이터까지 분석하느라 약 15~30초 정도 소요될 수 있습니다.
+                </p>
+            </div>
+
+            <div class="t-result-container" id="t-resultContainer">
+                <div class="t-summary-card" id="t-summaryCard">
+                    <div class="t-summary-section">
+                        <h3><i class="fa-solid fa-wallet"></i> 예상 경비 가이드</h3>
+                        <ul id="t-budgetList"></ul>
+                    </div>
+                    <div class="t-summary-section">
+                        <h3><i class="fa-solid fa-suitcase"></i> 필수 준비물 &amp; 팁</h3>
+                        <ul id="t-packingList"></ul>
+                    </div>
+                </div>
+
+                <div id="t-timetableContainer"></div>
+                <div id="t-timelineContainer"></div>
+
+                <div style="text-align: center; margin-top: 2rem; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                    <button class="t-generate-btn" style="background: #06b6d4; max-width: 250px; display: inline-flex; justify-content: center; gap: 8px;" onclick="travel_sharePlan()">
+                        <i class="fa-solid fa-share-nodes"></i> 일정 공유/복사
+                    </button>
+                    <button class="t-generate-btn" style="background: #10b981; max-width: 250px; display: inline-flex; justify-content: center; gap: 8px;" onclick="travel_downloadExcel()">
+                        <i class="fa-solid fa-file-excel"></i> 엑셀로 저장하기
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         TAB 2 : 🗺️ 원데이 코스
+    ================================================================ -->
+    <div class="tab-panel" id="tab-course">
+        <div class="c-container">
+            <h1>🗺️ AI 원데이 코스 플래너</h1>
+            <p class="c-subtitle">위치와 방문 목적만 입력하면 완벽한 하루 동선을 짜드립니다.</p>
+
+            <div class="c-search-area">
+                <div class="c-input-group">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <input type="text" id="c-addressInput" placeholder="시작 위치 (예: 부산 해운대구, 성수동)" onkeypress="if(event.key === 'Enter') course_generateCourse()">
+                    <button type="button" class="c-geo-btn" onclick="course_geolocate()" title="내 위치로 찾기">
+                        <i class="fa-solid fa-crosshairs"></i> 현위치
+                    </button>
+                </div>
+                <select id="c-purposeSelect" class="c-select">
+                    <option value="로맨틱 데이트 코스 💑">로맨틱 데이트 💑</option>
+                    <option value="부모님 모시고 가기 좋은 👨‍👩‍👧">가족/부모님 동반 👨‍👩‍👧</option>
+                    <option value="친구들과 신나는 나들이 🎉">친구들과 나들이 🎉</option>
+                    <option value="비오는 날 실내 코스 ☔">비오는 날 실내 ☔</option>
+                    <option value="가성비 좋은 뚜벅이 코스 🚶">가성비 뚜벅이 🚶</option>
+                </select>
+                <button class="c-search-btn" onclick="course_generateCourse()">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> 코스 기획하기
+                </button>
+            </div>
+
+            <div id="c-errorBox" class="c-error-msg"></div>
+
+            <div class="c-loader" id="c-loader">
+                <div class="c-spinner"></div>
+                <p>AI가 수십 개의 장소를 스캔하고 최적의 동선을 조합 중입니다...<br>(약 10~15초 소요될 수 있습니다)</p>
+            </div>
+
+            <div class="c-course-container" id="c-courseContainer">
+                <div class="c-course-header">
+                    <h2>✨ 당신을 위한 맞춤형 코스</h2>
+                    <div class="c-vibe-summary" id="c-vibeSummary"></div>
+                </div>
+                <div class="c-timeline" id="c-timelineList"></div>
+                <div id="c-mapContainer" class="c-map-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         TAB 3 : 📍 약속 중간지점
+    ================================================================ -->
+    <div class="tab-panel" id="tab-meetup">
+        <div class="m-container">
+            <h1>📍 중간 지점 약속 플래너</h1>
+            <p class="m-subtitle">친구들의 출발 주소를 입력하면 가장 공평한 중간 지점과 추천 장소를 알려드립니다.</p>
+
+            <div class="m-planner-panel">
+                <div id="m-errorBox" class="m-error-msg"></div>
+
+                <div class="m-address-list" id="m-addressList">
+                    <div class="m-address-item">
+                        <div class="m-address-icon">1</div>
+                        <input type="text" class="m-form-control m-address-input" placeholder="첫 번째 친구 출발 주소 (예: 서울 강남역)">
+                        <button class="m-btn-remove" onclick="meetup_removeAddress(this)" style="visibility: hidden;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="m-address-item">
+                        <div class="m-address-icon">2</div>
+                        <input type="text" class="m-form-control m-address-input" placeholder="두 번째 친구 출발 주소 (예: 홍대입구역)">
+                        <button class="m-btn-remove" onclick="meetup_removeAddress(this)" style="visibility: hidden;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <button class="m-btn-add" onclick="meetup_addAddress()">
+                    <i class="fa-solid fa-plus"></i> 친구 주소 추가하기
+                </button>
+
+                <button class="m-generate-btn" id="m-generateBtn" onclick="meetup_findMidpoint()">
+                    <i class="fa-solid fa-location-crosshairs"></i> 중간 지점 찾기
+                </button>
+            </div>
+
+            <div class="m-loader" id="m-loader">
+                <i class="fa-solid fa-compass m-spinner"></i>
+                <p style="color: #94a3b8; line-height: 1.6; margin-top: 1rem;">
+                    각 위치를 분석하여 지리적 중간 지점을 계산 중입니다...<br>
+                    주변의 맛집과 카페를 AI가 선별하고 있어요! (약 10~20초 소요)
+                </p>
+            </div>
+
+            <div class="m-result-container" id="m-resultContainer">
+                <div class="m-map-card">
+                    <div class="m-map-header">
+                        <span class="m-midpoint-badge"><i class="fa-solid fa-star"></i> 최적의 중간 지점</span>
+                        <div class="m-midpoint-address" id="m-midpointAddress">서울 용산구 이태원동</div>
+                    </div>
+                    <div id="meetup-map"></div>
+                </div>
+
+                <h3 class="m-recommend-title"><i class="fa-solid fa-utensils"></i> AI 추천 약속 장소 Top 5</h3>
+                <div id="m-recommendationsList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================================================================
+         SCRIPTS
+    ================================================================ -->
+    <script>
+        /* ── Tab switching ── */
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.page-tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+            btn.classList.add('active');
+        }
+
+        /* ================================================================
+           TAB 1 SCRIPTS — ✈️ 여행 플래너
+        ================================================================ */
+        // Theme chips
+        document.querySelectorAll('.t-chip').forEach(chip => {
+            chip.addEventListener('click', () => chip.classList.toggle('active'));
+        });
+
+        function travel_showError(msg) {
+            const box = document.getElementById('t-errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+
+        let travel_currentGeneratedPlan = null;
+
+        async function travel_generatePlan() {
+            const destination = document.getElementById('t-destination').value.trim();
+            const duration = document.getElementById('t-duration').value;
+            const companion = document.getElementById('t-companion').value;
+            const draftSchedule = document.getElementById('t-draftSchedule').value.trim();
+            const selectedThemes = Array.from(document.querySelectorAll('.t-chip.active')).map(c => c.innerText);
+
+            if (!destination) return travel_showError('여행 목적지를 입력해주세요. (예: 도쿄, 제주도)');
+            if (selectedThemes.length === 0) return travel_showError('최소 1개의 여행 테마를 선택해주세요.');
+
+            document.getElementById('t-errorBox').style.display = 'none';
+            document.getElementById('t-resultContainer').style.display = 'none';
+            document.getElementById('t-generateBtn').disabled = true;
+            document.getElementById('t-loader').classList.add('active');
+
+            try {
+                const response = await fetch('/api/travel/plan', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destination, duration, companion, themes: selectedThemes, draft_schedule: draftSchedule })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error);
+                travel_renderPlan(data.plan);
+            } catch (err) {
+                travel_showError('일정 생성 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                document.getElementById('t-generateBtn').disabled = false;
+                document.getElementById('t-loader').classList.remove('active');
+            }
+        }
+
+        function travel_renderPlan(plan) {
+            travel_currentGeneratedPlan = plan;
+
+            document.getElementById('t-budgetList').innerHTML = plan.budget_tips.map(t => `<li>${t}</li>`).join('');
+            document.getElementById('t-packingList').innerHTML = plan.packing_tips.map(t => `<li>${t}</li>`).join('');
+
+            const timetableContainer = document.getElementById('t-timetableContainer');
+            const timelineContainer = document.getElementById('t-timelineContainer');
+
+            let globalMin = 24 * 60, globalMax = 0, parsedBlocks = [];
+
+            const colors = [
+                'linear-gradient(135deg, #3b82f6, #2563eb)',
+                'linear-gradient(135deg, #10b981, #059669)',
+                'linear-gradient(135deg, #f59e0b, #d97706)',
+                'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                'linear-gradient(135deg, #ec4899, #db2777)',
+                'linear-gradient(135deg, #06b6d4, #0891b2)'
+            ];
+
+            let timelineHtml = '';
+
+            plan.days.forEach(day => {
+                let blocksForDay = [];
+                day.schedule.forEach((item, iIdx) => {
+                    let timeStr = item.time.replace(/시\s*/g, ':').replace(/분/g, '');
+                    let matches = timeStr.match(/\d{1,2}:\d{2}/g);
+                    if (!matches) {
+                        const hMatch = item.time.match(/\d{1,2}/g);
+                        if (hMatch && hMatch.length > 0) {
+                            matches = [hMatch[0] + ':00'];
+                            if (hMatch.length > 1) matches.push(hMatch[1] + ':00');
+                        } else { matches = ['12:00', '13:00']; }
+                    }
+                    if (matches) {
+                        const parseMins = t => { let [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
+                        let startMins = parseMins(matches[0]);
+                        let endMins = matches.length > 1 ? parseMins(matches[1]) : startMins + 60;
+                        if (item.time.includes('+1') || endMins < startMins) endMins += 1440;
+                        if (startMins > 2800) startMins = 720;
+                        if (endMins > 3000) endMins = startMins + 60;
+                        if (startMins < globalMin) globalMin = startMins;
+                        if (endMins > globalMax) globalMax = endMins;
+                        blocksForDay.push({ start: startMins, end: endMins, title: item.place_name, timeStr: item.time, color: colors[iIdx % colors.length] });
+                    }
+                });
+                parsedBlocks.push({ dayNumber: day.day_number, theme: day.theme, blocks: blocksForDay });
+
+                timelineHtml += `<div class="t-day-header"><span class="t-badge">Day ${day.day_number}</span><span class="t-day-desc">${day.theme}</span></div><div class="t-timeline">`;
+                day.schedule.forEach(item => {
+                    const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.place_name + ' ' + plan.destination)}`;
+                    timelineHtml += `
+                        <div class="t-timeline-item">
+                            <div class="t-timeline-dot"></div>
+                            <div class="t-item-time">${item.time}</div>
+                            <h4 class="t-item-title">${item.place_name}</h4>
+                            <div class="t-item-desc">${item.description}</div>
+                            <a href="${searchUrl}" target="_blank" class="t-map-link"><i class="fa-solid fa-map-location-dot"></i> 구글 지도로 보기</a>
+                        </div>`;
+                });
+                timelineHtml += `</div>`;
+            });
+
+            if (globalMin === 24 * 60) { globalMin = 8 * 60; globalMax = 22 * 60; }
+            let startHour = Math.max(0, Math.floor(globalMin / 60));
+            let endHour = Math.ceil(globalMax / 60);
+            if (endHour <= startHour) endHour = startHour + 10;
+            let totalHeight = (endHour - startHour) * 60;
+
+            let timetableHtml = `
+            <div class="t-uni-wrapper">
+                <div style="font-size:1.2rem; font-weight:700; margin-bottom:1.5rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fa-solid fa-calendar-week"></i> 일정 시간표
+                </div>
+                <div style="min-width: ${parsedBlocks.length * 150 + 60}px;">
+                    <div class="t-uni-header-row">`;
+            parsedBlocks.forEach(day => { timetableHtml += `<div class="t-uni-day-header">Day ${day.dayNumber}</div>`; });
+            timetableHtml += `</div><div class="t-uni-body" style="height: ${totalHeight}px;"><div class="t-uni-time-axis">`;
+            for (let h = startHour; h <= endHour; h++) {
+                let label = `${(h % 24).toString().padStart(2, '0')}:00`;
+                timetableHtml += `<div class="t-uni-time-label" style="top: ${(h - startHour) * 60}px;">${label}</div>`;
+            }
+            timetableHtml += `</div><div class="t-uni-day-cols-container">`;
+            for (let h = startHour; h <= endHour; h++) {
+                timetableHtml += `<div class="t-uni-grid-line" style="top: ${(h - startHour) * 60}px;"></div>`;
+            }
+            parsedBlocks.forEach(day => {
+                timetableHtml += `<div class="t-uni-day-col">`;
+                day.blocks.forEach(block => {
+                    let top = block.start - startHour * 60;
+                    let height = block.end - block.start;
+                    if (height < 25) height = 25;
+                    timetableHtml += `
+                        <div class="t-uni-block" style="top: ${top}px; height: ${height}px; background: ${block.color};">
+                            <div class="t-uni-block-title">${block.title}</div>
+                            <div style="font-size:0.75rem; opacity:0.9;">${block.timeStr}</div>
+                        </div>`;
+                });
+                timetableHtml += `</div>`;
+            });
+            timetableHtml += `</div></div></div></div>`;
+
+            if (timetableContainer) timetableContainer.innerHTML = timetableHtml;
+            if (timelineContainer) timelineContainer.innerHTML = timelineHtml;
+
+            document.getElementById('t-resultContainer').style.display = 'block';
+            document.getElementById('t-resultContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function travel_sharePlan() {
+            if (!travel_currentGeneratedPlan) return;
+            const plan = travel_currentGeneratedPlan;
+            const destination = document.getElementById('t-destination').value.trim();
+            const duration = document.getElementById('t-duration').value;
+            let text = `[✈️ ${destination} ${duration} 여행 일정]\n\n`;
+            text += `[💰 예상 경비 가이드]\n`;
+            plan.budget_tips.forEach(t => text += `- ${t}\n`);
+            text += `\n[🧳 필수 준비물 & 팁]\n`;
+            plan.packing_tips.forEach(t => text += `- ${t}\n`);
+            text += `\n[🗓️ 일정 요약 시간표]\n`;
+            plan.days.forEach(day => {
+                text += `\n=== Day ${day.day_number} (${day.theme}) ===\n`;
+                day.schedule.forEach(item => { text += `[${item.time}] ${item.place_name}\n  └ ${item.description}\n`; });
+            });
+            if (navigator.share) {
+                try { await navigator.share({ title: `${destination} 여행 일정`, text }); } catch (err) {}
+            } else {
+                try { await navigator.clipboard.writeText(text); alert('✅ 전체 일정이 클립보드에 복사되었습니다!\n카카오톡, 메모장 등에 바로 붙여넣기 하세요.'); }
+                catch (err) { alert('복사 기능이 지원되지 않는 브라우저입니다.'); }
+            }
+        }
+
+        function travel_downloadExcel() {
+            if (!travel_currentGeneratedPlan) return;
+            const plan = travel_currentGeneratedPlan;
+            let csvContent = '\uFEFF';
+            csvContent += '일차,테마,시간,장소,상세설명\n';
+            plan.days.forEach(day => {
+                day.schedule.forEach(item => {
+                    const theme = `"${day.theme.replace(/"/g, '""')}"`;
+                    const time = `"${item.time.replace(/"/g, '""')}"`;
+                    const place = `"${item.place_name.replace(/"/g, '""')}"`;
+                    const desc = `"${item.description.replace(/"/g, '""')}"`;
+                    csvContent += `${day.day_number}일차,${theme},${time},${place},${desc}\n`;
+                });
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', '나만의_여행_계획표.csv');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        /* ================================================================
+           TAB 2 SCRIPTS — 🗺️ 원데이 코스
+        ================================================================ */
+        let course_map = null;
+        let course_markers = [];
+        let course_polyline = null;
+
+        function course_showError(msg) {
+            const box = document.getElementById('c-errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+        function course_hideError() { document.getElementById('c-errorBox').style.display = 'none'; }
+        function course_showLoader() { document.getElementById('c-loader').classList.add('active'); }
+        function course_hideLoader() { document.getElementById('c-loader').classList.remove('active'); }
+
+        async function course_geolocate() {
+            if (!navigator.geolocation) return course_showError('위치 기능을 지원하지 않습니다.');
+            const btn = document.querySelector('.c-geo-btn');
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
+            btn.disabled = true;
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                try {
+                    const res = await fetch('/api/geocode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ lat, lng })
+                    });
+                    const data = await res.json();
+                    if (data.success) { document.getElementById('c-addressInput').value = data.address; course_hideError(); }
+                    else course_showError('주소 변환 실패');
+                } catch (e) { course_showError('통신 오류'); }
+                finally { btn.innerHTML = originalHtml; btn.disabled = false; }
+            }, (error) => {
+                course_showError('위치 접근 권한을 허용해주세요.');
+                btn.innerHTML = originalHtml; btn.disabled = false;
+            }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+        }
+
+        async function course_generateCourse() {
+            const address = document.getElementById('c-addressInput').value.trim();
+            const purpose = document.getElementById('c-purposeSelect').value;
+            if (!address) return course_showError('시작 위치를 입력해주세요.');
+            course_hideError();
+            document.getElementById('c-courseContainer').style.display = 'none';
+            course_showLoader();
+            try {
+                const response = await fetch('/api/course/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address, purpose })
+                });
+                const data = await response.json();
+                course_hideLoader();
+                if (!data.success) return course_showError(data.error);
+                course_renderCourse(data.course, data.summary);
+            } catch (err) {
+                course_hideLoader();
+                course_showError('서버 오류가 발생했습니다.');
+            }
+        }
+
+        function course_renderCourse(courseItems, summary) {
+            document.getElementById('c-courseContainer').style.display = 'block';
+            document.getElementById('c-vibeSummary').innerHTML = `<strong>💡 코스 기획 의도:</strong><br>${summary.replace(/\n/g, '<br>')}`;
+            const timeline = document.getElementById('c-timelineList');
+            timeline.innerHTML = '';
+
+            const bounds = typeof google !== 'undefined' ? new google.maps.LatLngBounds() : null;
+            const pathCoords = [];
+
+            courseItems.forEach((item, index) => {
+                const tmapUrl = `tmap://route?goalname=${encodeURIComponent(item.name)}&goalx=${item.lng}&goaly=${item.lat}`;
+                const kakaoUrl = `https://map.kakao.com/link/to/${item.name},${item.lat},${item.lng}`;
+                const html = `
+                    <div class="c-timeline-item">
+                        <div class="c-timeline-number">${index + 1}</div>
+                        <div class="c-place-card">
+                            <div class="c-place-header">
+                                <div>
+                                    <h3 class="c-place-title">${item.name}</h3>
+                                    <span class="c-place-category">${item.category}</span>
+                                </div>
+                            </div>
+                            <div class="c-place-desc"><strong>AI 추천평:</strong> ${item.reason}</div>
+                            <div class="c-place-footer">
+                                <a href="${kakaoUrl}" target="_blank" class="c-btn-action"><i class="fa-solid fa-map"></i> 카카오맵</a>
+                                <a href="${tmapUrl}" target="_blank" class="c-btn-action"><i class="fa-solid fa-car-side"></i> 티맵 길안내</a>
+                                <a href="https://search.naver.com/search.naver?query=${encodeURIComponent(item.name)}" target="_blank" class="c-btn-action"><i class="fa-solid fa-n"></i> 블로그 리뷰</a>
+                            </div>
+                        </div>
+                    </div>`;
+                timeline.insertAdjacentHTML('beforeend', html);
+                if (item.lat && item.lng && typeof google !== 'undefined') {
+                    const latLng = new google.maps.LatLng(parseFloat(item.lat), parseFloat(item.lng));
+                    pathCoords.push(latLng);
+                    if (bounds) bounds.extend(latLng);
+                }
+            });
+
+            if (typeof google !== 'undefined' && google.maps && pathCoords.length > 0) {
+                const mapEl = document.getElementById('c-mapContainer');
+                mapEl.style.display = 'block';
+                if (!course_map) {
+                    course_map = new google.maps.Map(mapEl, {
+                        styles: [
+                            { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+                            { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+                            { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+                            { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] }
+                        ],
+                        disableDefaultUI: true, zoomControl: true
+                    });
+                }
+                course_markers.forEach(m => m.setMap(null));
+                course_markers = [];
+                if (course_polyline) course_polyline.setMap(null);
+                pathCoords.forEach((coord, i) => {
+                    course_markers.push(new google.maps.Marker({
+                        position: coord, map: course_map,
+                        label: { text: (i + 1).toString(), color: 'white', fontWeight: 'bold' },
+                        icon: 'http://maps.google.com/mapfiles/ms/icons/purple-dot.png'
+                    }));
+                });
+                course_polyline = new google.maps.Polyline({
+                    path: pathCoords, geodesic: true,
+                    strokeColor: '#a855f7', strokeOpacity: 0.8, strokeWeight: 4, map: course_map
+                });
+                course_map.fitBounds(bounds);
+                if (course_map.getZoom() > 16) course_map.setZoom(16);
+            }
+        }
+
+        /* ================================================================
+           TAB 3 SCRIPTS — 📍 약속 중간지점
+        ================================================================ */
+        let meetup_addressCount = 2;
+        let meetup_map = null;
+        let meetup_markers = [];
+
+        function meetup_updateIcons() {
+            const items = document.querySelectorAll('#tab-meetup .m-address-item');
+            items.forEach((item, index) => {
+                item.querySelector('.m-address-icon').innerText = index + 1;
+                const removeBtn = item.querySelector('.m-btn-remove');
+                removeBtn.style.visibility = items.length <= 2 ? 'hidden' : 'visible';
+            });
+        }
+
+        function meetup_addAddress() {
+            meetup_addressCount++;
+            const list = document.getElementById('m-addressList');
+            const div = document.createElement('div');
+            div.className = 'm-address-item';
+            div.innerHTML = `
+                <div class="m-address-icon">${meetup_addressCount}</div>
+                <input type="text" class="m-form-control m-address-input" placeholder="${meetup_addressCount}번째 친구 출발 주소">
+                <button class="m-btn-remove" onclick="meetup_removeAddress(this)"><i class="fa-solid fa-xmark"></i></button>
+            `;
+            list.appendChild(div);
+            meetup_updateIcons();
+        }
+
+        function meetup_removeAddress(btn) {
+            btn.closest('.m-address-item').remove();
+            meetup_updateIcons();
+        }
+
+        function meetup_showError(msg) {
+            const box = document.getElementById('m-errorBox');
+            box.innerText = msg;
+            box.style.display = 'block';
+        }
+
+        async function meetup_findMidpoint() {
+            document.getElementById('m-errorBox').style.display = 'none';
+            document.getElementById('m-resultContainer').style.display = 'none';
+            const inputs = document.querySelectorAll('#tab-meetup .m-address-input');
+            const addresses = Array.from(inputs).map(i => i.value.trim()).filter(v => v !== '');
+            if (addresses.length < 2) { meetup_showError('최소 2개 이상의 주소를 입력해주세요.'); return; }
+            document.getElementById('m-generateBtn').disabled = true;
+            document.getElementById('m-loader').classList.add('active');
+            try {
+                const response = await fetch('/api/meetup/recommend', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ addresses })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error);
+                meetup_renderResult(data);
+            } catch (err) {
+                meetup_showError('중간 지점 검색 중 오류가 발생했습니다: ' + err.message);
+            } finally {
+                document.getElementById('m-generateBtn').disabled = false;
+                document.getElementById('m-loader').classList.remove('active');
+            }
+        }
+
+        function meetup_renderResult(data) {
+            const midpoint = data.midpoint;
+            document.getElementById('m-midpointAddress').innerText = midpoint.address;
+            const recList = document.getElementById('m-recommendationsList');
+            recList.innerHTML = '';
+            data.recommendations.forEach(rec => {
+                recList.innerHTML += `
+                    <div class="m-rec-card">
+                        <div class="m-rec-header">
+                            <div class="m-rec-name">${rec.name}</div>
+                            <div class="m-rec-category">${rec.category}</div>
+                        </div>
+                        <div class="m-rec-distance"><i class="fa-solid fa-location-dot"></i> 중간 지점에서 ${rec.distance}</div>
+                        <div class="m-rec-reason"><i class="fa-solid fa-quote-left" style="color:rgba(255,255,255,0.2); margin-right:5px;"></i> ${rec.reason}</div>
+                    </div>`;
+            });
+            document.getElementById('m-resultContainer').style.display = 'block';
+            document.getElementById('m-resultContainer').scrollIntoView({ behavior: 'smooth' });
+            if (typeof google !== 'undefined') {
+                meetup_initMap(data.locations, midpoint);
+            }
+        }
+
+        function meetup_initMap(locations, midpoint) {
+            const center = { lat: midpoint.lat, lng: midpoint.lng };
+            const mapStyles = [
+                { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
+                { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
+                { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
+                { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+                { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+                { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
+                { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9a76' }] },
+                { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
+                { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
+                { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
+                { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
+                { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
+                { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
+                { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
+                { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
+                { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
+                { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
+                { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] }
+            ];
+            if (!meetup_map) {
+                meetup_map = new google.maps.Map(document.getElementById('meetup-map'), { zoom: 13, center, styles: mapStyles });
+            } else {
+                meetup_map.setCenter(center);
+            }
+            meetup_markers.forEach(m => m.setMap(null));
+            meetup_markers = [];
+            const bounds = new google.maps.LatLngBounds();
+            locations.forEach((loc, idx) => {
+                const pos = { lat: loc.lat, lng: loc.lng };
+                const marker = new google.maps.Marker({
+                    position: pos, map: meetup_map,
+                    label: { text: String(idx + 1), color: 'white', fontWeight: 'bold' },
+                    title: loc.original
+                });
+                meetup_markers.push(marker);
+                bounds.extend(pos);
+            });
+            const midMarker = new google.maps.Marker({
+                position: center, map: meetup_map,
+                icon: { url: 'http://maps.google.com/mapfiles/ms/icons/yellow-dot.png' },
+                title: '중간 지점'
+            });
+            meetup_markers.push(midMarker);
+            bounds.extend(center);
+            meetup_map.fitBounds(bounds);
+        }
+
+        /* Google Maps callback (called when Maps JS is loaded) */
+        function initMapCallback() {
+            // Maps API loaded — ready for use when tabs activate
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>💬 AI 메시지 마스터</title>
+    <meta name="description" content="카톡 답장 추천, 찰떡 메시지 작성, 텍스트 다듬기를 한 곳에서.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ─────────────────────────────────────────
+           GLOBAL / SHARED
+        ───────────────────────────────────────── */
+        :root {
+            --bg: #0d1117;
+            --border: rgba(255,255,255,0.08);
+            --primary: #ec4899;
+            --primary-glow: rgba(236,72,153,0.35);
+            --text: #f0f6fc;
+            --muted: #8b949e;
+            --radius: 18px;
+            --surface: rgba(22,27,34,0.85);
+            --kakao-yellow: #FEE500;
+            --accent: #8b5cf6;
+            --green: #22c55e;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            background-image:
+                radial-gradient(ellipse at 20% 20%, rgba(236,72,153,0.07), transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(139,92,246,0.07), transparent 50%);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 90px;
+        }
+
+        /* ─── Page Header ─── */
+        .page-header {
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(13,17,23,0.95);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .page-header a { color: var(--muted); text-decoration: none; font-size: 1.2rem; transition: 0.2s; }
+        .page-header a:hover { color: var(--text); }
+        .page-header-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        /* ─── Tab Bar ─── */
+        .page-tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(13,17,23,0.9);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 65px;
+            z-index: 49;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .page-tab-bar::-webkit-scrollbar { display: none; }
+        .page-tab-btn {
+            flex: 1;
+            min-width: 110px;
+            padding: 14px 8px;
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            font-size: 0.92rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            transition: color 0.2s;
+            border-bottom: 3px solid transparent;
+            white-space: nowrap;
+        }
+        .page-tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        .page-tab-btn:hover:not(.active) {
+            color: var(--text);
+        }
+
+        /* ─── Tab Panels ─── */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ─── Global Toast (shared) ─── */
+        .hub-toast {
+            position: fixed;
+            bottom: 90px; left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: rgba(22,27,34,0.95);
+            border: 1px solid rgba(34,197,94,0.3);
+            color: #22c55e;
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 999;
+            backdrop-filter: blur(10px);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .hub-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ─── Bottom Nav ─── */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 70px;
+            background: rgba(13,17,23,0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 100;
+        }
+        .nav-item {
+            text-decoration: none;
+            color: var(--muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.78rem;
+            gap: 4px;
+            transition: 0.2s;
+            width: 25%;
+        }
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item.active, .nav-item:hover { color: var(--primary); }
+
+        /* ─── Spinner (shared) ─── */
+        .spinner-sm {
+            display: inline-block;
+            width: 18px; height: 18px;
+            border: 2px solid rgba(0,0,0,0.3);
+            border-top-color: #000;
+            border-radius: 50%;
+            animation: hubSpin 0.8s linear infinite;
+        }
+        @keyframes hubSpin { to { transform: rotate(360deg); } }
+
+
+        /* ═══════════════════════════════════════
+           TAB 1: 카톡 답장 추천 (kakao)
+        ═══════════════════════════════════════ */
+        #tab-kakao main {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 1.5rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.4rem;
+        }
+
+        /* Upload Zone */
+        .kakao-upload-zone {
+            background: var(--surface);
+            border: 2px dashed rgba(254,229,0,0.35);
+            border-radius: var(--radius);
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .kakao-upload-zone::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at center, rgba(254,229,0,0.04), transparent 70%);
+            pointer-events: none;
+        }
+        .kakao-upload-zone:hover, .kakao-upload-zone.drag-over {
+            border-color: var(--kakao-yellow);
+            background: rgba(254,229,0,0.05);
+            transform: translateY(-2px);
+        }
+        .kakao-upload-zone input[type="file"] {
+            position: absolute; inset: 0;
+            opacity: 0; cursor: pointer; width: 100%; height: 100%;
+        }
+        .kakao-upload-icon {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 0 20px rgba(254,229,0,0.4));
+        }
+        .kakao-upload-zone h2 {
+            font-size: 1.2rem; font-weight: 700;
+            margin-bottom: 0.4rem; color: #fff;
+        }
+        .kakao-upload-zone p {
+            font-size: 0.9rem; color: var(--muted); line-height: 1.6;
+        }
+        .kakao-upload-hint {
+            display: flex; gap: 10px;
+            justify-content: center; margin-top: 1.2rem; flex-wrap: wrap;
+        }
+        .kakao-hint-tag {
+            background: rgba(254,229,0,0.1);
+            color: var(--kakao-yellow);
+            border: 1px solid rgba(254,229,0,0.2);
+            border-radius: 20px;
+            font-size: 0.8rem; padding: 4px 12px; font-weight: 500;
+        }
+
+        /* Image Preview */
+        .kakao-preview-wrap {
+            position: relative;
+            border-radius: var(--radius); overflow: hidden;
+            border: 1px solid var(--border);
+            background: #000; display: none;
+        }
+        .kakao-preview-wrap img {
+            width: 100%; max-height: 450px;
+            object-fit: contain; display: block;
+        }
+        .kakao-preview-actions {
+            position: absolute; top: 12px; right: 12px;
+            display: flex; gap: 8px;
+        }
+        .kakao-btn-remove-img {
+            background: rgba(0,0,0,0.7); color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px; padding: 6px 14px;
+            font-size: 0.85rem; cursor: pointer;
+            backdrop-filter: blur(6px); transition: 0.2s;
+        }
+        .kakao-btn-remove-img:hover { background: rgba(239,68,68,0.5); }
+
+        /* Context Box */
+        .kakao-context-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.2rem; display: none;
+        }
+        .kakao-context-box label {
+            font-size: 0.85rem; color: var(--muted);
+            font-weight: 500; display: block; margin-bottom: 8px;
+        }
+        .kakao-context-box label i { margin-right: 6px; }
+        .kakao-context-box textarea {
+            width: 100%;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.95rem;
+            padding: 12px 14px; resize: none; outline: none;
+            transition: border-color 0.2s; line-height: 1.5;
+        }
+        .kakao-context-box textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-glow);
+        }
+        .kakao-context-box textarea::placeholder { color: rgba(139,148,158,0.5); }
+
+        /* Tone Selector */
+        .kakao-tone-selector { display: none; }
+        .kakao-tone-selector-inner {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.2rem;
+        }
+        .kakao-tone-label {
+            font-size: 0.85rem; color: var(--muted);
+            font-weight: 500; margin-bottom: 10px;
+        }
+        .kakao-tone-label i { margin-right: 6px; }
+        .kakao-tone-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+        .kakao-tone-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 20px; padding: 7px 16px;
+            font-size: 0.88rem; cursor: pointer;
+            transition: all 0.2s; user-select: none;
+            font-family: 'Outfit', sans-serif; color: var(--muted);
+        }
+        .kakao-tone-chip.selected {
+            background: rgba(236,72,153,0.15);
+            border-color: var(--primary); color: #fff;
+        }
+        .kakao-tone-chip:hover:not(.selected) {
+            background: rgba(255,255,255,0.08); color: var(--text);
+        }
+
+        /* Analyze Button */
+        .kakao-btn-analyze {
+            background: linear-gradient(135deg, #FEE500, #f59e0b);
+            color: #000; border: none; border-radius: var(--radius);
+            padding: 1.1rem; font-size: 1.1rem; font-weight: 800;
+            cursor: pointer; width: 100%; display: none;
+            align-items: center; justify-content: center; gap: 10px;
+            transition: all 0.25s; letter-spacing: -0.3px;
+            box-shadow: 0 4px 20px rgba(254,229,0,0.25);
+        }
+        .kakao-btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(254,229,0,0.4); }
+        .kakao-btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+        /* Loading */
+        .kakao-loading-bar {
+            display: none; background: var(--surface);
+            border: 1px solid var(--border); border-radius: var(--radius);
+            padding: 2rem; text-align: center;
+        }
+        .kakao-loading-bar .kakao-dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 1rem; }
+        .kakao-dot {
+            width: 12px; height: 12px; border-radius: 50%;
+            background: var(--kakao-yellow);
+            animation: kakaoBounce 1.4s ease-in-out infinite;
+        }
+        .kakao-dot:nth-child(2) { animation-delay: 0.2s; }
+        .kakao-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes kakaoBounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1.2); opacity: 1; }
+        }
+        .kakao-loading-bar p { color: var(--muted); font-size: 0.95rem; }
+        .kakao-loading-step { color: var(--text); font-weight: 600; margin-bottom: 6px; }
+
+        /* Result Panel */
+        .kakao-result-panel { display: none; }
+        .kakao-result-summary {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.3rem 1.5rem;
+            margin-bottom: 1.2rem; border-left: 3px solid var(--kakao-yellow);
+        }
+        .kakao-result-summary-title {
+            font-size: 0.8rem; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;
+        }
+        .kakao-result-summary-text { font-size: 1rem; line-height: 1.65; color: #e6edf3; }
+        .kakao-replies-title {
+            font-size: 1rem; font-weight: 700;
+            color: var(--text); margin-bottom: 0.8rem;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .kakao-replies-title i { color: var(--primary); }
+        .kakao-reply-cards { display: flex; flex-direction: column; gap: 0.85rem; }
+        .kakao-reply-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 1.2rem 1.3rem;
+            position: relative; transition: all 0.25s; overflow: hidden;
+        }
+        .kakao-reply-card::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+            width: 3px; border-radius: 3px 0 0 3px;
+        }
+        .kakao-reply-card:hover { transform: translateX(4px); border-color: rgba(255,255,255,0.15); }
+        .kakao-reply-card.tone-friendly::before { background: #22c55e; }
+        .kakao-reply-card.tone-cool::before    { background: #3b82f6; }
+        .kakao-reply-card.tone-funny::before   { background: #f59e0b; }
+        .kakao-reply-card.tone-formal::before  { background: #8b5cf6; }
+        .kakao-reply-card.tone-warm::before    { background: #ec4899; }
+        .kakao-reply-card.tone-short::before   { background: #06b6d4; }
+        .kakao-reply-tone {
+            font-size: 0.75rem; font-weight: 700; letter-spacing: 0.5px;
+            margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+        }
+        .kakao-reply-card.tone-friendly .kakao-reply-tone { color: #22c55e; }
+        .kakao-reply-card.tone-cool .kakao-reply-tone     { color: #60a5fa; }
+        .kakao-reply-card.tone-funny .kakao-reply-tone    { color: #fbbf24; }
+        .kakao-reply-card.tone-formal .kakao-reply-tone   { color: #a78bfa; }
+        .kakao-reply-card.tone-warm .kakao-reply-tone     { color: #f472b6; }
+        .kakao-reply-card.tone-short .kakao-reply-tone    { color: #22d3ee; }
+        .kakao-reply-text {
+            font-size: 1.05rem; line-height: 1.6; color: #e6edf3;
+            word-break: keep-all; padding-right: 50px;
+        }
+        .kakao-btn-copy-reply {
+            position: absolute; bottom: 14px; right: 14px;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid var(--border); color: var(--muted);
+            border-radius: 8px; padding: 6px 12px; font-size: 0.82rem;
+            cursor: pointer; transition: all 0.2s;
+            font-family: 'Outfit', sans-serif; white-space: nowrap;
+        }
+        .kakao-btn-copy-reply:hover {
+            background: rgba(254,229,0,0.15); color: var(--kakao-yellow);
+            border-color: rgba(254,229,0,0.3);
+        }
+        .kakao-btn-copy-reply.copied {
+            background: rgba(34,197,94,0.15); color: #22c55e;
+            border-color: rgba(34,197,94,0.3);
+        }
+
+        /* Retry Button */
+        .kakao-btn-retry {
+            background: transparent; border: 1px solid var(--border);
+            color: var(--muted); border-radius: var(--radius);
+            padding: 0.9rem; width: 100%; cursor: pointer;
+            font-family: 'Outfit', sans-serif; font-size: 0.95rem;
+            transition: 0.2s; margin-top: 0.5rem; display: none;
+        }
+        .kakao-btn-retry:hover {
+            border-color: rgba(255,255,255,0.15); color: var(--text);
+            background: rgba(255,255,255,0.04);
+        }
+
+        @media (max-width: 480px) {
+            #tab-kakao main { padding: 1rem 0.85rem; }
+            .kakao-upload-zone { padding: 2rem 1rem; }
+        }
+
+
+        /* ═══════════════════════════════════════
+           TAB 2: 메시지 메이커 (maker)
+        ═══════════════════════════════════════ */
+        #tab-maker {
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+        }
+        .maker-container {
+            max-width: 900px; margin: 0 auto; padding: 2rem;
+        }
+        .maker-h1 {
+            font-size: 2.5rem; font-weight: 800; text-align: center;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #60a5fa, #a855f7);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        .maker-subtitle {
+            text-align: center; color: #94a3b8; margin-bottom: 3rem; font-size: 1.1rem;
+        }
+        .maker-panel {
+            background: #161b22; border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 2rem; margin-bottom: 2rem;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+        }
+        .maker-section-title {
+            font-size: 1.2rem; font-weight: 700; color: #fff;
+            margin-bottom: 1rem; display: flex; align-items: center; gap: 8px;
+        }
+        .maker-chips-container { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 2rem; }
+        .maker-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8; padding: 0.6rem 1.2rem; border-radius: 30px;
+            cursor: pointer; font-weight: 500;
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+            transition: all 0.2s ease;
+        }
+        .maker-chip:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .maker-chip.active {
+            background: rgba(59,130,246,0.2); border-color: #3b82f6;
+            color: #60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.3);
+        }
+        .maker-textarea {
+            width: 100%; min-height: 150px;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 1.2rem; color: #fff;
+            font-family: 'Pretendard', 'Outfit', sans-serif; font-size: 1.05rem;
+            resize: vertical; box-sizing: border-box; line-height: 1.6;
+            transition: border-color 0.3s;
+        }
+        .maker-textarea:focus { outline: none; border-color: #3b82f6; }
+        .maker-generate-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white; border: none; padding: 1.2rem 2rem;
+            border-radius: 12px; font-size: 1.2rem; font-weight: bold;
+            cursor: pointer; width: 100%; transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(59,130,246,0.4);
+            display: flex; justify-content: center; align-items: center; gap: 10px;
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+            margin-top: 1.5rem;
+        }
+        .maker-generate-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(59,130,246,0.6); }
+        .maker-generate-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+        .maker-loader {
+            display: none; text-align: center; padding: 3rem 0;
+        }
+        .maker-loader.active { display: block; }
+        .maker-spinner {
+            width: 40px; height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            animation: makerSpin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        @keyframes makerSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .maker-result-container { display: none; margin-top: 2rem; }
+        .maker-result-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;
+        }
+        .maker-message-card {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px; padding: 1.5rem;
+            display: flex; flex-direction: column; transition: transform 0.3s;
+        }
+        .maker-message-card:hover { transform: translateY(-3px); border-color: rgba(139,92,246,0.4); }
+        .maker-message-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .maker-message-style { font-weight: 700; color: #d8b4fe; display: flex; align-items: center; gap: 6px; }
+        .maker-message-body {
+            flex-grow: 1; line-height: 1.6; color: #e2e8f0;
+            margin-bottom: 1.5rem; white-space: pre-wrap; font-size: 1.05rem;
+        }
+        .maker-copy-btn {
+            background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);
+            color: #60a5fa; padding: 0.8rem; border-radius: 8px;
+            cursor: pointer; font-weight: 600; width: 100%; transition: all 0.2s;
+            display: flex; justify-content: center; align-items: center; gap: 8px;
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+        }
+        .maker-copy-btn:hover { background: rgba(59,130,246,0.3); color: #fff; }
+        .maker-error-msg {
+            display: none; background: rgba(239,68,68,0.1);
+            border-left: 4px solid #ef4444; color: #ef4444;
+            padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;
+        }
+        .maker-toast {
+            position: fixed; bottom: -50px; left: 50%;
+            transform: translateX(-50%); background: #3b82f6;
+            color: white; padding: 1rem 2rem; border-radius: 30px;
+            font-weight: bold; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: bottom 0.3s cubic-bezier(0.68,-0.55,0.265,1.55); z-index: 2000;
+        }
+        .maker-toast.show { bottom: 30px; }
+        @media (max-width: 600px) {
+            .maker-container { padding: 1rem; }
+            .maker-panel { padding: 1.5rem; }
+            .maker-result-grid { grid-template-columns: 1fr; }
+        }
+
+
+        /* ═══════════════════════════════════════
+           TAB 3: 텍스트 다듬기 (polisher)
+        ═══════════════════════════════════════ */
+        #tab-polisher {
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+        }
+        .polisher-container {
+            max-width: 1000px; margin: 0 auto; padding: 2rem;
+        }
+        .polisher-header { text-align: center; margin-bottom: 3rem; }
+        .polisher-h1 { font-size: 2.5rem; color: #60a5fa; margin-bottom: 0.5rem; }
+        .polisher-grid-layout {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .polisher-grid-layout { grid-template-columns: 1fr; }
+        }
+        .polisher-panel {
+            background: rgba(30,41,59,0.7);
+            border: 1px solid rgba(96,165,250,0.2);
+            border-radius: 16px; padding: 1.5rem;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .polisher-panel-header {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 10px;
+        }
+        .polisher-panel-header h3 { margin: 0; color: #93c5fd; }
+        .polisher-select {
+            background: #1e293b; color: white;
+            border: 1px solid #3b82f6; padding: 8px 15px;
+            border-radius: 8px;
+            font-family: 'Pretendard', 'Outfit', sans-serif; outline: none;
+        }
+        .polisher-textarea {
+            width: 100%; flex-grow: 1; min-height: 250px;
+            background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1);
+            color: #fff; padding: 1rem; border-radius: 8px;
+            font-family: 'Pretendard', 'Outfit', sans-serif;
+            font-size: 1rem; resize: vertical; box-sizing: border-box; line-height: 1.6;
+        }
+        .polisher-textarea:focus { outline: none; border-color: #3b82f6; }
+        .polisher-btn {
+            background: #3b82f6; color: white; border: none;
+            padding: 1rem; border-radius: 8px; font-size: 1.1rem;
+            font-weight: 600; cursor: pointer; width: 100%; margin-top: 1.5rem;
+            transition: 0.3s; font-family: 'Pretendard', 'Outfit', sans-serif;
+        }
+        .polisher-btn:hover { background: #2563eb; transform: translateY(-2px); }
+        .polisher-loader {
+            display: none; text-align: center; color: #3b82f6; margin: 2rem 0;
+        }
+        .polisher-loader i {
+            font-size: 2rem; animation: polisherSpin 1s linear infinite;
+        }
+        @keyframes polisherSpin { 100% { transform: rotate(360deg); } }
+        .polisher-copy-btn {
+            background: transparent; border: 1px solid #60a5fa;
+            color: #60a5fa; padding: 5px 15px; border-radius: 5px;
+            cursor: pointer; transition: 0.2s;
+        }
+        .polisher-copy-btn:hover { background: #60a5fa; color: #fff; }
+        @media (max-width: 600px) {
+            .polisher-container { padding: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ─── Page Header ─── -->
+<header class="page-header">
+    <a href="/"><i class="fa-solid fa-house"></i></a>
+    <div class="page-header-title">💬 AI 메시지 마스터</div>
+</header>
+
+<!-- ─── Tab Bar ─── -->
+<div class="page-tab-bar" id="pageTabBar">
+    <button class="page-tab-btn active" data-tab="kakao">📸 카톡 답장 추천</button>
+    <button class="page-tab-btn" data-tab="maker">✍️ 메시지 작성</button>
+    <button class="page-tab-btn" data-tab="polisher">💼 텍스트 다듬기</button>
+</div>
+
+
+<!-- ═══════════════════════════════════════
+     TAB 1: 카톡 답장 추천
+═══════════════════════════════════════ -->
+<div class="tab-panel active" id="tab-kakao">
+<main>
+    <!-- 업로드 영역 -->
+    <div class="kakao-upload-zone" id="kakaoUploadZone">
+        <input type="file" id="kakaoFileInput" accept="image/*" capture="environment">
+        <div class="kakao-upload-icon">💬</div>
+        <h2>카카오톡 대화 캡처를 올려주세요</h2>
+        <p>사진을 드래그하거나 탭해서 선택하세요<br>스마트폰에서는 카메라로 바로 찍을 수 있어요</p>
+        <div class="kakao-upload-hint">
+            <span class="kakao-hint-tag"><i class="fa-solid fa-image"></i> PNG / JPG</span>
+            <span class="kakao-hint-tag"><i class="fa-solid fa-camera"></i> 카메라 촬영</span>
+            <span class="kakao-hint-tag"><i class="fa-solid fa-lock"></i> 분석 후 즉시 삭제</span>
+        </div>
+    </div>
+
+    <!-- 이미지 미리보기 -->
+    <div class="kakao-preview-wrap" id="kakaoPreviewWrap">
+        <img id="kakaoPreviewImg" src="" alt="카카오톡 대화 캡처">
+        <div class="kakao-preview-actions">
+            <button class="kakao-btn-remove-img" onclick="kakaoResetAll()">
+                <i class="fa-solid fa-xmark"></i> 다시 선택
+            </button>
+        </div>
+    </div>
+
+    <!-- 추가 컨텍스트 입력 -->
+    <div class="kakao-context-box" id="kakaoContextBox">
+        <label><i class="fa-solid fa-circle-info"></i> 추가 상황 설명 (선택사항)</label>
+        <textarea id="kakaoContextInput" rows="2"
+            placeholder="예: 3주째 연락하는 직장 동료예요, 오늘 첫 만남인데 좋아하는 사람이에요..."></textarea>
+    </div>
+
+    <!-- 톤 선택 -->
+    <div class="kakao-tone-selector" id="kakaoToneSelector">
+        <div class="kakao-tone-selector-inner">
+            <div class="kakao-tone-label"><i class="fa-solid fa-sliders"></i> 원하는 답장 분위기 선택 (복수 선택 가능)</div>
+            <div class="kakao-tone-chips">
+                <span class="kakao-tone-chip selected" data-tone="친근하게">😊 친근하게</span>
+                <span class="kakao-tone-chip selected" data-tone="쿨하게">😎 쿨하게</span>
+                <span class="kakao-tone-chip selected" data-tone="유머있게">😄 유머있게</span>
+                <span class="kakao-tone-chip selected" data-tone="따뜻하게">🥰 따뜻하게</span>
+                <span class="kakao-tone-chip" data-tone="공식적으로">💼 공식적으로</span>
+                <span class="kakao-tone-chip" data-tone="짧고 심플하게">⚡ 짧고 심플하게</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 분석 버튼 -->
+    <button class="kakao-btn-analyze" id="kakaoBtnAnalyze" onclick="kakaoAnalyzeImage()">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기
+    </button>
+
+    <!-- 로딩 -->
+    <div class="kakao-loading-bar" id="kakaoLoadingBar">
+        <div class="kakao-dots">
+            <div class="kakao-dot"></div>
+            <div class="kakao-dot"></div>
+            <div class="kakao-dot"></div>
+        </div>
+        <div class="kakao-loading-step" id="kakaoLoadingStep">대화 내용을 읽고 있습니다...</div>
+        <p>AI가 맥락을 파악하고 최적의 답장을 생성 중이에요</p>
+    </div>
+
+    <!-- 결과 -->
+    <div class="kakao-result-panel" id="kakaoResultPanel">
+        <div class="kakao-result-summary" id="kakaoResultSummary">
+            <div class="kakao-result-summary-title"><i class="fa-solid fa-comment-dots"></i> AI가 파악한 대화 맥락</div>
+            <div class="kakao-result-summary-text" id="kakaoSummaryText"></div>
+        </div>
+        <div class="kakao-replies-title">
+            <i class="fa-solid fa-comment-medical"></i> 추천 답장 보기
+        </div>
+        <div class="kakao-reply-cards" id="kakaoReplyCards"></div>
+    </div>
+
+    <!-- 다시하기 -->
+    <button class="kakao-btn-retry" id="kakaoBtnRetry" onclick="kakaoResetAll()">
+        <i class="fa-solid fa-rotate-right"></i> 다른 캡처로 다시 분석하기
+    </button>
+</main>
+</div><!-- /tab-kakao -->
+
+
+<!-- ═══════════════════════════════════════
+     TAB 2: 메시지 메이커
+═══════════════════════════════════════ -->
+<div class="tab-panel" id="tab-maker">
+    <div class="maker-container">
+        <h1 class="maker-h1">💬 AI 찰떡 메세지 메이커</h1>
+        <p class="maker-subtitle">대충 적어도 상대방에게 딱 맞는 3가지 버전의 카톡/메일을 만들어드립니다.</p>
+
+        <div class="maker-panel">
+            <div id="makerErrorBox" class="maker-error-msg"></div>
+
+            <div class="maker-section-title"><i class="fa-solid fa-user-tag"></i> 누구에게 보낼 메시지인가요?</div>
+            <div class="maker-chips-container" id="makerTargetChips">
+                <div class="maker-chip active" data-value="부모님">👨‍👩‍👧 부모님</div>
+                <div class="maker-chip" data-value="아내">👰‍♀️ 아내</div>
+                <div class="maker-chip" data-value="남편">🤵‍♂️ 남편</div>
+                <div class="maker-chip" data-value="애인/연인">💕 애인/연인</div>
+                <div class="maker-chip" data-value="친구/절친">🍻 친구/절친</div>
+                <div class="maker-chip" data-value="직장상사">👔 직장상사</div>
+                <div class="maker-chip" data-value="동료/후배">🤝 동료/후배</div>
+                <div class="maker-chip" data-value="거래처/고객">💼 거래처/고객</div>
+            </div>
+
+            <div class="maker-section-title"><i class="fa-solid fa-pen-nib"></i> 전하고 싶은 내용을 대충 적어주세요.</div>
+            <textarea class="maker-textarea" id="makerContextInput" placeholder="예: 오늘 저녁에 회식 있어서 늦어 먼저 자. 미안해 주말에 맛있는거 먹자"></textarea>
+
+            <button class="maker-generate-btn" id="makerGenerateBtn" onclick="makerGenerateMessage()">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> 찰떡 메세지 3가지 버전 만들기
+            </button>
+        </div>
+
+        <div class="maker-loader" id="makerLoader">
+            <div class="maker-spinner"></div>
+            <p>상황에 맞는 최고의 단어들을 조합 중입니다...</p>
+        </div>
+
+        <div class="maker-result-container" id="makerResultContainer">
+            <div class="maker-section-title" style="margin-bottom:1.5rem;">
+                <i class="fa-solid fa-envelope-open-text"></i> 마음에 드는 버전을 복사하세요
+            </div>
+            <div class="maker-result-grid" id="makerResultGrid">
+                <!-- Cards will be injected here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="maker-toast" id="makerToast"><i class="fa-solid fa-check"></i> 복사되었습니다!</div>
+</div><!-- /tab-maker -->
+
+
+<!-- ═══════════════════════════════════════
+     TAB 3: 텍스트 다듬기 (polisher)
+═══════════════════════════════════════ -->
+<div class="tab-panel" id="tab-polisher">
+    <div class="polisher-container">
+        <div class="polisher-header">
+            <h1 class="polisher-h1"><i class="fa-solid fa-file-signature"></i> AI 텍스트 탈곡기</h1>
+            <p style="color:#94a3b8;">분노의 타이핑을 정갈한 비즈니스 글로, 혹은 너무 착한 글을 무자비한 내용증명으로 탈바꿈합니다.</p>
+        </div>
+
+        <div class="polisher-grid-layout">
+            <div class="polisher-panel">
+                <div class="polisher-panel-header">
+                    <h3><i class="fa-solid fa-pen"></i> 입력 텍스트 (초안)</h3>
+                </div>
+                <textarea class="polisher-textarea" id="polisherInputText"
+                    placeholder="다듬어지지 않은 날것의 글을 작성하세요. (예: 아 진짜 이번 프로젝트 너무 힘들어서 못해먹겠습니다. 기한 좀 연장해주세요 제발요.)"></textarea>
+            </div>
+
+            <div class="polisher-panel">
+                <div class="polisher-panel-header">
+                    <select class="polisher-select" id="polisherToneSelect">
+                        <option value="비즈니스 극존칭 (정중하고 프로페셔널한 톤)">👔 비즈니스 극존칭 (사과/요청)</option>
+                        <option value="법적 내용증명 (차갑고 단호한 경고조)">⚖️ 차가운 내용증명 (경고)</option>
+                        <option value="소셜 미디어 유튜버 어투 (친근하고 발랄하게)">🎉 유튜버/인플루언서 톤</option>
+                        <option value="사극 왕의 어명 (근엄하게)">👑 조선 국왕 어명 톤</option>
+                    </select>
+                    <button class="polisher-copy-btn" onclick="polisherCopyText()">
+                        <i class="fa-solid fa-copy"></i> 복사
+                    </button>
+                </div>
+                <textarea class="polisher-textarea" id="polisherOutputText" readonly
+                    placeholder="탈곡된 결과물이 여기에 표시됩니다."
+                    style="background:rgba(0,0,0,0.5);"></textarea>
+            </div>
+        </div>
+
+        <button class="polisher-btn" id="polisherProcessBtn" onclick="polisherPolishText()">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> 톤앤매너 완벽 변환하기
+        </button>
+
+        <div class="polisher-loader" id="polisherLoader">
+            <i class="fa-solid fa-gear"></i> 문맥분석 및 변환 중...
+        </div>
+    </div>
+</div><!-- /tab-polisher -->
+
+
+<!-- Shared toast -->
+<div class="hub-toast" id="hubToast"></div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+    <a href="/" class="nav-item"><i class="fa-solid fa-house"></i><span>홈</span></a>
+    <a href="/message" class="nav-item active"><i class="fa-solid fa-envelope-open-text"></i><span>메세지</span></a>
+    <a href="/love" class="nav-item"><i class="fa-solid fa-heart-crack"></i><span>썸 판독</span></a>
+    <a href="/saju" class="nav-item"><i class="fa-solid fa-yin-yang"></i><span>운세</span></a>
+</div>
+
+
+<script>
+/* ─────────────────────────────────────────
+   TAB NAVIGATION
+───────────────────────────────────────── */
+(function() {
+    const tabBtns = document.querySelectorAll('.page-tab-btn');
+    const tabPanels = document.querySelectorAll('.tab-panel');
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const target = btn.dataset.tab;
+            tabBtns.forEach(b => b.classList.remove('active'));
+            tabPanels.forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('tab-' + target).classList.add('active');
+        });
+    });
+})();
+
+
+/* ─────────────────────────────────────────
+   SHARED UTILS
+───────────────────────────────────────── */
+function hubShowToast(msg, color) {
+    const t = document.getElementById('hubToast');
+    t.textContent = msg;
+    t.style.borderColor = color ? color : 'rgba(34,197,94,0.3)';
+    t.style.color = color ? color : '#22c55e';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function hubEscapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+
+/* ═══════════════════════════════════════
+   TAB 1: 카톡 답장 추천
+═══════════════════════════════════════ */
+let kakaoUploadedFile = null;
+
+const KAKAO_TONE_CLASS_MAP = {
+    '친근하게': 'tone-friendly',
+    '쿨하게': 'tone-cool',
+    '유머있게': 'tone-funny',
+    '따뜻하게': 'tone-warm',
+    '공식적으로': 'tone-formal',
+    '짧고 심플하게': 'tone-short'
+};
+const KAKAO_TONE_ICON_MAP = {
+    '친근하게': '😊', '쿨하게': '😎', '유머있게': '😄',
+    '따뜻하게': '🥰', '공식적으로': '💼', '짧고 심플하게': '⚡'
+};
+
+// Drag & Drop
+const kakaoZone = document.getElementById('kakaoUploadZone');
+kakaoZone.addEventListener('dragover', e => { e.preventDefault(); kakaoZone.classList.add('drag-over'); });
+kakaoZone.addEventListener('dragleave', () => kakaoZone.classList.remove('drag-over'));
+kakaoZone.addEventListener('drop', e => {
+    e.preventDefault();
+    kakaoZone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) kakaoHandleFile(file);
+});
+
+document.getElementById('kakaoFileInput').addEventListener('change', e => {
+    if (e.target.files[0]) kakaoHandleFile(e.target.files[0]);
+});
+
+function kakaoHandleFile(file) {
+    kakaoUploadedFile = file;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('kakaoPreviewImg').src = e.target.result;
+        document.getElementById('kakaoPreviewWrap').style.display = 'block';
+        document.getElementById('kakaoUploadZone').style.display = 'none';
+        document.getElementById('kakaoContextBox').style.display = 'block';
+        document.getElementById('kakaoToneSelector').style.display = 'block';
+        document.getElementById('kakaoBtnAnalyze').style.display = 'flex';
+        document.getElementById('kakaoResultPanel').style.display = 'none';
+        document.getElementById('kakaoBtnRetry').style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+}
+
+// Tone Chip Toggle
+document.querySelectorAll('.kakao-tone-chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('selected'));
+});
+
+function kakaoGetSelectedTones() {
+    return Array.from(document.querySelectorAll('.kakao-tone-chip.selected'))
+                .map(c => c.dataset.tone);
+}
+
+async function kakaoAnalyzeImage() {
+    if (!kakaoUploadedFile) { hubShowToast('이미지를 먼저 업로드해주세요!'); return; }
+
+    const tones = kakaoGetSelectedTones();
+    if (tones.length === 0) { hubShowToast('분위기를 최소 1개 이상 선택해주세요!'); return; }
+
+    const btn = document.getElementById('kakaoBtnAnalyze');
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner-sm"></div> 분석 중...';
+
+    document.getElementById('kakaoLoadingBar').style.display = 'block';
+    document.getElementById('kakaoResultPanel').style.display = 'none';
+    document.getElementById('kakaoBtnRetry').style.display = 'none';
+
+    const steps = ['대화 내용을 읽고 있습니다...', '맥락과 감정을 파악 중...', '최적의 답장을 생성 중...'];
+    let si = 0;
+    const stepEl = document.getElementById('kakaoLoadingStep');
+    const stepInterval = setInterval(() => {
+        si = (si + 1) % steps.length;
+        stepEl.textContent = steps[si];
+    }, 1800);
+
+    try {
+        const formData = new FormData();
+        formData.append('image', kakaoUploadedFile);
+        formData.append('context', document.getElementById('kakaoContextInput').value.trim());
+        formData.append('tones', JSON.stringify(tones));
+
+        const res = await fetch('/api/kakao/reply', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        clearInterval(stepInterval);
+        document.getElementById('kakaoLoadingBar').style.display = 'none';
+
+        if (!data.success) {
+            hubShowToast(data.error || '분석에 실패했습니다. 다시 시도해주세요.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기';
+            return;
+        }
+
+        kakaoRenderResults(data);
+    } catch(e) {
+        clearInterval(stepInterval);
+        document.getElementById('kakaoLoadingBar').style.display = 'none';
+        hubShowToast('서버 오류가 발생했습니다. 다시 시도해주세요.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기';
+    }
+}
+
+function kakaoRenderResults(data) {
+    document.getElementById('kakaoSummaryText').textContent = data.summary || '';
+
+    const container = document.getElementById('kakaoReplyCards');
+    container.innerHTML = '';
+
+    (data.replies || []).forEach((reply, i) => {
+        const toneClass = KAKAO_TONE_CLASS_MAP[reply.tone] || 'tone-friendly';
+        const toneIcon = KAKAO_TONE_ICON_MAP[reply.tone] || '💬';
+
+        const card = document.createElement('div');
+        card.className = `kakao-reply-card ${toneClass}`;
+        card.innerHTML = `
+            <div class="kakao-reply-tone">${toneIcon} ${reply.tone}</div>
+            <div class="kakao-reply-text">${hubEscapeHtml(reply.text)}</div>
+            <button class="kakao-btn-copy-reply" onclick="kakaoCopyReply(this, ${JSON.stringify(reply.text)})">
+                <i class="fa-regular fa-copy"></i> 복사
+            </button>
+        `;
+        container.appendChild(card);
+    });
+
+    document.getElementById('kakaoResultPanel').style.display = 'block';
+    document.getElementById('kakaoBtnRetry').style.display = 'block';
+    document.getElementById('kakaoBtnAnalyze').style.display = 'none';
+    document.getElementById('kakaoResultPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function kakaoCopyReply(btn, text) {
+    navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> 복사됨!';
+        btn.classList.add('copied');
+        hubShowToast('✅ 클립보드에 복사했어요!');
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i> 복사';
+            btn.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+function kakaoResetAll() {
+    kakaoUploadedFile = null;
+    document.getElementById('kakaoFileInput').value = '';
+    document.getElementById('kakaoPreviewImg').src = '';
+    document.getElementById('kakaoPreviewWrap').style.display = 'none';
+    document.getElementById('kakaoUploadZone').style.display = 'block';
+    document.getElementById('kakaoContextBox').style.display = 'none';
+    document.getElementById('kakaoToneSelector').style.display = 'none';
+    document.getElementById('kakaoBtnAnalyze').style.display = 'none';
+    document.getElementById('kakaoBtnAnalyze').disabled = false;
+    document.getElementById('kakaoBtnAnalyze').innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기';
+    document.getElementById('kakaoLoadingBar').style.display = 'none';
+    document.getElementById('kakaoResultPanel').style.display = 'none';
+    document.getElementById('kakaoBtnRetry').style.display = 'none';
+    document.getElementById('kakaoContextInput').value = '';
+    document.getElementById('kakaoReplyCards').innerHTML = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+
+/* ═══════════════════════════════════════
+   TAB 2: 메시지 메이커
+═══════════════════════════════════════ */
+let makerSelectedTarget = '부모님';
+
+const makerChips = document.querySelectorAll('.maker-chip');
+makerChips.forEach(chip => {
+    chip.addEventListener('click', () => {
+        makerChips.forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        makerSelectedTarget = chip.getAttribute('data-value');
+    });
+});
+
+function makerShowError(msg) {
+    const box = document.getElementById('makerErrorBox');
+    box.innerText = msg;
+    box.style.display = 'block';
+}
+function makerHideError() { document.getElementById('makerErrorBox').style.display = 'none'; }
+
+async function makerGenerateMessage() {
+    const context = document.getElementById('makerContextInput').value.trim();
+    if (!context) return makerShowError('전하고 싶은 내용을 적어주세요.');
+    if (context.length < 5) return makerShowError('조금 더 자세히 적어주시면 AI가 더 잘 만들어줍니다. (5자 이상)');
+
+    makerHideError();
+    document.getElementById('makerResultContainer').style.display = 'none';
+    document.getElementById('makerGenerateBtn').disabled = true;
+    document.getElementById('makerLoader').classList.add('active');
+
+    try {
+        const response = await fetch('/api/message/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ target: makerSelectedTarget, context })
+        });
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+        makerRenderResults(data.options);
+    } catch (err) {
+        makerShowError('메세지 생성 중 오류가 발생했습니다: ' + err.message);
+    } finally {
+        document.getElementById('makerGenerateBtn').disabled = false;
+        document.getElementById('makerLoader').classList.remove('active');
+    }
+}
+
+function makerRenderResults(options) {
+    const grid = document.getElementById('makerResultGrid');
+    grid.innerHTML = '';
+    const icons = ['fa-heart', 'fa-face-smile-wink', 'fa-briefcase'];
+
+    options.forEach((opt, idx) => {
+        const icon = icons[idx % icons.length];
+        const card = document.createElement('div');
+        card.className = 'maker-message-card';
+        card.innerHTML = `
+            <div class="maker-message-header">
+                <div class="maker-message-style"><i class="fa-solid ${icon}"></i> ${opt.style}</div>
+            </div>
+            <div class="maker-message-body">${opt.text}</div>
+            <button class="maker-copy-btn" onclick="makerCopyToClipboard(this)">
+                <i class="fa-regular fa-copy"></i> 복사하기
+            </button>
+        `;
+        grid.appendChild(card);
+    });
+
+    document.getElementById('makerResultContainer').style.display = 'block';
+    document.getElementById('makerResultContainer').scrollIntoView({ behavior: 'smooth' });
+}
+
+function makerCopyToClipboard(btnElement) {
+    const textElement = btnElement.previousElementSibling;
+    const textToCopy = textElement.innerText;
+
+    navigator.clipboard.writeText(textToCopy).then(() => {
+        makerShowToast();
+        const originalHtml = btnElement.innerHTML;
+        btnElement.innerHTML = '<i class="fa-solid fa-check"></i> 복사 완료';
+        btnElement.style.background = 'rgba(16,185,129,0.2)';
+        btnElement.style.color = '#10b981';
+        btnElement.style.borderColor = 'rgba(16,185,129,0.4)';
+        setTimeout(() => {
+            btnElement.innerHTML = originalHtml;
+            btnElement.style = '';
+        }, 2000);
+    }).catch(err => console.error('Failed to copy text: ', err));
+}
+
+function makerShowToast() {
+    const toast = document.getElementById('makerToast');
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+}
+
+
+/* ═══════════════════════════════════════
+   TAB 3: 텍스트 다듬기 (polisher)
+═══════════════════════════════════════ */
+async function polisherPolishText() {
+    const text = document.getElementById('polisherInputText').value.trim();
+    const tone = document.getElementById('polisherToneSelect').value;
+
+    if (!text) return alert('입력 텍스트를 작성해주세요.');
+
+    const btn = document.getElementById('polisherProcessBtn');
+    const loader = document.getElementById('polisherLoader');
+
+    btn.style.display = 'none';
+    loader.style.display = 'block';
+    document.getElementById('polisherOutputText').value = '';
+
+    try {
+        const res = await fetch('/api/polisher/convert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, tone })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('polisherOutputText').value = data.result;
+        } else {
+            throw new Error(data.error);
+        }
+    } catch(e) {
+        alert('변환 실패: ' + e.message);
+    } finally {
+        btn.style.display = 'block';
+        loader.style.display = 'none';
+    }
+}
+
+function polisherCopyText() {
+    const out = document.getElementById('polisherOutputText');
+    out.select();
+    document.execCommand('copy');
+    hubShowToast('✅ 복사되었습니다.', '#60a5fa');
+}
+</script>
+
+</body>
+</html>

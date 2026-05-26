@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 AI 주식 분석기</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Markdown Parser (marked.js) — used by market tab -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- TradingView Lightweight Charts — used by stock tab -->
+    <script src="https://unpkg.com/lightweight-charts@4.2.1/dist/lightweight-charts.standalone.production.js"></script>
+
+    <style>
+        /* ============================
+           CSS Variables & Reset
+        ============================ */
+        :root {
+            --bg-color: #0b0e14;
+            --panel-bg: rgba(22, 27, 34, 0.6);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --primary: #00f0ff;
+            --primary-glow: rgba(0, 240, 255, 0.4);
+            --secondary: #ff0055;
+            --secondary-glow: rgba(255, 0, 85, 0.4);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --positive: #00ff88;
+            --negative: #ff0055;
+            --gold: #ffd700;
+            --sma20-color: #fce83a;
+            --sma50-color: #ff8c00;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            background-image:
+                radial-gradient(circle at 15% 50%, rgba(0, 240, 255, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(255, 0, 85, 0.05), transparent 25%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 80px;
+        }
+
+        /* ============================
+           Page Header (sticky top:0)
+        ============================ */
+        .page-header {
+            padding: 1rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(11,14,20,0.95);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .page-header a.home-link {
+            color: #8b949e;
+            font-size: 1.1rem;
+            text-decoration: none;
+            transition: color 0.2s;
+            flex-shrink: 0;
+        }
+        .page-header a.home-link:hover { color: var(--primary); }
+
+        .page-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: -0.4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+        }
+
+        /* ============================
+           Tab Bar (sticky top:57px)
+        ============================ */
+        .page-tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(11,14,20,0.9);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            position: sticky;
+            top: 57px;
+            z-index: 49;
+        }
+
+        .page-tab-btn {
+            flex: 1;
+            padding: 14px;
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 1rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            transition: color 0.2s, border-bottom-color 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .page-tab-btn.active {
+            color: #ff0055;
+            border-bottom-color: #ff0055;
+        }
+        .page-tab-btn:hover:not(.active) { color: var(--text-main); }
+
+        /* ============================
+           Tab Panels
+        ============================ */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ============================
+           MARKET TAB CSS
+        ============================ */
+
+        /* Market inner header (controls bar) */
+        .market-controls {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 14, 20, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            position: sticky;
+            top: 113px; /* page-header(57) + tab-bar(56) */
+            z-index: 40;
+        }
+
+        .btn-action {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--primary);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 500;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.95rem;
+        }
+
+        .btn-action:hover {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-refresh {
+            background: linear-gradient(135deg, #00f0ff, #0088ff);
+            color: #000;
+            border: none;
+        }
+        .btn-refresh:hover {
+            background: linear-gradient(135deg, #0088ff, #00f0ff);
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Market main grid */
+        .market-main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        .leaderboard-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+        }
+
+        .section-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title i { color: var(--primary); }
+
+        .stock-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+        }
+
+        .stock-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stock-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .rank-badge {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-right: 15px;
+            color: var(--text-muted);
+        }
+
+        .rank-1 { background: rgba(255, 215, 0, 0.2); color: var(--gold); border: 1px solid rgba(255, 215, 0, 0.4); }
+        .rank-2 { background: rgba(192, 192, 192, 0.2); color: #c0c0c0; border: 1px solid rgba(192, 192, 192, 0.4); }
+        .rank-3 { background: rgba(205, 127, 50, 0.2); color: #cd7f32; border: 1px solid rgba(205, 127, 50, 0.4); }
+
+        .stock-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stock-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .stock-code {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            background: rgba(255,255,255,0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .stock-metrics {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9rem;
+            align-items: center;
+        }
+
+        .metric { display: flex; align-items: center; gap: 5px; }
+        .metric-label { color: var(--text-muted); font-size: 0.8rem; }
+        .positive { color: var(--positive); }
+        .negative { color: var(--negative); }
+
+        .btn-analyze {
+            background: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+        }
+        .btn-analyze:hover {
+            background: rgba(0, 240, 255, 0.1);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .ai-report-container {
+            background: linear-gradient(180deg, rgba(22, 27, 34, 0.8), rgba(11, 14, 20, 0.9));
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 170px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-top: 2px solid var(--primary);
+        }
+
+        .ai-report-content {
+            margin-top: 1rem;
+            color: #e6edf3;
+            line-height: 1.7;
+            font-size: 0.95rem;
+        }
+
+        .ai-report-content h1, .ai-report-content h2, .ai-report-content h3 {
+            color: var(--primary);
+            margin: 1.5rem 0 0.8rem 0;
+            font-size: 1.1rem;
+        }
+
+        .ai-report-content p { margin-bottom: 1rem; }
+
+        .ai-report-content strong {
+            color: #fff;
+            background: rgba(255,255,255,0.1);
+            padding: 0 4px;
+            border-radius: 4px;
+        }
+
+        /* Market loader overlay */
+        .market-loader-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(11, 14, 20, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .market-spinner {
+            font-size: 3rem;
+            color: var(--primary);
+            animation: mktSpin 1s linear infinite;
+        }
+
+        @keyframes mktSpin { to { transform: rotate(360deg); } }
+
+        .loader-text {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 500;
+            text-shadow: 0 0 10px rgba(0,240,255,0.5);
+        }
+
+        /* Market responsive */
+        @media (max-width: 992px) {
+            .market-main { grid-template-columns: 1fr; }
+            .ai-report-container { position: relative; top: 0; }
+        }
+        @media (max-width: 600px) {
+            .market-controls { flex-direction: column; align-items: stretch; }
+            .stock-card { padding: 1rem; }
+            .stock-metrics { flex-direction: column; align-items: flex-start; gap: 5px; }
+            .btn-analyze { padding: 6px 10px; font-size: 0.8rem; }
+            .rank-badge { width: 25px; height: 25px; font-size: 0.9rem; margin-right: 10px; }
+        }
+
+        /* ============================
+           STOCK TAB CSS
+        ============================ */
+
+        /* Stock inner header (search bar) */
+        .stock-search-bar {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 14, 20, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            position: sticky;
+            top: 113px;
+            z-index: 40;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 6px;
+            border-radius: 30px;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .search-container:focus-within {
+            border-color: rgba(0, 240, 255, 0.4);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.1);
+        }
+
+        .search-input {
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            padding: 8px 16px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1rem;
+            width: 260px;
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        .search-input::placeholder {
+            text-transform: none;
+            color: var(--text-muted);
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #00f0ff, #0088ff);
+            color: #000;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 24px;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        .search-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.5);
+        }
+
+        /* Stock main content */
+        .stock-main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-title {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .stat-sub {
+            font-size: 0.85rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .neutral { color: var(--primary); }
+
+        .chart-container {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 1.5rem;
+            height: 600px;
+            position: relative;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+            transition: all 0.3s ease;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title { font-size: 1.2rem; font-weight: 500; }
+
+        .chart-legend {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+
+        .legend-color {
+            width: 12px;
+            height: 4px;
+            border-radius: 2px;
+        }
+
+        #error-msg {
+            display: none;
+            background: rgba(255, 0, 85, 0.1);
+            color: var(--secondary);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            text-align: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Stock loader */
+        .stock-loader {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(11, 14, 20, 0.7);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+        }
+        .stock-loader-content {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(22, 27, 34, 0.9);
+            border-radius: 20px;
+            padding: 2.5rem 3rem;
+            text-align: center;
+            border: 1px solid var(--primary);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            color: #fff;
+        }
+
+        #stockChart {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 520px;
+        }
+
+        /* Scroll To Top */
+        .scroll-top-btn {
+            position: fixed; bottom: 90px; right: 20px; width: 45px; height: 45px;
+            background: rgba(11, 14, 20, 0.9); border: 1px solid var(--border-color);
+            color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px); opacity: 0; pointer-events: none; transition: all 0.3s ease; z-index: 999;
+        }
+        .scroll-top-btn.visible { opacity: 1; pointer-events: auto; }
+        .scroll-top-btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px rgba(0, 240, 255, 0.4); transform: translateY(-3px); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Stock responsive */
+        @media (max-width: 768px) {
+            .stock-search-bar { flex-direction: column; align-items: stretch; }
+            .search-container { width: 100%; flex-direction: column; padding: 0; border: none; background: transparent; }
+            .search-input, .search-btn { width: 100%; max-width: none; text-align: center; padding: 12px; font-size: 1.1rem; }
+            .stock-main { padding: 1rem; gap: 1rem; }
+            .dashboard { grid-template-columns: 1fr; gap: 1rem; }
+            .chart-container { height: 450px; padding: 1rem; }
+            .chart-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .chart-legend { flex-wrap: wrap; gap: 8px; font-size: 0.75rem; }
+        }
+
+        /* ============================
+           Bottom Nav
+        ============================ */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            height: 70px;
+            background: rgba(11, 14, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+        .nav-item {
+            text-decoration: none;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            gap: 5px;
+            transition: 0.2s;
+            width: 25%;
+        }
+        .nav-item i { font-size: 1.5rem; }
+        .nav-item.active, .nav-item:hover { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <!-- ==============================
+         PAGE HEADER
+    ============================== -->
+    <header class="page-header">
+        <a href="/" class="home-link"><i class="fa-solid fa-house"></i></a>
+        <h1>📈 AI 주식 분석기</h1>
+    </header>
+
+    <!-- ==============================
+         TAB BAR
+    ============================== -->
+    <div class="page-tab-bar">
+        <button class="page-tab-btn active" id="tab-btn-market" onclick="switchTab('market')">🔥 시장 트렌드</button>
+        <button class="page-tab-btn" id="tab-btn-stock" onclick="switchTab('stock')">📊 개별 종목 분석</button>
+    </div>
+
+    <!-- ==============================
+         TAB PANEL: MARKET TREND
+    ============================== -->
+    <div class="tab-panel active" id="tab-panel-market">
+
+        <!-- Market inner sticky controls -->
+        <div class="market-controls">
+            <!-- 날짜 선택기 -->
+            <div style="display:flex; align-items:center; gap:8px; background:rgba(0,240,255,0.05); border:1px solid rgba(0,240,255,0.2); border-radius:8px; padding:6px 12px;">
+                <i class="fa-solid fa-calendar-days" style="color:var(--primary); font-size:0.9rem;"></i>
+                <input type="date" id="dateInput"
+                    style="background:transparent; border:none; color:var(--text-main); font-family:'Outfit',sans-serif; font-size:0.95rem; outline:none; cursor:pointer; color-scheme:dark;"
+                    title="기준일 선택 (미선택 시 오늘 기준)">
+            </div>
+            <button class="btn-action" onclick="copyForBlog()" id="btnShare" style="display:none; border-color:var(--gold); color:var(--gold);"><i class="fa-solid fa-copy"></i> 블로그용 복사</button>
+            <button class="btn-action btn-refresh" onclick="fetchMarketTrend()"><i class="fa-solid fa-rotate-right"></i> 최신화</button>
+        </div>
+
+        <!-- Market content grid -->
+        <div class="market-main">
+            <div class="leaderboard-container">
+                <div class="section-title">
+                    <i class="fa-solid fa-ranking-star"></i>
+                    <span id="sectionTitle">거래대금 TOP 10</span>
+                </div>
+                <div class="stock-list" id="stockList">
+                    <!-- Stocks will be injected here -->
+                </div>
+            </div>
+
+            <div class="ai-report-container">
+                <div class="section-title" style="color:var(--primary); margin-bottom:0.5rem;">
+                    <i class="fa-solid fa-brain"></i> AI 시장 인사이트
+                </div>
+                <div style="font-size:0.8rem; color:var(--text-muted); margin-bottom:1rem;">
+                    * 거래대금 상위 10종목의 테마와 자금 흐름을 종합 분석한 리포트입니다.
+                </div>
+                <div class="ai-report-content" id="aiReport">
+                    <div style="color:var(--text-muted); font-style:italic;">좌측 [최신화] 버튼을 눌러 스캔을 시작하세요.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Market loader overlay -->
+        <div class="market-loader-overlay" id="marketLoader">
+            <i class="fa-solid fa-circle-notch market-spinner"></i>
+            <div class="loader-text">전 종목 거래대금 스캔 및 AI 분석 중...</div>
+        </div>
+    </div>
+
+    <!-- ==============================
+         TAB PANEL: STOCK ANALYSIS
+    ============================== -->
+    <div class="tab-panel" id="tab-panel-stock">
+
+        <!-- Stock inner sticky search bar -->
+        <div class="stock-search-bar">
+            <div class="search-container">
+                <input type="text" id="tickerInput" class="search-input"
+                    placeholder="종목 코드 또는 이름 (예: 삼성전자)" value="삼성전자"
+                    onkeypress="if(event.key==='Enter') fetchStockData()">
+                <button class="search-btn" onclick="fetchStockData()">분석하기</button>
+            </div>
+        </div>
+
+        <!-- Stock main content -->
+        <div class="stock-main">
+            <div id="error-msg"></div>
+
+            <div class="dashboard">
+                <div class="stat-card">
+                    <div class="stat-title">현재가 (최근 거래일)<i class="fa-solid fa-dollar-sign"></i></div>
+                    <div class="stat-value" id="currentPrice">--</div>
+                    <div class="stat-sub neutral" id="tickerDisplay">종목을 검색해주세요</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title"><span id="predTitleText">1개월(30일) 예상가</span> <i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <div class="stat-value" id="predictedPrice">--</div>
+                    <div class="stat-sub" id="predictionChange">--</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">전반적 트렌드 <i class="fa-solid fa-arrow-trend-up"></i></div>
+                    <div class="stat-value" id="trendDirection" style="font-size:1.4rem; padding-top:5px;">--</div>
+                    <div class="stat-sub" style="color:var(--text-muted)">최근 6개월 기반 선형회귀 분석</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title">과거 1개월 예측 신뢰도 <i class="fa-solid fa-bullseye"></i></div>
+                    <div class="stat-value" id="backtestAccuracy" style="font-size:1.4rem; padding-top:5px;">--</div>
+                    <div class="stat-sub" id="backtestSub">1달 전 예측 vs 현재가 비교</div>
+                </div>
+                <div class="stat-card" id="aiStopLossCard" style="display:none; border-color:rgba(255,0,85,0.3); box-shadow:0 0 15px rgba(255,0,85,0.1);">
+                    <div class="stat-title">AI 제안 위험관리 선 <i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="stat-value" id="aiStopLossValue" style="color:#ff0055; font-size:1.4rem; padding-top:5px;">--</div>
+                    <div class="stat-sub" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span id="aiStopLossSub">주요 지지선 붕괴 방어선</span>
+                        <span id="volTrendBadge" style="background:rgba(255,255,255,0.1); padding:2px 8px; border-radius:12px; font-size:0.8rem; color:#fff;">--</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="aiAnalysisPanel" class="stat-card" style="display:none; margin-top:-0.5rem; background:rgba(0,240,255,0.03); border-color:rgba(0,240,255,0.2);">
+                <div class="stat-title" style="color:var(--primary); font-size:1.1rem; border-bottom:1px solid rgba(0,240,255,0.2); padding-bottom:0.8rem; margin-bottom:1rem; display:flex; justify-content:space-between; align-items:center;">
+                    <span><i class="fa-solid fa-brain"></i> AI 차트 전문가 딥러닝 리포트</span>
+                    <button onclick="saveToArchive()" style="background:rgba(0,240,255,0.1); border:1px solid var(--primary); color:var(--primary); border-radius:8px; padding:4px 12px; cursor:pointer; font-family:inherit; transition:0.2s; font-size:0.9rem;">⭐ 보관함에 저장</button>
+                </div>
+                <div id="aiAnalysisText" style="line-height:1.8; font-size:1.05rem; color:#fff; white-space:pre-wrap;">
+                    <!-- AI text goes here -->
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title" id="chartTitle">주가 추이 및 AI 예측선</div>
+                    <div class="chart-legend">
+                        <div class="legend-item"><div class="legend-color" style="background:#00ff88; box-shadow:0 0 8px #00ff88"></div> 캔들 (상승)</div>
+                        <div class="legend-item"><div class="legend-color" style="background:#ff0055; box-shadow:0 0 8px #ff0055"></div> 캔들 (하락)</div>
+                        <div class="legend-item"><div class="legend-color" style="background:var(--secondary); box-shadow:0 0 8px var(--secondary-glow)"></div> 향후 예측 방향</div>
+                        <div class="legend-item"><div class="legend-color" style="background:var(--sma50-color)"></div> 50일 이동평균</div>
+                        <div class="legend-item"><div class="legend-color" style="background:transparent; border-top:2px dashed #fce83a;"></div> 1개월 전 백테스트</div>
+                    </div>
+                </div>
+                <!-- Stock tab loader (inside chart container) -->
+                <div class="stock-loader" id="stockLoader">
+                    <div class="stock-loader-content">
+                        <div style="font-size:2rem; color:var(--primary); margin-bottom:1rem;">
+                            <i class="fa-solid fa-spinner fa-spin"></i>
+                        </div>
+                        <div>AI 분석 엔진 가동 중...</div>
+                    </div>
+                </div>
+                <div id="stockChart"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll To Top -->
+    <button class="scroll-top-btn" id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})">
+        <i class="fa-solid fa-arrow-up"></i>
+    </button>
+
+    <!-- ==============================
+         BOTTOM NAV
+    ============================== -->
+    <div class="bottom-nav">
+        <a href="/" class="nav-item">
+            <i class="fa-solid fa-house"></i>
+            <span>홈</span>
+        </a>
+        <a href="/invest" class="nav-item active">
+            <i class="fa-solid fa-chart-line"></i>
+            <span>주식분석</span>
+        </a>
+        <a href="/diary" class="nav-item">
+            <i class="fa-solid fa-book"></i>
+            <span>다이어리</span>
+        </a>
+        <a href="/archive" class="nav-item">
+            <i class="fa-solid fa-star"></i>
+            <span>보관함</span>
+        </a>
+    </div>
+
+    <!-- ==============================
+         SCRIPTS
+    ============================== -->
+    <script>
+        /* ============================
+           Tab Switcher
+        ============================ */
+        function switchTab(name) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.page-tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tab-panel-' + name).classList.add('active');
+            document.getElementById('tab-btn-' + name).classList.add('active');
+
+            // When stock tab is activated, resize chart if it exists
+            if (name === 'stock' && window.myChart) {
+                const chartEl = document.getElementById('stockChart');
+                if (chartEl) {
+                    setTimeout(() => {
+                        window.myChart.resize(chartEl.clientWidth, chartEl.clientHeight);
+                    }, 50);
+                }
+            }
+        }
+
+        /* ============================
+           MARKET TAB SCRIPTS
+        ============================ */
+        const formatMoney = (val) => {
+            if (val >= 1000000000000) return (val / 1000000000000).toFixed(1) + '조';
+            else if (val >= 100000000) return (val / 100000000).toFixed(0) + '억';
+            return new Intl.NumberFormat('ko-KR').format(val);
+        };
+
+        const formatPrice = (val) => new Intl.NumberFormat('ko-KR').format(val) + '원';
+
+        async function fetchMarketTrend() {
+            const dateInput = document.getElementById('dateInput');
+            const selectedDate = dateInput.value;
+
+            document.getElementById('marketLoader').style.display = 'flex';
+            document.getElementById('stockList').innerHTML = '';
+            document.getElementById('aiReport').innerHTML = '<div style="color:var(--text-muted);font-style:italic;">분석 중...</div>';
+
+            try {
+                const url = selectedDate
+                    ? `/api/stock/market_trend?date=${selectedDate}`
+                    : '/api/stock/market_trend';
+                const response = await fetch(url);
+                const data = await response.json();
+                window.marketData = data;
+
+                if (!data.success) {
+                    alert('데이터를 가져오는 중 오류가 발생했습니다: ' + data.error);
+                    return;
+                }
+
+                // 기준일 표시
+                const dateLabel = data.data_date || new Date().toISOString().slice(0, 10);
+                const [y, m, d] = dateLabel.split('-');
+                document.getElementById('sectionTitle').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 거래대금 TOP 10`;
+
+                // 1. Render Stocks
+                const listEl = document.getElementById('stockList');
+                data.top_stocks.forEach((s, idx) => {
+                    const rank = idx + 1;
+                    let rankClass = '';
+                    if (rank === 1) rankClass = 'rank-1';
+                    else if (rank === 2) rankClass = 'rank-2';
+                    else if (rank === 3) rankClass = 'rank-3';
+
+                    const isUp = s.changes_ratio > 0;
+                    const isDown = s.changes_ratio < 0;
+                    let colorClass = '';
+                    let iconHtml = '';
+
+                    if (isUp) {
+                        colorClass = 'positive';
+                        iconHtml = '<i class="fa-solid fa-caret-up"></i>';
+                    } else if (isDown) {
+                        colorClass = 'negative';
+                        iconHtml = '<i class="fa-solid fa-caret-down"></i>';
+                    } else {
+                        colorClass = 'text-muted';
+                        iconHtml = '-';
+                    }
+
+                    let aiBadge = '';
+                    let aiPricePanel = '';
+
+                    if (data.ai_report && data.ai_report.stock_analysis) {
+                        const aiStock = data.ai_report.stock_analysis.find(x => x.code === s.code || x.code === s.code.replace('.KS','').replace('.KQ',''));
+                        if (aiStock) {
+                            let recIcon = '🤖';
+                            if (aiStock.recommendation.includes('적극')) recIcon = '🔥';
+                            else if (aiStock.recommendation.includes('매수')) recIcon = '🟢';
+                            else if (aiStock.recommendation.includes('관망')) recIcon = '🟡';
+                            else if (aiStock.recommendation.includes('매도')) recIcon = '🔴';
+
+                            aiBadge = `<div style="display:inline-block;margin-left:8px;font-size:0.75rem;padding:2px 8px;border-radius:12px;font-weight:600;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);white-space:nowrap;">${recIcon} ${aiStock.recommendation}</div>`;
+
+                            aiPricePanel = `
+                            <div style="margin-top:15px;display:flex;flex-direction:column;gap:8px;background:rgba(0,0,0,0.4);padding:12px;border-radius:10px;border-left:3px solid var(--primary);">
+                                <div style="display:flex;flex-wrap:wrap;gap:15px;font-size:0.9rem;">
+                                    <div style="white-space:nowrap;"><span style="color:var(--text-muted);">🎯 목표가:</span> <span style="font-weight:700;color:var(--primary);font-size:1rem;">${formatPrice(aiStock.target_price)}</span></div>
+                                    <div style="white-space:nowrap;"><span style="color:var(--text-muted);">🛡️ 손절가:</span> <span style="font-weight:700;color:var(--secondary);font-size:1rem;">${formatPrice(aiStock.stop_loss)}</span></div>
+                                </div>
+                                <div style="font-size:0.85rem;color:#b0c4de;font-style:italic;line-height:1.4;word-break:keep-all;">
+                                    <i class="fa-solid fa-comment-dots" style="color:var(--primary);"></i> ${aiStock.reason}
+                                </div>
+                            </div>`;
+                        }
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = 'stock-card';
+                    card.style.flexDirection = 'column';
+                    card.style.alignItems = 'stretch';
+                    card.innerHTML = `
+                        <div style="display:flex;align-items:flex-start;justify-content:space-between;width:100%;gap:10px;">
+                            <div style="display:flex;align-items:flex-start;flex:1;min-width:0;">
+                                <div class="rank-badge ${rankClass}" style="flex-shrink:0;">${rank}</div>
+                                <div class="stock-info" style="min-width:0;word-break:keep-all;">
+                                    <div class="stock-name" style="flex-wrap:wrap;line-height:1.3;">
+                                        <span>${s.name}</span> <span class="stock-code" style="white-space:nowrap;">${s.code}</span> ${aiBadge}
+                                    </div>
+                                    <div class="stock-metrics" style="margin-top:4px;">
+                                        <div class="metric ${colorClass}" style="font-weight:600;white-space:nowrap;">
+                                            ${formatPrice(s.close)} (${iconHtml} ${Math.abs(s.changes_ratio).toFixed(2)}%)
+                                        </div>
+                                        <div class="metric" style="white-space:nowrap;">
+                                            <span class="metric-label">거래대금:</span> <span style="color:#ffd700;font-weight:500;">${formatMoney(s.amount)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-analyze" style="flex-shrink:0;white-space:nowrap;" onclick="goToStockAnalysis('${s.name}')">
+                                <i class="fa-solid fa-chart-pie"></i> 차트 보기
+                            </button>
+                        </div>
+                        ${aiPricePanel}
+                    `;
+                    listEl.appendChild(card);
+                });
+
+                // 2. Render AI Report
+                if (data.ai_report && data.ai_report.overall_summary) {
+                    document.getElementById('aiReport').innerHTML = marked.parse(data.ai_report.overall_summary);
+                } else {
+                    document.getElementById('aiReport').innerHTML = '<div style="color:var(--negative);">AI 리포트를 생성하지 못했습니다. (API Key 확인 필요 또는 JSON 형식 오류)</div>';
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert('네트워크 오류가 발생했습니다.');
+            } finally {
+                document.getElementById('marketLoader').style.display = 'none';
+                if (window.marketData && window.marketData.success) {
+                    document.getElementById('btnShare').style.display = 'flex';
+                }
+            }
+        }
+
+        // 시장 트렌드에서 차트 보기 클릭 시 → 개별 종목 탭으로 이동하여 분석
+        function goToStockAnalysis(stockName) {
+            switchTab('stock');
+            document.getElementById('tickerInput').value = stockName;
+            fetchStockData();
+        }
+
+        async function copyForBlog() {
+            if (!window.marketData || !window.marketData.success) {
+                alert('복사할 데이터가 없습니다.');
+                return;
+            }
+
+            const data = window.marketData;
+            const dateLabel = data.data_date || new Date().toISOString().slice(0, 10);
+            const [y, m, d] = dateLabel.split('-');
+            const dateStr = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
+            let content = `# 📈 ${dateStr} 주식 시장 트렌드 스캐너 결과\n\n`;
+
+            if (data.ai_report && data.ai_report.overall_summary) {
+                content += `## 🧠 AI 시장 인사이트\n\n${data.ai_report.overall_summary}\n\n---\n\n`;
+            }
+
+            content += `## 🏆 오늘자 거래대금 TOP 10\n\n`;
+
+            data.top_stocks.forEach((s, idx) => {
+                const rank = idx + 1;
+                const isUp = s.changes_ratio > 0 ? '+' : '';
+                content += `### ${rank}위: ${s.name} (${s.code})\n`;
+                content += `- **현재가**: ${formatPrice(s.close)} (${isUp}${s.changes_ratio.toFixed(2)}%)\n`;
+                content += `- **거래대금**: ${formatMoney(s.amount)}\n`;
+
+                if (data.ai_report && data.ai_report.stock_analysis) {
+                    const aiStock = data.ai_report.stock_analysis.find(x => x.code === s.code || x.code === s.code.replace('.KS','').replace('.KQ',''));
+                    if (aiStock) {
+                        content += `- **🤖 AI 의견**: ${aiStock.recommendation}\n`;
+                        content += `  - 🎯 목표가: ${formatPrice(aiStock.target_price)} | 🛡️ 손절가: ${formatPrice(aiStock.stop_loss)}\n`;
+                        content += `  - 💬 이유: ${aiStock.reason}\n`;
+                    }
+                }
+                content += '\n';
+            });
+
+            content += `> 본 분석은 AI에 의해 자동 생성된 참고용 데이터이며, 투자 결과에 대한 법적 책임을 지지 않습니다.\n`;
+
+            try {
+                await navigator.clipboard.writeText(content);
+                const btn = document.getElementById('btnShare');
+                const originalHtml = btn.innerHTML;
+                btn.innerHTML = '<i class="fa-solid fa-check"></i> 복사 완료!';
+                btn.style.backgroundColor = 'rgba(255,215,0,0.2)';
+                setTimeout(() => {
+                    btn.innerHTML = originalHtml;
+                    btn.style.backgroundColor = 'transparent';
+                }, 2000);
+            } catch (err) {
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert('블로그용 텍스트가 클립보드에 복사되었습니다!');
+                } catch (e) {
+                    alert('복사에 실패했습니다. 수동으로 복사해주세요.');
+                }
+                document.body.removeChild(textArea);
+            }
+        }
+
+        /* ============================
+           STOCK TAB SCRIPTS
+        ============================ */
+        let myChart = null;
+        let currentStockData = null;
+        let currentTicker = '';
+
+        const formatCurrency = (val) => {
+            if (val === undefined || val === null) return '--';
+            if (val > 1000) return new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(val);
+            return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val);
+        };
+
+        async function fetchStockData() {
+            const ticker = document.getElementById('tickerInput').value.trim().toUpperCase();
+            if (!ticker) return;
+
+            document.getElementById('stockLoader').style.display = 'block';
+            document.getElementById('error-msg').style.display = 'none';
+
+            try {
+                const response = await fetch(`/api/stock?ticker=${encodeURIComponent(ticker)}`);
+                const data = await response.json();
+
+                currentStockData = data;
+                currentTicker = ticker;
+
+                if (!data.success) {
+                    showStockError(data.error);
+                    return;
+                }
+
+                updateDashboard(data);
+                renderChart(data);
+
+            } catch (err) {
+                const errMsg = err.message ? err.message : String(err);
+                showStockError('에러 상세: ' + errMsg);
+                console.error(err);
+            } finally {
+                document.getElementById('stockLoader').style.display = 'none';
+            }
+        }
+
+        function showStockError(msg) {
+            const errorEl = document.getElementById('error-msg');
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+
+            document.getElementById('currentPrice').textContent = '--';
+            document.getElementById('predictionChange').textContent = '--';
+            document.getElementById('trendDirection').textContent = '--';
+            document.getElementById('predictionChange').className = 'stat-sub';
+            document.getElementById('backtestAccuracy').textContent = '--';
+            document.getElementById('backtestSub').textContent = '1달 전 예측 vs 현재가 비교';
+            document.getElementById('aiAnalysisPanel').style.display = 'none';
+            document.getElementById('aiStopLossCard').style.display = 'none';
+            document.getElementById('volTrendBadge').textContent = '--';
+
+            if (myChart) {
+                myChart.remove();
+                myChart = null;
+            }
+        }
+
+        function updateDashboard(data) {
+            document.getElementById('tickerDisplay').textContent = `${data.original_ticker} (${data.ticker}) / 최근 2년 데이터`;
+            document.getElementById('chartTitle').textContent = `${data.original_ticker} 주가 추이 및 AI 예측선`;
+            document.getElementById('predTitleText').textContent = '1개월(30일) 단기 예상가';
+
+            const hist = data.historical;
+            const preds = data.predictions;
+
+            if (hist.length > 0) {
+                const currentPrice = hist[hist.length - 1].close;
+                document.getElementById('currentPrice').textContent = formatCurrency(currentPrice);
+
+                if (preds.length > 0) {
+                    const finalPred = preds[preds.length - 1].predicted_close;
+                    document.getElementById('predictedPrice').textContent = formatCurrency(finalPred);
+
+                    const diff = finalPred - currentPrice;
+                    const pct = (diff / currentPrice) * 100;
+
+                    const changeEl = document.getElementById('predictionChange');
+                    const trendEl = document.getElementById('trendDirection');
+
+                    if (diff > 0) {
+                        changeEl.innerHTML = `<i class="fa-solid fa-arrow-up"></i> ${formatCurrency(Math.abs(diff))} (${pct.toFixed(2)}%) 상승 예상`;
+                        changeEl.className = 'stat-sub positive';
+                        trendEl.innerHTML = pct > 3
+                            ? '<span class="positive">강한 상승 추세</span>'
+                            : '<span class="positive">상승 추세</span>';
+                    } else if (diff < 0) {
+                        changeEl.innerHTML = `<i class="fa-solid fa-arrow-down"></i> ${formatCurrency(Math.abs(diff))} (${Math.abs(pct).toFixed(2)}%) 하락 예상`;
+                        changeEl.className = 'stat-sub negative';
+                        trendEl.innerHTML = pct < -3
+                            ? '<span class="negative">강한 하락 추세</span>'
+                            : '<span class="negative">하락 추세</span>';
+                    } else {
+                        changeEl.innerHTML = '변동 없음';
+                        changeEl.className = 'stat-sub neutral';
+                        trendEl.innerHTML = '<span class="neutral">횡보</span>';
+                    }
+                }
+
+                // 백테스트
+                if (data.past_predictions && data.past_predictions.length > 0) {
+                    const finalBacktest = data.past_predictions[data.past_predictions.length - 1].backtest_close;
+                    const errorDiff = Math.abs(finalBacktest - currentPrice);
+                    const errorPct = (errorDiff / currentPrice) * 100;
+
+                    let rating = '', rColor = '';
+                    if (errorPct <= 5) { rating = '신뢰도 매우 높음'; rColor = 'positive'; }
+                    else if (errorPct <= 15) { rating = '신뢰도 보통'; rColor = 'neutral'; }
+                    else { rating = '신뢰도 낮음 (주의)'; rColor = 'negative'; }
+
+                    document.getElementById('backtestAccuracy').innerHTML = `<span class="${rColor}">오차율 ${errorPct.toFixed(2)}% (${rating})</span>`;
+                    document.getElementById('backtestSub').innerHTML = `예측: ${formatCurrency(finalBacktest)} / 실제: ${formatCurrency(currentPrice)}`;
+                } else {
+                    document.getElementById('backtestAccuracy').innerHTML = '<span style="color:var(--text-muted);font-size:1.1rem;">데이터 부족</span>';
+                    document.getElementById('backtestSub').textContent = '상장 기간 60일 미만';
+                }
+
+                // AI 분석
+                if (data.ai_analysis) {
+                    document.getElementById('aiAnalysisPanel').style.display = 'block';
+                    document.getElementById('aiAnalysisText').textContent = data.ai_analysis.analysis;
+
+                    if (data.ai_analysis.stop_loss) {
+                        document.getElementById('aiStopLossCard').style.display = 'block';
+                        document.getElementById('aiStopLossValue').textContent = formatCurrency(data.ai_analysis.stop_loss);
+
+                        if (data.volume_trend) {
+                            const badge = document.getElementById('volTrendBadge');
+                            badge.textContent = data.volume_trend;
+                            if (data.volume_ratio >= 150) badge.style.background = 'rgba(255,0,85,0.3)';
+                            else if (data.volume_ratio >= 110) badge.style.background = 'rgba(0,240,255,0.2)';
+                            else if (data.volume_ratio <= 90) badge.style.background = 'rgba(139,148,158,0.4)';
+                            else badge.style.background = 'rgba(255,255,255,0.1)';
+                        }
+                    }
+                } else {
+                    document.getElementById('aiAnalysisPanel').style.display = 'none';
+                    document.getElementById('aiStopLossCard').style.display = 'none';
+                }
+            }
+        }
+
+        function renderChart(data) {
+            const chartContainer = document.getElementById('stockChart');
+            chartContainer.innerHTML = '';
+
+            myChart = LightweightCharts.createChart(chartContainer, {
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#8b949e',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255,255,255,0.05)' },
+                    horzLines: { color: 'rgba(255,255,255,0.05)' },
+                },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderColor: 'rgba(255,255,255,0.1)' },
+                timeScale: { borderColor: 'rgba(255,255,255,0.1)', timeVisible: false },
+            });
+
+            // Candlestick
+            const candleSeries = myChart.addCandlestickSeries({
+                upColor: '#00ff88', downColor: '#ff0055',
+                borderVisible: false,
+                wickUpColor: '#00ff88', wickDownColor: '#ff0055'
+            });
+            candleSeries.setData(data.historical.map(d => ({
+                time: d.date, open: d.open, high: d.high, low: d.low, close: d.close
+            })));
+
+            // Volume
+            const volumeSeries = myChart.addHistogramSeries({
+                priceFormat: { type: 'volume' },
+                priceScaleId: '',
+            });
+            volumeSeries.priceScale().applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+            volumeSeries.setData(data.historical.map(d => ({
+                time: d.date,
+                value: d.volume,
+                color: d.close > d.open ? 'rgba(0,255,136,0.3)' : 'rgba(255,0,85,0.3)'
+            })));
+
+            // SMA 50
+            const sma50Series = myChart.addLineSeries({
+                color: '#ff8c00', lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dotted,
+                title: 'SMA 50'
+            });
+            sma50Series.setData(data.historical.filter(d => d.sma_50 !== null).map(d => ({ time: d.date, value: d.sma_50 })));
+
+            // Prediction bands
+            const upperBandSeries = myChart.addLineSeries({ color: 'rgba(255,0,85,0.5)', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: '상단 밴드' });
+            const centerPredSeries = myChart.addLineSeries({ color: '#ff0055', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Dashed, title: '예측 중심가' });
+            const lowerBandSeries = myChart.addLineSeries({ color: 'rgba(0,240,255,0.5)', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Dashed, title: '하단 밴드' });
+
+            if (data.predictions && data.predictions.length > 0) {
+                upperBandSeries.setData(data.predictions.map(d => ({ time: d.date, value: d.upper_band })));
+                centerPredSeries.setData(data.predictions.map(d => ({ time: d.date, value: d.predicted_close })));
+                lowerBandSeries.setData(data.predictions.map(d => ({ time: d.date, value: d.lower_band })));
+            }
+
+            // Backtest
+            if (data.past_predictions && data.past_predictions.length > 0) {
+                const backtestSeries = myChart.addLineSeries({
+                    color: '#fce83a', lineWidth: 2,
+                    lineStyle: LightweightCharts.LineStyle.Dashed,
+                    title: '백테스트'
+                });
+                backtestSeries.setData(data.past_predictions.map(d => ({ time: d.date, value: d.backtest_close })));
+            }
+
+            // AI Price Lines
+            if (data.ai_analysis) {
+                if (data.ai_analysis.target_price) {
+                    candleSeries.createPriceLine({
+                        price: Number(data.ai_analysis.target_price),
+                        color: '#00ff88', lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dotted,
+                        axisLabelVisible: true,
+                        title: 'AI 목표가',
+                    });
+                }
+                if (data.ai_analysis.stop_loss) {
+                    candleSeries.createPriceLine({
+                        price: Number(data.ai_analysis.stop_loss),
+                        color: '#ff0055', lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dotted,
+                        axisLabelVisible: true,
+                        title: 'AI 손절가',
+                    });
+                }
+            }
+
+            // Fit / zoom
+            const totalLen = data.historical.length;
+            if (totalLen > 100) {
+                myChart.timeScale().setVisibleLogicalRange({
+                    from: totalLen - 90,
+                    to: totalLen + (data.predictions ? data.predictions.length : 5)
+                });
+            } else {
+                myChart.timeScale().fitContent();
+            }
+
+            // Resize handler
+            window.addEventListener('resize', () => {
+                if (myChart) myChart.resize(chartContainer.clientWidth, chartContainer.clientHeight);
+            });
+        }
+
+        function saveToArchive() {
+            if (!currentStockData) return alert('저장할 데이터가 없습니다.');
+            let archive = JSON.parse(localStorage.getItem('antigravity_archive') || '[]');
+
+            const now = new Date();
+            const dateStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+            archive.push({
+                type: 'stock',
+                title: `${currentTicker} 종목 분석 리포트`,
+                date: dateStr,
+                data: currentStockData
+            });
+            localStorage.setItem('antigravity_archive', JSON.stringify(archive));
+            alert('보관함에 성공적으로 저장되었습니다!');
+        }
+
+        /* ============================
+           Scroll To Top
+        ============================ */
+        window.addEventListener('scroll', () => {
+            const btn = document.getElementById('scrollTopBtn');
+            if (window.scrollY > 300) btn.classList.add('visible');
+            else btn.classList.remove('visible');
+        });
+
+        /* ============================
+           Init
+        ============================ */
+        window.addEventListener('DOMContentLoaded', () => {
+            // Auto-fetch market trend on load
+            fetchMarketTrend();
+
+            // Handle ?tab= URL param
+            const params = new URLSearchParams(window.location.search);
+            const tabParam = params.get('tab');
+            if (tabParam === 'stock') {
+                switchTab('stock');
+                const tickerParam = params.get('ticker');
+                if (tickerParam) {
+                    document.getElementById('tickerInput').value = tickerParam;
+                    fetchStockData();
+                } else {
+                    fetchStockData();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

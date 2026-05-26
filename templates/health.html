@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 건강 & 식단 코치</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&family=Nanum+Pen+Script&family=Suit:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* ===== GLOBAL BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            background: #0d1117;
+            font-family: 'Outfit', sans-serif;
+            color: #f0f6fc;
+            margin: 0;
+            min-height: 100vh;
+        }
+
+        /* ===== PAGE HEADER ===== */
+        .page-header {
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(13,17,23,0.95);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+        .page-header a {
+            color: #8b949e;
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .page-header a:hover { color: #f0f6fc; }
+        .page-header .header-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #f0f6fc;
+        }
+        .page-header .header-sep {
+            color: rgba(255,255,255,0.2);
+        }
+
+        /* ===== TAB BAR ===== */
+        .page-tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(13,17,23,0.9);
+            position: sticky;
+            top: 65px;
+            z-index: 49;
+        }
+
+        .page-tab-btn {
+            flex: 1;
+            padding: 14px;
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Outfit', sans-serif;
+            transition: 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        .page-tab-btn:hover { color: #f0f6fc; }
+
+        /* Active states per tab color */
+        body.tab-diet .page-tab-btn[data-tab="diet"] {
+            border-bottom-color: #22c55e;
+            color: #22c55e;
+        }
+        body.tab-chef .page-tab-btn[data-tab="chef"] {
+            border-bottom-color: #f97316;
+            color: #f97316;
+        }
+
+        /* ===== TAB PANELS ===== */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ===========================
+           DIET TAB STYLES
+        =========================== */
+        #tab-diet {
+            --diet-primary: #22c55e;
+            --diet-primary-dark: #16a34a;
+            --diet-bg: #0f172a;
+            --diet-box-bg: #1e293b;
+        }
+
+        #tab-diet .d-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        #tab-diet header {
+            margin-bottom: 2rem;
+        }
+        #tab-diet h1 {
+            font-family: 'Black Han Sans', sans-serif;
+            font-size: 3rem;
+            color: var(--diet-primary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        #tab-diet p.sub {
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        #tab-diet .upload-area {
+            background: rgba(0,0,0,0.3);
+            border: 2px dashed #475569;
+            border-radius: 20px;
+            padding: 3rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+        #tab-diet .upload-area:hover {
+            border-color: var(--diet-primary);
+            background: rgba(34,197,94,0.05);
+        }
+        #tab-diet .upload-area i {
+            font-size: 4rem;
+            color: #64748b;
+            margin-bottom: 1rem;
+            transition: 0.3s;
+        }
+        #tab-diet .upload-area:hover i { color: var(--diet-primary); }
+        #tab-diet #fileInput { display: none; }
+
+        #tab-diet #previewImg {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            display: none;
+            margin: 0 auto 1rem auto;
+            border: 2px solid var(--diet-primary);
+        }
+
+        #tab-diet .btn-eval {
+            background: var(--diet-primary);
+            color: #000;
+            border: 4px solid #000;
+            padding: 1.2rem 3rem;
+            border-radius: 0;
+            font-size: 1.3rem;
+            font-weight: 900;
+            font-family: 'Black Han Sans', sans-serif;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            text-transform: uppercase;
+        }
+        #tab-diet .btn-eval:hover {
+            background: #fff;
+            transform: translateY(-5px);
+            box-shadow: 8px 8px 0px var(--diet-primary);
+        }
+
+        #tab-diet .d-loader {
+            display: none;
+            margin: 2rem 0;
+            color: var(--diet-primary);
+        }
+        #tab-diet .d-loader i {
+            font-size: 4rem;
+            animation: dietShake 0.5s infinite;
+        }
+
+        #tab-diet .result-panel {
+            display: none;
+            background: var(--diet-box-bg);
+            border-top: 5px solid var(--diet-primary);
+            padding: 2.5rem 2rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            text-align: left;
+            animation: dietFadeIn 0.5s;
+        }
+        #tab-diet .cal-box {
+            background: #000;
+            color: var(--diet-primary);
+            padding: 20px;
+            text-align: center;
+            font-family: 'Black Han Sans';
+            font-size: 2.5rem;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #334155;
+        }
+        #tab-diet .cal-box span {
+            font-size: 1rem;
+            color: #fff;
+            font-family: 'Noto Sans KR';
+            vertical-align: middle;
+        }
+        #tab-diet .result-panel h3 {
+            color: #fff;
+            margin-top: 20px;
+            border-bottom: 2px solid #334155;
+            padding-bottom: 5px;
+            font-weight: 900;
+        }
+        #tab-diet .result-panel p {
+            color: #cbd5e1;
+            line-height: 1.8;
+            font-size: 1.05rem;
+            white-space: pre-wrap;
+            margin: 0 0 1rem 0;
+        }
+        #tab-diet .penalty {
+            color: #f43f5e;
+            font-weight: bold;
+            background: rgba(244,63,94,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #f43f5e;
+        }
+
+        @keyframes dietFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes dietShake {
+            0%   { transform: translateX(0); }
+            25%  { transform: translateX(-5px) rotate(-5deg); }
+            50%  { transform: translateX(5px) rotate(5deg); }
+            75%  { transform: translateX(-5px) rotate(-5deg); }
+            100% { transform: translateX(0); }
+        }
+
+        /* ===========================
+           CHEF TAB STYLES
+        =========================== */
+        #tab-chef {
+            --chef-accent: #f97316;
+            background-color: #1e2a1e;
+            background-image: url('https://www.transparenttextures.com/patterns/black-board.png');
+            min-height: 80vh;
+        }
+
+        #tab-chef .c-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        #tab-chef header {
+            border-bottom: 2px dashed rgba(255,255,255,0.3);
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        #tab-chef h1 {
+            font-family: 'Nanum Pen Script', cursive;
+            font-size: 4rem;
+            color: #fff;
+            margin: 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        #tab-chef h1 span { color: var(--chef-accent); }
+
+        #tab-chef .chalk-box {
+            border: 3px solid rgba(255,255,255,0.8);
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            background: rgba(0,0,0,0.2);
+            text-align: left;
+        }
+
+        #tab-chef .input-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #tab-chef label {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #fbbf24;
+            font-family: 'Suit', sans-serif;
+        }
+        #tab-chef input[type="text"] {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid #fff;
+            color: #fff;
+            font-size: 1.5rem;
+            padding: 10px;
+            font-family: 'Nanum Pen Script', cursive;
+            outline: none;
+            width: 100%;
+        }
+        #tab-chef input[type="text"]::placeholder { color: rgba(255,255,255,0.5); }
+
+        #tab-chef .btn-cook {
+            background: var(--chef-accent);
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.5rem;
+            font-family: 'Nanum Pen Script', cursive;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: 0.3s;
+            width: 100%;
+        }
+        #tab-chef .btn-cook:hover { background: #ffa500; transform: scale(1.02); }
+
+        #tab-chef #c-resultPanel { display: none; animation: chefFadeIn 0.8s; }
+        #tab-chef .recipe-title {
+            font-family: 'Nanum Pen Script', cursive;
+            font-size: 3.5rem;
+            color: #fbbf24;
+            text-align: center;
+            margin: 1rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+            padding-bottom: 1rem;
+        }
+        #tab-chef .recipe-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #f4f4f4;
+            white-space: pre-wrap;
+            font-family: 'Suit', sans-serif;
+        }
+
+        #tab-chef .c-loader {
+            display: none;
+            font-size: 3rem;
+            color: var(--chef-accent);
+        }
+        #tab-chef .c-loader i { animation: chefBounce 1s infinite alternate; }
+
+        @keyframes chefFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes chefBounce {
+            from { transform: translateY(0); }
+            to   { transform: translateY(-20px); }
+        }
+
+        /* ===========================
+           MOBILE
+        =========================== */
+        @media (max-width: 600px) {
+            .page-header { padding: 0.9rem 1rem; }
+            .page-header .header-title { font-size: 1rem; }
+            .page-tab-btn { font-size: 0.88rem; padding: 12px 8px; }
+
+            #tab-diet .d-container,
+            #tab-chef .c-container {
+                padding: 1rem;
+            }
+            #tab-diet h1 { font-size: 2rem; }
+            #tab-chef h1  { font-size: 2.5rem; }
+            #tab-chef .recipe-title { font-size: 2.2rem; }
+        }
+    </style>
+</head>
+<body class="tab-diet">
+
+    <!-- ===== PAGE HEADER ===== -->
+    <div class="page-header">
+        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로</a>
+        <span class="header-sep">|</span>
+        <span class="header-title">🥗 AI 건강 &amp; 식단 코치</span>
+    </div>
+
+    <!-- ===== TAB BAR ===== -->
+    <div class="page-tab-bar">
+        <button class="page-tab-btn active" data-tab="diet" onclick="switchTab('diet')">🔥 다이어트 코치</button>
+        <button class="page-tab-btn" data-tab="chef" onclick="switchTab('chef')">🍳 냉장고 파먹기 셰프</button>
+    </div>
+
+    <!-- ===========================
+         TAB 1: 다이어트 코치
+    =========================== -->
+    <div class="tab-panel active" id="tab-diet">
+        <div class="d-container">
+            <header>
+                <h1>지옥의 다이어트 코치</h1>
+                <p class="sub">오늘 먹은 음식 사진, 또는 충격적인 배달 영수증을 올려보세요.<br>호랑이 PT 선생님이 눈물 쏙 빠지게 팩트 폭행해 드립니다.</p>
+            </header>
+
+            <div class="upload-area" id="d-uploadArea" onclick="document.getElementById('fileInput').click()">
+                <img id="previewImg" src="" alt="preview">
+                <div id="d-uploadText">
+                    <i class="fa-solid fa-burger"></i>
+                    <h3 style="color:#f8fafc;">양심 고백할 사진 업로드</h3>
+                    <p style="color:#64748b; font-size:0.9rem;">(음식 사진, 빈 그릇, 배달 영수증 캡처 모두 가능)</p>
+                </div>
+                <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" onchange="handleFile(event)">
+            </div>
+
+            <button class="btn-eval" id="evalBtn" onclick="evaluateDiet()" style="display:none;">
+                <i class="fa-solid fa-fire"></i> 체지방 및 죄악 분석 시작!
+            </button>
+
+            <div class="d-loader" id="d-loader">
+                <i class="fa-solid fa-dumbbell"></i>
+                <p style="margin-top:20px; font-weight:bold; color:#fff;">회원님, 그거 입에 넣은 거 스캔 중입니다...</p>
+            </div>
+
+            <div class="result-panel" id="d-resultPanel">
+                <div class="cal-box" id="calBox">?<span style="display:inline-block; margin-left:10px;">kcal (추정)</span></div>
+
+                <h3><i class="fa-solid fa-skull"></i> PT 선생님의 팩트 폭행</h3>
+                <p id="roastText">...</p>
+
+                <h3><i class="fa-solid fa-person-walking"></i> 내일의 속죄 플랜 (Penalty)</h3>
+                <p class="penalty" id="planText">...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===========================
+         TAB 2: 냉장고 파먹기 셰프
+    =========================== -->
+    <div class="tab-panel" id="tab-chef">
+        <div class="c-container">
+            <header>
+                <h1>AI <span>냉장고 파먹기</span> 셰프</h1>
+                <p style="font-family:'Nanum Pen Script', cursive; font-size:1.8rem; color:#d1d5db; margin-top:5px;">"아무거나 불러유. 기가 막히게 볶아드림돠."</p>
+            </header>
+
+            <div class="chalk-box" id="c-inputPanel">
+                <div class="input-wrapper">
+                    <label>냉장고에 굴러다니는 재료를 다 적어보세요 (쉼표로 구분)</label>
+                    <input type="text" id="ingredients" placeholder="예: 스팸 반통, 시든 파, 김치 조금, 달걀 1개...">
+                </div>
+                <button class="btn-cook" onclick="cook()"><i class="fa-solid fa-fire-burner"></i> 레시피 짜기 (불 조절 드가자~)</button>
+            </div>
+
+            <div class="c-loader" id="c-loader">
+                <i class="fa-solid fa-fire"></i>
+                <p style="font-family:'Nanum Pen Script'; font-size:2rem; margin-top:10px;">뚝딱 뚝딱 볶는 중...</p>
+            </div>
+
+            <div class="chalk-box" id="c-resultPanel">
+                <div class="recipe-title" id="rTitle">...</div>
+                <div class="recipe-text" id="rBody"></div>
+                <button class="btn-cook" onclick="resetChef()" style="background:#555; color:#fff; margin-top:2rem;">다른 재료로 다시 하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== SCRIPTS ===== -->
+    <script>
+        /* ── TAB SWITCHER ── */
+        function switchTab(name) {
+            // panels
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + name).classList.add('active');
+
+            // buttons
+            document.querySelectorAll('.page-tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.page-tab-btn[data-tab="' + name + '"]').classList.add('active');
+
+            // body class (for accent colour)
+            document.body.className = 'tab-' + name;
+        }
+
+        /* ── DIET TAB LOGIC ── */
+        let base64Image = null;
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX = 800;
+
+                    if (width > height && width > MAX) {
+                        height *= MAX / width;
+                        width = MAX;
+                    } else if (height > MAX) {
+                        width *= MAX / height;
+                        height = MAX;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                    base64Image = dataUrl.split(',')[1];
+
+                    document.getElementById('previewImg').src = dataUrl;
+                    document.getElementById('previewImg').style.display = 'block';
+                    document.getElementById('d-uploadText').style.display = 'none';
+                    document.getElementById('evalBtn').style.display = 'block';
+                    document.getElementById('d-resultPanel').style.display = 'none';
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function evaluateDiet() {
+            if (!base64Image) return alert('음식이나 영수증 사진을 올려주세요.');
+
+            const btn = document.getElementById('evalBtn');
+            const loader = document.getElementById('d-loader');
+
+            btn.style.display = 'none';
+            loader.style.display = 'block';
+
+            try {
+                const res = await fetch('/api/diet/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64Image })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('calBox').innerHTML =
+                        data.data.calories + "<span style='display:inline-block; margin-left:10px;'>kcal (추정치)</span>";
+                    document.getElementById('roastText').textContent = data.data.roasts;
+                    document.getElementById('planText').textContent = data.data.workout_plan;
+                    document.getElementById('d-resultPanel').style.display = 'block';
+                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert("PT 선생님이 접속을 거부했습니다. (" + e.message + ")");
+                btn.style.display = 'block';
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        /* ── CHEF TAB LOGIC ── */
+        async function cook() {
+            const ing = document.getElementById('ingredients').value.trim();
+            if (!ing) return alert('재료를 하나라도 적어주세유!');
+
+            document.getElementById('c-inputPanel').style.display = 'none';
+            document.getElementById('c-loader').style.display = 'block';
+
+            try {
+                const res = await fetch('/api/chef/recipe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ingredients: ing })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    document.getElementById('rTitle').textContent = data.data.title;
+                    document.getElementById('rBody').textContent = data.data.recipe;
+
+                    document.getElementById('c-loader').style.display = 'none';
+                    document.getElementById('c-resultPanel').style.display = 'block';
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch(e) {
+                alert(e.message);
+                document.getElementById('c-inputPanel').style.display = 'block';
+                document.getElementById('c-loader').style.display = 'none';
+            }
+        }
+
+        function resetChef() {
+            document.getElementById('ingredients').value = '';
+            document.getElementById('c-resultPanel').style.display = 'none';
+            document.getElementById('c-inputPanel').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

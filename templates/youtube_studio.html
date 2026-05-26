@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎥 AI 유튜브 스튜디오</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+    </script>
+    <style>
+        /* ===== 공통 CSS ===== */
+        :root {
+            --bg-color: #0d1117;
+            --surface-color: rgba(30, 41, 59, 0.7);
+            --primary-color: #ec4899;
+            --primary-hover: #db2777;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --text-primary: #f0f6fc;
+            --text-secondary: #94a3b8;
+            --border-radius: 16px;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', 'Inter', sans-serif;
+            background: #0d1117;
+            color: #f0f6fc;
+            min-height: 100vh;
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        /* ===== 페이지 헤더 ===== */
+        .page-header {
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: rgba(13,17,23,0.95);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .page-header a {
+            color: #8b949e;
+            font-size: 1.2rem;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .page-header a:hover { color: #f0f6fc; }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            background: linear-gradient(90deg, #f43f5e, #a855f7);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        /* ===== 탭 바 ===== */
+        .page-tab-bar {
+            display: flex;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            background: rgba(13,17,23,0.9);
+            position: sticky;
+            top: 65px;
+            z-index: 49;
+        }
+
+        .page-tab-btn {
+            flex: 1;
+            padding: 14px;
+            background: none;
+            border: none;
+            color: #8b949e;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            transition: 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+
+        .page-tab-btn:hover { color: #f0f6fc; }
+
+        .page-tab-btn.active {
+            color: #ef4444;
+            border-bottom-color: #ef4444;
+        }
+
+        /* ===== 탭 패널 ===== */
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* ===== 공통 내부 스타일 ===== */
+        .yt-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 2rem 80px 2rem;
+        }
+
+        .yt-section-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-top: 1.5rem;
+        }
+
+        .yt-section-header h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: white;
+            margin: 0 0 0.6rem 0;
+        }
+
+        .yt-section-header p {
+            color: rgba(255,255,255,0.65);
+            font-size: 1rem;
+            margin: 0;
+        }
+
+        /* ===== 공통 컴포넌트 ===== */
+        .yt-input-group {
+            display: flex;
+            gap: 1rem;
+            background: var(--surface-color);
+            padding: 1.2rem;
+            border-radius: var(--border-radius);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .yt-input-group input {
+            flex: 1;
+            background: rgba(15,23,42,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .yt-input-group input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(236,72,153,0.2);
+            background: rgba(15,23,42,0.8);
+        }
+
+        .yt-primary-btn {
+            background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+            color: white;
+            border: none;
+            padding: 0 2.5rem;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+
+        .yt-primary-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(236,72,153,0.4);
+        }
+
+        .yt-loader {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: ytSpin 1s ease-in-out infinite;
+        }
+
+        .yt-big-loader {
+            width: 50px;
+            height: 50px;
+            border-width: 4px;
+            border-top-color: var(--primary-color);
+            margin-bottom: 1.5rem;
+        }
+
+        @keyframes ytSpin { to { transform: rotate(360deg); } }
+        @keyframes ytFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes ytFadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+        .yt-extract-panel {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .yt-extract-panel.show {
+            display: block;
+            animation: ytFadeInUp 0.5s ease-out;
+        }
+
+        .yt-extract-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .yt-extract-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+        }
+
+        .yt-btn-copy {
+            background: rgba(16,185,129,0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+            padding: 0.6rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .yt-btn-copy:hover {
+            background: var(--success-color);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16,185,129,0.3);
+        }
+
+        .yt-text-area-result {
+            width: 100%;
+            height: 300px;
+            background: rgba(15,23,42,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: var(--text-secondary);
+            padding: 1.5rem;
+            font-family: monospace;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            box-sizing: border-box;
+            white-space: pre;
+            overflow-y: auto;
+        }
+
+        /* ===== 토스트 ===== */
+        .yt-toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(15,23,42,0.9);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            transform: translateY(150%);
+            transition: transform 0.4s cubic-bezier(0.4,0,0.2,1);
+            z-index: 9999;
+        }
+
+        .yt-toast.show { transform: translateY(0); }
+
+        /* ===== 탭1: 인기영상 추출기 ===== */
+        #panel-extract .yt-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 2.5rem;
+            margin-top: 2rem;
+        }
+
+        .yt-video-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .yt-video-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border-color: rgba(255,255,255,0.2);
+        }
+
+        .yt-thumbnail-container {
+            position: relative;
+            width: 100%;
+            padding-top: 56.25%;
+            background: #000;
+            overflow: hidden;
+        }
+
+        .yt-thumbnail {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .yt-video-card:hover .yt-thumbnail { transform: scale(1.05); }
+
+        .yt-video-info {
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .yt-video-title {
+            margin: 0 0 1rem 0;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.5;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .yt-video-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .yt-watch-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.2s;
+        }
+
+        .yt-watch-link:hover { color: var(--primary-color); }
+
+        .yt-btn-ai-summary {
+            background: rgba(139,92,246,0.2);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            padding: 0.4rem 1rem;
+            border: 1px solid var(--accent-color);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Outfit', 'Inter', sans-serif;
+        }
+
+        .yt-btn-ai-summary:hover {
+            background: rgba(139,92,246,0.4);
+        }
+
+        #extract-loading-state {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: rgba(15,23,42,0.85);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            text-align: center;
+        }
+
+        #extract-loading-state.show { display: flex; }
+
+        /* ===== 탭2: 요약기 ===== */
+        #sum-loading-state {
+            display: none;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        #sum-loading-state.show { display: block; }
+
+        .sum-panel {
+            background: rgba(15,23,42,0.4);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            margin-top: 3rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: none;
+        }
+
+        .sum-panel.show {
+            display: block;
+            animation: ytFadeInUp 0.5s ease-out;
+        }
+
+        /* ===== 바텀 네비 ===== */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0;
+            width: 100%;
+            height: 70px;
+            background: rgba(15,23,42,0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .nav-item {
+            text-decoration: none;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 0.8rem;
+            gap: 5px;
+            transition: 0.2s;
+            width: 25%;
+        }
+
+        .nav-item i { font-size: 1.5rem; }
+        .nav-item:hover { color: var(--primary-color); }
+
+        /* ===== 반응형 ===== */
+        @media (max-width: 768px) {
+            .yt-container { padding: 1rem 1rem 80px 1rem; }
+            .yt-input-group { flex-direction: column; padding: 1rem; }
+            .yt-input-group input { width: 100%; text-align: center; }
+            .yt-primary-btn { width: 100%; padding: 1rem; }
+            .yt-extract-header { flex-direction: column; gap: 1rem; align-items: stretch; text-align: center; }
+            .yt-extract-panel { padding: 1rem; }
+            .sum-panel { padding: 1rem; }
+            .page-tab-btn { font-size: 0.9rem; padding: 12px 8px; }
+            .page-header h1 { font-size: 1rem; }
+        }
+
+        @media (max-width: 500px) {
+            #panel-extract .yt-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 페이지 헤더 ===== -->
+    <header class="page-header">
+        <a href="/"><i class="fa-solid fa-house"></i></a>
+        <h1>🎥 AI 유튜브 스튜디오</h1>
+    </header>
+
+    <!-- ===== 탭 바 ===== -->
+    <div class="page-tab-bar">
+        <button class="page-tab-btn active" onclick="switchStudioTab('extract', this)">🔥 인기영상 추출기</button>
+        <button class="page-tab-btn" onclick="switchStudioTab('summary', this)">⚡ AI 영상 요약기</button>
+    </div>
+
+    <!-- ===================================================
+         탭 1: 인기영상 추출기 (youtube.html 콘텐츠)
+    =================================================== -->
+    <div id="panel-extract" class="tab-panel active">
+        <div class="yt-container">
+            <div class="yt-section-header">
+                <h2>🔥 YouTube <span style="background: linear-gradient(90deg, #f43f5e, #fbbf24); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">인기 동영상 추출기</span></h2>
+                <p>채널 URL/핸들을 입력하여 인기 영상을 뽑거나, 특정 검색어(예: 파이썬 기초)를 입력해 관련 영상 URL을 한 번에 추출합니다.</p>
+            </div>
+
+            <form id="extractForm" class="yt-input-group">
+                <input type="text" id="channelInput" placeholder="채널 URL, @핸들, 또는 검색어 (예: 파이썬 기초)" autocomplete="off">
+                <button type="submit" class="yt-primary-btn" id="extractBtn">추출 시작</button>
+            </form>
+
+            <!-- 개수 선택 -->
+            <div class="limit-options" style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; justify-content: center;">
+                <button type="button" class="btn-limit" data-limit="10" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; font-family: inherit;">상위 10개</button>
+                <button type="button" class="btn-limit" data-limit="20" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; font-family: inherit;">상위 20개</button>
+                <button type="button" class="btn-limit" data-limit="30" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; font-family: inherit;">상위 30개</button>
+                <button type="button" class="btn-limit active" data-limit="50" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(0,240,255,0.5); background: rgba(0,240,255,0.1); color: white; cursor: pointer; transition: all 0.2s; font-family: inherit;">상위 50개</button>
+                <button type="button" class="btn-limit" data-limit="100" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; font-family: inherit;">상위 100개</button>
+                <button type="button" class="btn-limit" data-limit="500" style="padding: 10px 20px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; font-family: inherit;">최대 (500개)</button>
+            </div>
+
+            <!-- 정렬 선택 -->
+            <div class="sort-options" style="display: flex; gap: 10px; margin-top: 12px; justify-content: center;">
+                <button type="button" class="btn-sort active" data-sort="views" style="padding: 10px 22px; border-radius: 20px; border: 1px solid rgba(236,72,153,0.5); background: rgba(236,72,153,0.15); color: white; cursor: pointer; transition: all 0.2s; font-size: 0.95rem; font-family: inherit;"><i class="fa-solid fa-fire" style="margin-right: 6px;"></i>조회수 많은순</button>
+                <button type="button" class="btn-sort" data-sort="date" style="padding: 10px 22px; border-radius: 20px; border: 1px solid rgba(255,255,255,0.2); background: transparent; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.2s; font-size: 0.95rem; font-family: inherit;"><i class="fa-solid fa-clock" style="margin-right: 6px;"></i>최신순</button>
+            </div>
+
+            <!-- 결과 패널 -->
+            <div id="extractPanel" class="yt-extract-panel">
+                <div class="yt-extract-header">
+                    <h3 id="extractTitle">추출 완료!</h3>
+                    <button class="yt-btn-copy" onclick="extractCopyResult()">
+                        <i class="fa-solid fa-copy"></i>
+                        URL만 전체 복사하기
+                    </button>
+                </div>
+                <div id="videoResultsGrid" class="yt-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 추출기 로딩 오버레이 -->
+    <div id="extract-loading-state">
+        <div class="yt-loader yt-big-loader"></div>
+        <h2 style="margin: 0; font-weight: 500;">유튜브 데이터를 긁어오는 중입니다...</h2>
+        <p id="extractLoadingDesc" style="color: var(--text-secondary);">상위 50개를 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)</p>
+    </div>
+
+    <!-- ===================================================
+         탭 2: AI 영상 요약기 (youtube_summary.html 콘텐츠)
+    =================================================== -->
+    <div id="panel-summary" class="tab-panel">
+        <div class="yt-container">
+            <div class="yt-section-header">
+                <h2>⚡ YouTube <span style="background: linear-gradient(135deg, #ec4899, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">AI 내용 요약기</span></h2>
+                <p>유튜브 영상 URL을 입력하면 제미나이가 전체 대본이나 음성을 분석하여 단숨에 요약, 타임라인, 마인드맵을 제공합니다.</p>
+            </div>
+
+            <form id="summaryForm" class="yt-input-group">
+                <input type="text" id="videoInput" placeholder="유튜브 영상 URL (예: https://youtube.com/watch?v=...)" autocomplete="off">
+                <button type="submit" class="yt-primary-btn" id="summaryBtn">AI 요약하기</button>
+            </form>
+
+            <!-- 요약 로딩 -->
+            <div id="sum-loading-state">
+                <div class="yt-loader yt-big-loader" style="display: block; margin: 0 auto 1.5rem;"></div>
+                <h2 style="margin: 0; font-weight: 500;">AI가 영상을 시청하고 있습니다...</h2>
+                <p style="color: var(--text-secondary);">대본을 읽거나(Text) 귀로 직접 청취(Audio)하며 분석 중입니다.<br>영상 길이나 자막 유무에 따라 15초 ~ 1분 정도 소요될 수 있습니다.</p>
+            </div>
+
+            <!-- 요약 결과 패널 -->
+            <div id="summaryPanel" class="sum-panel">
+
+                <div style="margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div id="sentimentBadge" style="background: rgba(255,255,255,0.1); padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 1.1rem; border: 1px solid rgba(255,255,255,0.2);"></div>
+                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="yt-btn-copy" onclick="sumCopyMarkdown()" style="border-color: #a855f7; color: #a855f7;">
+                            <i class="fa-solid fa-copy"></i> 마크다운으로 복사
+                        </button>
+                        <button class="yt-btn-copy" onclick="sumDownloadForNotebookLM()" style="border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1);">
+                            <i class="fa-solid fa-download"></i> 노트북LM용 다운로드
+                        </button>
+                    </div>
+                </div>
+
+                <div id="fallbackWarningBanner" style="display: none; background: rgba(234,179,8,0.15); border: 1px solid rgba(234,179,8,0.5); padding: 1rem 1.5rem; border-radius: 12px; margin-bottom: 2rem; color: #fef08a; font-size: 0.95rem; line-height: 1.6;">
+                    <strong><i class="fa-solid fa-triangle-exclamation"></i> 시스템 알림:</strong> 현재 영상의 상세 자막 데이터를 가져오지 못했습니다. 아래 요약과 챗봇 대답은 AI가 가진 고도의 방대한 기본 지식을 살려 <strong>'제목과 채널명'만을 바탕으로 재구성한 내용</strong>이므로, 실제 영상과 차이가 있을 수 있습니다.
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 2rem; align-items: start;">
+                    <!-- LEFT COLUMN: Video, Timeline, Chat -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
+
+                        <!-- Video Player -->
+                        <div style="width: 100%; padding-top: 56.25%; position: relative; background: #000; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                            <div id="ytplayer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></div>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div style="background: rgba(30,41,59,0.8); border: 1px solid rgba(16,185,129,0.3); border-radius: 16px; padding: 1.5rem;">
+                            <h3 style="margin-top: 0; color: #34d399; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-regular fa-clock"></i> 타임스탬프 요약 (클릭 시 재생)
+                            </h3>
+                            <div id="aiTimelineList" style="display: flex; flex-direction: column; gap: 10px;"></div>
+                        </div>
+
+                        <!-- Chat -->
+                        <div style="background: rgba(30,41,59,0.8); border: 1px solid rgba(251,191,36,0.3); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; height: 400px;">
+                            <h3 style="margin-top: 0; color: #fbbf24; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-comments"></i> 영상과 대화하기
+                            </h3>
+                            <div id="chatHistory" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 1rem; padding-right: 5px;">
+                                <div style="background: rgba(255,255,255,0.1); padding: 10px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; max-width: 85%; line-height: 1.5; font-size: 0.95rem;">
+                                    영상에 대해 궁금한 점을 물어보세요! 핵심 내용이나 놓친 정보를 모두 답해드립니다.
+                                </div>
+                            </div>
+                            <div id="suggestedQuestionsCont" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;"></div>
+                            <form id="chatForm" style="display: flex; gap: 10px;">
+                                <input type="text" id="chatInput" placeholder="이 영상의 3가지 결론이 뭐야?" style="flex: 1; background: rgba(15,23,42,0.6); border: 1px solid rgba(255,255,255,0.1); padding: 0.8rem; border-radius: 8px; font-size: 0.95rem; color: #f0f6fc; outline: none; font-family: inherit;" autocomplete="off">
+                                <button type="submit" class="yt-primary-btn" style="padding: 0 1.5rem; border-radius: 8px;"><i class="fa-solid fa-paper-plane"></i></button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT COLUMN: Summary, Mindmap, Glossary -->
+                    <div style="display: flex; flex-direction: column; gap: 2rem;">
+
+                        <!-- AI Summary -->
+                        <div style="background: rgba(30,41,59,0.8); border: 1px solid rgba(236,72,153,0.3); border-radius: 16px; padding: 1.5rem; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+                            <h3 style="margin-top: 0; color: #f472b6; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-bolt"></i> 5문장 초핵심 요약
+                            </h3>
+                            <div id="aiCoreSummaryText" style="line-height: 1.8; font-size: 1.1rem; font-weight: 500; white-space: pre-wrap; margin-bottom: 1.5rem; padding-bottom: 1.5rem; border-bottom: 1px dashed rgba(255,255,255,0.1);"></div>
+
+                            <h3 style="margin-top: 0; color: #cbd5e1; display: flex; align-items: center; gap: 10px; font-size: 1.1rem;">
+                                <i class="fa-solid fa-align-left"></i> 상세 내용 요약
+                            </h3>
+                            <div id="aiSummaryText" style="line-height: 1.8; font-size: 1.05rem; white-space: pre-wrap; color: var(--text-secondary);"></div>
+                        </div>
+
+                        <!-- Mindmap -->
+                        <div style="background: rgba(30,41,59,0.8); border: 1px solid rgba(56,189,248,0.3); border-radius: 16px; padding: 1.5rem; overflow-x: auto;">
+                            <h3 style="margin-top: 0; color: #38bdf8; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-network-wired"></i> 시각화 마인드맵
+                            </h3>
+                            <div id="aiMindmap" class="mermaid" style="background: rgba(15,23,42,0.6); padding: 1rem; border-radius: 8px; text-align: center;"></div>
+                        </div>
+
+                        <!-- Glossary -->
+                        <div style="background: rgba(30,41,59,0.8); border: 1px solid rgba(139,92,246,0.3); border-radius: 16px; padding: 1.5rem;">
+                            <h3 style="margin-top: 0; color: #c084fc; display: flex; align-items: center; gap: 10px;">
+                                <i class="fa-solid fa-book-open"></i> 다정한 용어 사전
+                            </h3>
+                            <div id="aiGlossaryList" style="display: flex; flex-direction: column; gap: 1rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Full Transcript -->
+                <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                    <button type="button" onclick="sumToggleTranscript()" style="background: transparent; color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.2); padding: 0.8rem 1.5rem; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-family: inherit;">
+                        <i class="fa-solid fa-chevron-down" id="sumTranscriptIcon"></i> 전체 스크립트 대본 보기
+                    </button>
+                    <textarea id="fullTranscriptText" class="yt-text-area-result" readonly style="display: none; margin-top: 1rem; height: 200px; font-size: 0.9rem; background: rgba(0,0,0,0.3);"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 토스트 ===== -->
+    <div id="ytStudioToast" class="yt-toast">
+        <span id="ytStudioToastMsg">알림 메시지</span>
+    </div>
+
+    <!-- ===== 바텀 네비 ===== -->
+    <div class="bottom-nav">
+        <a href="/" class="nav-item"><i class="fa-solid fa-house"></i><span>홈</span></a>
+        <a href="/shopping" class="nav-item"><i class="fa-solid fa-shield-halved"></i><span>호구방지</span></a>
+        <a href="/saju" class="nav-item"><i class="fa-solid fa-yin-yang"></i><span>운세</span></a>
+        <a href="/archive" class="nav-item"><i class="fa-solid fa-star"></i><span>보관함</span></a>
+    </div>
+
+    <!-- ===================================================
+         통합 스크립트
+    =================================================== -->
+    <script>
+        // ===== 탭 전환 =====
+        function switchStudioTab(tabName, btnEl) {
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.page-tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('panel-' + tabName).classList.add('active');
+            btnEl.classList.add('active');
+        }
+
+        // ===== 공통 토스트 =====
+        function ytStudioToast(message) {
+            const toast = document.getElementById('ytStudioToast');
+            document.getElementById('ytStudioToastMsg').textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // ============================================================
+        // 탭 1: 인기영상 추출기 (네임스페이스: extract*)
+        // ============================================================
+        let extractCurrentLimit = 50;
+        let extractCurrentSort = 'views';
+        let extractCurrentUrlOnlyText = '';
+
+        // 개수 버튼
+        document.querySelectorAll('.btn-limit').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-limit').forEach(b => {
+                    b.style.background = 'transparent';
+                    b.style.borderColor = 'rgba(255,255,255,0.2)';
+                    b.style.color = 'rgba(255,255,255,0.7)';
+                    b.classList.remove('active');
+                });
+                const target = e.currentTarget;
+                target.style.background = 'rgba(0,240,255,0.1)';
+                target.style.borderColor = 'rgba(0,240,255,0.5)';
+                target.style.color = 'white';
+                target.classList.add('active');
+                extractCurrentLimit = parseInt(target.getAttribute('data-limit'));
+            });
+        });
+
+        // 정렬 버튼
+        document.querySelectorAll('.btn-sort').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-sort').forEach(b => {
+                    b.style.background = 'transparent';
+                    b.style.borderColor = 'rgba(255,255,255,0.2)';
+                    b.style.color = 'rgba(255,255,255,0.7)';
+                    b.classList.remove('active');
+                });
+                const target = e.currentTarget;
+                extractCurrentSort = target.getAttribute('data-sort');
+                if (extractCurrentSort === 'date') {
+                    target.style.background = 'rgba(139,92,246,0.15)';
+                    target.style.borderColor = 'rgba(139,92,246,0.5)';
+                } else {
+                    target.style.background = 'rgba(236,72,153,0.15)';
+                    target.style.borderColor = 'rgba(236,72,153,0.5)';
+                }
+                target.style.color = 'white';
+                target.classList.add('active');
+            });
+        });
+
+        // 추출 폼 제출
+        document.getElementById('extractForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const value = document.getElementById('channelInput').value.trim();
+            if (!value) {
+                ytStudioToast('채널명이나 검색어를 입력해주세요.');
+                document.getElementById('channelInput').focus();
+                return;
+            }
+
+            const extractBtn = document.getElementById('extractBtn');
+            const loadingState = document.getElementById('extract-loading-state');
+            const extractPanel = document.getElementById('extractPanel');
+
+            extractBtn.innerHTML = '<span class="yt-loader"></span> 진행중';
+            extractBtn.disabled = true;
+            loadingState.classList.add('show');
+            extractPanel.classList.remove('show');
+
+            const sortLabel = extractCurrentSort === 'date' ? '최신순' : '조회수 많은순';
+            document.getElementById('extractLoadingDesc').textContent =
+                `상위 ${extractCurrentLimit}개를 ${sortLabel}으로 찾고 있습니다. 잠시만 기다려주세요 (약 10~30초 소요)`;
+
+            try {
+                const response = await fetch('/api/extract', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ channel_id: value, limit: extractCurrentLimit, sort: extractCurrentSort })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    extractCurrentUrlOnlyText = '';
+                    const grid = document.getElementById('videoResultsGrid');
+                    grid.innerHTML = '';
+
+                    data.data.forEach((video, index) => {
+                        let views = Number(video.view_count).toLocaleString();
+                        const isDateSort = extractCurrentSort === 'date';
+
+                        let dateStr = '';
+                        if (video.published_at) {
+                            const d = new Date(video.published_at);
+                            dateStr = `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+                        }
+
+                        extractCurrentUrlOnlyText += `${video.url}\n`;
+
+                        const metaHtml = `
+                            <div style="display:flex; gap:12px; flex-wrap:wrap; color:var(--text-secondary); font-size:0.85rem; margin-bottom:1rem;">
+                                ${dateStr ? `<span><i class="fa-solid fa-calendar" style="margin-right:4px; color:#a78bfa;"></i>${dateStr}</span>` : ''}
+                                <span><i class="fa-solid fa-eye" style="margin-right:4px; color:#f472b6;"></i>${views}회</span>
+                            </div>
+                        `;
+
+                        const card = document.createElement('div');
+                        card.className = 'yt-video-card';
+                        card.innerHTML = `
+                            <div class="yt-thumbnail-container">
+                                <img src="https://img.youtube.com/vi/${video.id}/hqdefault.jpg" class="yt-thumbnail" alt="thumbnail"
+                                     onerror="this.src='https://img.youtube.com/vi/${video.id}/default.jpg'">
+                            </div>
+                            <div class="yt-video-info">
+                                <div>
+                                    <h4 class="yt-video-title" title="${video.title}">${index + 1}. ${video.title}</h4>
+                                    ${metaHtml}
+                                </div>
+                                <div class="yt-video-actions">
+                                    <a href="${video.url}" target="_blank" class="yt-watch-link"><i class="fa-brands fa-youtube"></i> 유튜브 보기</a>
+                                    <button class="yt-btn-ai-summary" onclick="extractSummarizeVideo('${video.id}', '${video.url}', this)">
+                                        <i class="fa-solid fa-wand-magic-sparkles"></i> AI 요약하기
+                                    </button>
+                                </div>
+                                <div id="extractSummaryWrap_${video.id}" style="display:none; margin-top:1rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:1rem;">
+                                    <div class="extract-summary-loader" style="text-align:center; padding:10px; display:none;"><div class="yt-loader"></div> 요약 중...</div>
+                                    <div class="extract-summary-content" style="font-size:0.9rem; line-height:1.5;"></div>
+                                </div>
+                            </div>
+                        `;
+                        grid.appendChild(card);
+                    });
+
+                    document.getElementById('extractTitle').textContent = `'${value}' 추출 완료!`;
+                    extractPanel.classList.add('show');
+                    ytStudioToast('추출이 완료되었습니다!');
+                } else {
+                    ytStudioToast(data.error || '추출 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                ytStudioToast('서버 연결 오류! 백그라운드 파이썬 서버가 켜져 있는지 확인하세요.');
+            } finally {
+                extractBtn.innerHTML = '추출 시작';
+                extractBtn.disabled = false;
+                loadingState.classList.remove('show');
+            }
+        });
+
+        function extractCopyResult() {
+            navigator.clipboard.writeText(extractCurrentUrlOnlyText).then(() => {
+                ytStudioToast(`상위 ${extractCurrentLimit}개 URL만 클립보드에 깔끔하게 복사되었습니다!`);
+            });
+        }
+
+        async function extractSummarizeVideo(videoId, videoUrl, btnElement) {
+            const wrap = document.getElementById(`extractSummaryWrap_${videoId}`);
+            const loader = wrap.querySelector('.extract-summary-loader');
+            const content = wrap.querySelector('.extract-summary-content');
+
+            wrap.style.display = 'block';
+            content.style.display = 'none';
+            loader.style.display = 'block';
+            btnElement.disabled = true;
+
+            try {
+                const response = await fetch('/api/youtube/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl })
+                });
+                const data = await response.json();
+                loader.style.display = 'none';
+                content.style.display = 'block';
+
+                if (data.success) {
+                    content.innerHTML = `
+                        <div style="margin-bottom:10px;">
+                            <span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:10px; font-weight:bold; font-size:0.8rem;">
+                                ${data.sentiment_emoji} ${data.sentiment_label}
+                            </span>
+                        </div>
+                        <div style="color:#f472b6; font-weight:bold; margin-bottom:5px;">⚡ 핵심 요약</div>
+                        <div style="margin-bottom:15px; color:var(--text-primary); white-space:pre-wrap;">${data.core_summary || '요약이 제공되지 않았습니다.'}</div>
+                    `;
+                    btnElement.innerHTML = '<i class="fa-solid fa-check"></i> 요약 완료';
+                } else {
+                    content.innerHTML = `<div style="color:#ef4444;">오류: ${data.error}</div>`;
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = '<i class="fa-solid fa-rotate-right"></i> 다시 시도';
+                }
+            } catch (error) {
+                loader.style.display = 'none';
+                content.style.display = 'block';
+                content.innerHTML = `<div style="color:#ef4444;">통신 오류가 발생했습니다.</div>`;
+                btnElement.disabled = false;
+                btnElement.innerHTML = '<i class="fa-solid fa-rotate-right"></i> 다시 시도';
+            }
+        }
+
+        // ============================================================
+        // 탭 2: AI 영상 요약기 (네임스페이스: sum*)
+        // ============================================================
+        let sumCurrentYoutubeId = '';
+        let sumYtPlayer = null;
+        let sumCurrentSummaryData = null;
+
+        function onYouTubeIframeAPIReady() {
+            // YouTube IFrame API 준비 완료
+        }
+
+        function sumLoadYoutubeVideo(videoId) {
+            if (sumYtPlayer) {
+                sumYtPlayer.loadVideoById(videoId);
+            } else {
+                sumYtPlayer = new YT.Player('ytplayer', {
+                    videoId: videoId,
+                    playerVars: { 'autoplay': 0, 'playsinline': 1 }
+                });
+            }
+        }
+
+        function sumSeekToTime(seconds) {
+            if (sumYtPlayer && sumYtPlayer.seekTo) {
+                sumYtPlayer.seekTo(seconds, true);
+                sumYtPlayer.playVideo();
+            }
+        }
+
+        function sumToggleTranscript() {
+            const ta = document.getElementById('fullTranscriptText');
+            const icon = document.getElementById('sumTranscriptIcon');
+            if (ta.style.display === 'none') {
+                ta.style.display = 'block';
+                icon.className = 'fa-solid fa-chevron-up';
+            } else {
+                ta.style.display = 'none';
+                icon.className = 'fa-solid fa-chevron-down';
+            }
+        }
+
+        function sumCopyMarkdown() {
+            if (!sumCurrentSummaryData) return;
+            let md = `# [영상 분위기: ${sumCurrentSummaryData.sentiment_emoji}] ${sumCurrentSummaryData.sentiment_label}\n\n`;
+            if (sumCurrentSummaryData.core_summary) {
+                md += `## ⚡ 5문장 초핵심 요약\n${sumCurrentSummaryData.core_summary}\n\n`;
+            }
+            md += `## 📖 상세 요약\n${sumCurrentSummaryData.summary}\n\n`;
+            if (sumCurrentSummaryData.timeline_summary && sumCurrentSummaryData.timeline_summary.length > 0) {
+                md += `## ⏱️ 타임라인\n`;
+                sumCurrentSummaryData.timeline_summary.forEach(t => {
+                    md += `- **[${t.time}] ${t.title}**: ${t.desc}\n`;
+                });
+                md += `\n`;
+            }
+            if (sumCurrentSummaryData.glossary && sumCurrentSummaryData.glossary.length > 0) {
+                md += `## 📚 용어 사전\n`;
+                sumCurrentSummaryData.glossary.forEach(g => {
+                    md += `- **${g.term}**: ${g.explanation}\n`;
+                });
+            }
+            navigator.clipboard.writeText(md).then(() => ytStudioToast('마크다운이 깔끔하게 복사되었습니다!'));
+        }
+
+        function sumDownloadForNotebookLM() {
+            if (!sumCurrentSummaryData) return;
+            let content = `# 유튜브 영상 AI 분석 및 대본\n\n`;
+            if (sumCurrentSummaryData.core_summary) {
+                content += `## ⚡ 5문장 초핵심 요약\n${sumCurrentSummaryData.core_summary}\n\n`;
+            }
+            content += `## 📖 상세 요약\n${sumCurrentSummaryData.summary}\n\n`;
+            if (sumCurrentSummaryData.timeline_summary && sumCurrentSummaryData.timeline_summary.length > 0) {
+                content += `## ⏱️ 타임라인\n`;
+                sumCurrentSummaryData.timeline_summary.forEach(t => {
+                    content += `- [${t.time}] ${t.title}: ${t.desc}\n`;
+                });
+                content += `\n`;
+            }
+            if (sumCurrentSummaryData.glossary && sumCurrentSummaryData.glossary.length > 0) {
+                content += `## 📚 용어 사전\n`;
+                sumCurrentSummaryData.glossary.forEach(g => {
+                    content += `- **${g.term}**: ${g.explanation}\n`;
+                });
+                content += `\n`;
+            }
+            if (sumCurrentSummaryData.full_transcript) {
+                content += `## 📝 전체 스크립트 (대본)\n${sumCurrentSummaryData.full_transcript}\n`;
+            }
+            const blob = new Blob([content], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'youtube_notebooklm_source.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            ytStudioToast('노트북LM용 파일이 다운로드되었습니다. 잠시 후 노트북LM이 열립니다.');
+            setTimeout(() => { window.open('https://notebooklm.google.com/', '_blank'); }, 1500);
+        }
+
+        // 요약 폼 제출
+        document.getElementById('summaryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const videoUrl = document.getElementById('videoInput').value.trim();
+            if (!videoUrl) {
+                ytStudioToast('유튜브 웹 주소를 입력해주세요.');
+                document.getElementById('videoInput').focus();
+                return;
+            }
+
+            const summaryBtn = document.getElementById('summaryBtn');
+            const loadingState = document.getElementById('sum-loading-state');
+            const summaryPanel = document.getElementById('summaryPanel');
+
+            summaryBtn.innerHTML = '<span class="yt-loader"></span> 요약중';
+            summaryBtn.disabled = true;
+            loadingState.classList.add('show');
+            summaryPanel.classList.remove('show');
+            document.getElementById('fullTranscriptText').style.display = 'none';
+            document.getElementById('sumTranscriptIcon').className = 'fa-solid fa-chevron-down';
+
+            try {
+                const response = await fetch('/api/youtube/summary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: videoUrl })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    sumCurrentSummaryData = data;
+                    sumCurrentYoutubeId = data.video_id;
+
+                    sumLoadYoutubeVideo(sumCurrentYoutubeId);
+                    document.getElementById('sentimentBadge').innerHTML = `${data.sentiment_emoji} ${data.sentiment_label}`;
+
+                    if (data.is_fallback) {
+                        document.getElementById('fallbackWarningBanner').style.display = 'block';
+                    } else {
+                        document.getElementById('fallbackWarningBanner').style.display = 'none';
+                    }
+
+                    document.getElementById('aiCoreSummaryText').textContent = data.core_summary || '초핵심 요약이 제공되지 않았습니다.';
+                    document.getElementById('aiSummaryText').textContent = data.summary;
+                    document.getElementById('fullTranscriptText').value = data.full_transcript;
+
+                    // 추천 질문
+                    const sqCont = document.getElementById('suggestedQuestionsCont');
+                    sqCont.innerHTML = '';
+                    if (data.suggested_questions && data.suggested_questions.length > 0) {
+                        data.suggested_questions.forEach(q => {
+                            const btn = document.createElement('button');
+                            btn.type = 'button';
+                            btn.style.cssText = 'background:rgba(251,191,36,0.15); border:1px solid rgba(251,191,36,0.4); color:#fbbf24; padding:5px 12px; border-radius:20px; font-size:0.85rem; cursor:pointer; transition:all 0.2s; font-family:inherit;';
+                            btn.textContent = q;
+                            btn.onmouseover = () => btn.style.background = 'rgba(251,191,36,0.3)';
+                            btn.onmouseout = () => btn.style.background = 'rgba(251,191,36,0.15)';
+                            btn.onclick = () => {
+                                document.getElementById('chatInput').value = q;
+                                document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+                                btn.style.display = 'none';
+                            };
+                            sqCont.appendChild(btn);
+                        });
+                    }
+
+                    // 타임라인
+                    const timelineList = document.getElementById('aiTimelineList');
+                    timelineList.innerHTML = '';
+                    if (data.timeline_summary && data.timeline_summary.length > 0) {
+                        data.timeline_summary.forEach(t => {
+                            const btn = document.createElement('button');
+                            btn.style.cssText = 'text-align:left; background:rgba(0,0,0,0.2); border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:1rem; color:white; cursor:pointer; transition:all 0.2s; display:flex; gap:15px; align-items:start; font-family:inherit; width:100%;';
+                            btn.innerHTML = `<span style="color:#34d399; font-weight:600; min-width:50px;">[${t.time}]</span><div><div style="font-weight:600; margin-bottom:5px;">${t.title}</div><div style="font-size:0.9rem; color:#94a3b8; line-height:1.4;">${t.desc}</div></div>`;
+                            btn.onclick = () => sumSeekToTime(t.sec);
+                            btn.onmouseover = () => btn.style.background = 'rgba(16,185,129,0.2)';
+                            btn.onmouseout = () => btn.style.background = 'rgba(0,0,0,0.2)';
+                            timelineList.appendChild(btn);
+                        });
+                    }
+
+                    // 마인드맵
+                    const mindmapBox = document.getElementById('aiMindmap');
+                    mindmapBox.removeAttribute('data-processed');
+                    mindmapBox.innerHTML = '';
+                    if (data.mermaid_code) {
+                        mindmapBox.innerHTML = data.mermaid_code.replace(/```mermaid/g, '').replace(/```/g, '').trim();
+                        try {
+                            mermaid.init(undefined, mindmapBox);
+                        } catch(err) {
+                            console.error(err);
+                            mindmapBox.innerHTML = '마인드맵 렌더링에 실패했습니다.';
+                        }
+                    }
+
+                    // 용어사전
+                    const glossaryList = document.getElementById('aiGlossaryList');
+                    glossaryList.innerHTML = '';
+                    if (data.glossary && data.glossary.length > 0) {
+                        data.glossary.forEach(g => {
+                            const item = document.createElement('div');
+                            item.style.background = 'rgba(0,0,0,0.2)';
+                            item.style.padding = '1rem';
+                            item.style.borderRadius = '8px';
+                            item.innerHTML = `
+                                <div style="font-weight:600; color:#a78bfa; margin-bottom:4px;">🔖 ${g.term}</div>
+                                <div style="color:var(--text-secondary); line-height:1.5; font-size:0.95rem;">${g.explanation}</div>
+                            `;
+                            glossaryList.appendChild(item);
+                        });
+                    } else {
+                        glossaryList.innerHTML = '<div style="color:var(--text-secondary);">어려운 전문 용어가 발견되지 않았습니다.</div>';
+                    }
+
+                    summaryPanel.classList.add('show');
+                    ytStudioToast('AI 분석이 완료되었습니다!');
+                } else {
+                    ytStudioToast(data.error || '요약 중 오류가 발생했습니다.');
+                }
+            } catch (error) {
+                ytStudioToast('서버 연결 오류! 백그라운드 파이썬 서버 상태를 확인하세요.');
+            } finally {
+                summaryBtn.innerHTML = 'AI 요약하기';
+                summaryBtn.disabled = false;
+                loadingState.classList.remove('show');
+            }
+        });
+
+        // 채팅 폼
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const chatInput = document.getElementById('chatInput');
+            const text = chatInput.value.trim();
+            if (!text || !sumCurrentYoutubeId) return;
+
+            const historyDiv = document.getElementById('chatHistory');
+            historyDiv.innerHTML += `<div style="background:rgba(236,72,153,0.2); border:1px solid rgba(236,72,153,0.3); padding:10px 15px; border-radius:15px 15px 2px 15px; align-self:flex-end; max-width:85%; font-size:0.95rem;">${text}</div>`;
+            chatInput.value = '';
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+
+            try {
+                const resp = await fetch('/api/youtube/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ video_id: sumCurrentYoutubeId, prompt: text })
+                });
+                const d = await resp.json();
+                if (d.success) {
+                    historyDiv.innerHTML += `<div style="background:rgba(255,255,255,0.1); padding:10px 15px; border-radius:15px 15px 15px 2px; align-self:flex-start; max-width:85%; line-height:1.5; font-size:0.95rem;">${d.reply.replace(/\n/g, '<br>')}</div>`;
+                } else {
+                    historyDiv.innerHTML += `<div style="color:#ef4444; font-size:0.9rem;">오류발생: ${d.error}</div>`;
+                }
+            } catch(err) {
+                historyDiv.innerHTML += `<div style="color:#ef4444; font-size:0.9rem;">통신 오류</div>`;
+            }
+            historyDiv.scrollTop = historyDiv.scrollHeight;
+        });
+    </script>
+</body>
+</html>
