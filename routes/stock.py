@@ -418,6 +418,7 @@ def stock():
 def market():
     return render_template('market.html')
 
+
 @stock_bp.route('/api/stock/market_trend')
 def get_market_trend():
     try:
@@ -427,21 +428,40 @@ def get_market_trend():
         import numpy as np
         import pandas as pd
         import json
-        
+
+        # 날짜 파라미터 처리 (YYYY-MM-DD 형식, 없으면 오늘)
+        date_str = request.args.get('date', '')
+        if date_str:
+            try:
+                target_date = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+            except ValueError:
+                return jsonify({'success': False, 'error': '날짜 형식이 잘못되었습니다. YYYY-MM-DD 형식으로 입력해주세요.'})
+        else:
+            target_date = datetime.datetime.now()
+
+        data_date = target_date.strftime('%Y-%m-%d')
+
         top_stocks = []
         try:
-            df = fdr.StockListing('KRX')
+            df = fdr.StockListing('KRX', date=data_date)
             df = df[df['Amount'].notna()]
             df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
-            
+
             for idx, row in df_sorted.iterrows():
+                # 등락률: KRX StockListing의 ChagesRatio는 오타인 경우 있어 직접 재계산
+                raw_ratio = row.get('ChagesRatio', row.get('ChangeRatio', row.get('Changes', None)))
+                try:
+                    changes_ratio = float(raw_ratio) if raw_ratio is not None else 0.0
+                except:
+                    changes_ratio = 0.0
+
                 top_stocks.append({
                     'code': str(row['Code']).zfill(6),
                     'name': str(row['Name']),
                     'market': str(row.get('Market', 'KRX')),
                     'close': float(row['Close']),
-                    'changes_ratio': float(row['ChagesRatio']),
-                    'volume': int(row['Volume']),
+                    'changes_ratio': changes_ratio,
+                    'volume': int(row['Volume']) if row.get('Volume') else 0,
                     'amount': int(row['Amount'])
                 })
         except Exception as e:
@@ -451,16 +471,23 @@ def get_market_trend():
                 ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("042700", "한미반도체"), 
                 ("068270", "셀트리온"), ("005380", "현대차"), ("000270", "기아"), 
                 ("035420", "NAVER"), ("035720", "카카오"), ("373220", "LG에너지솔루션"), 
-                ("207940", "삼성바이오로직스"), ("104480", "티케이케미칼"), ("012450", "한화에어로스페이스"),
+                ("207940", "삼성바이오로직스"), ("104480", "티케케미칼"), ("012450", "한화에어로스페이스"),
                 ("028300", "HLB"), ("247540", "에코프로비엠"), ("086520", "에코프로")
             ]
-            today_str = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime('%Y-%m-%d')
+            # 대상 날짜 기준 전후 7일 데이터 조회
+            fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
+            fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
             for code, name in fallback_codes:
                 try:
-                    hist = fdr.DataReader(code, today_str)
+                    hist = fdr.DataReader(code, fetch_start, fetch_end)
                     if not hist.empty:
-                        last_row = hist.iloc[-1]
-                        prev_row = hist.iloc[-2] if len(hist) > 1 else last_row
+                        # 대상 날짜 이전의 마지막 데이터 사용
+                        hist.index = pd.to_datetime(hist.index)
+                        valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
+                        if valid_rows.empty:
+                            continue
+                        last_row = valid_rows.iloc[-1]
+                        prev_row = valid_rows.iloc[-2] if len(valid_rows) > 1 else last_row
                         close = float(last_row['Close'])
                         prev_close = float(prev_row['Close'])
                         changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
@@ -478,14 +505,37 @@ def get_market_trend():
                 except: pass
             top_stocks = sorted(top_stocks, key=lambda x: x['amount'], reverse=True)[:10]
 
+        # KRX StockListing 데이터의 등락률을 실제 전일 대비로 재검증/보정
+        def verify_changes_ratio(item):
+            try:
+                fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
+                fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+                hist = fdr.DataReader(item['code'], fetch_start, fetch_end)
+                if not hist.empty:
+                    hist.index = pd.to_datetime(hist.index)
+                    valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
+                    if len(valid_rows) >= 2:
+                        close = float(valid_rows.iloc[-1]['Close'])
+                        prev_close = float(valid_rows.iloc[-2]['Close'])
+                        if prev_close > 0:
+                            item['changes_ratio'] = ((close - prev_close) / prev_close) * 100
+                            item['close'] = close  # 해당 날짜의 실제 종가로 교체
+            except:
+                pass
+            return item
+
         if not top_stocks:
             return jsonify({'success': False, 'error': 'KRX 서버가 응답하지 않거나 접근이 차단되었습니다 (해외 IP 차단 가능성).'})
 
+        # 등락률 검증 병렬 실행
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            top_stocks = list(executor.map(verify_changes_ratio, top_stocks))
             
         def fetch_stats(item):
             try:
-                start_date = (datetime.datetime.now() - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-                hist = fdr.DataReader(item['code'], start_date)
+                start_date = (target_date - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
+                end_date = target_date.strftime('%Y-%m-%d')
+                hist = fdr.DataReader(item['code'], start_date, end_date)
                 if not hist.empty:
                     hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
                     delta = hist['Close'].diff()
@@ -569,7 +619,8 @@ def get_market_trend():
         return jsonify({
             'success': True,
             'top_stocks': top_stocks,
-            'ai_report': ai_data
+            'ai_report': ai_data,
+            'data_date': data_date
         })
     except Exception as e:
         print(f"Market Trend Error: {traceback.format_exc()}")

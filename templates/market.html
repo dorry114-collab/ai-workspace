@@ -409,6 +409,13 @@
             <h1><i class="fa-solid fa-fire-flame-curved"></i> AI 주식 시장 트렌드 스캐너</h1>
         </div>
         <div class="header-actions">
+            <!-- 날짜 선택기 -->
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(0,240,255,0.05); border: 1px solid rgba(0,240,255,0.2); border-radius: 8px; padding: 6px 12px;">
+                <i class="fa-solid fa-calendar-days" style="color: var(--primary); font-size: 0.9rem;"></i>
+                <input type="date" id="dateInput"
+                    style="background: transparent; border: none; color: var(--text-main); font-family: 'Outfit', sans-serif; font-size: 0.95rem; outline: none; cursor: pointer; color-scheme: dark;"
+                    title="기준일 선택 (미선택 시 오늘 기준)">
+            </div>
             <button class="btn-action" onclick="copyForBlog()" id="btnShare" style="display: none; border-color: var(--gold); color: var(--gold);"><i class="fa-solid fa-copy"></i> 블로그용 복사</button>
             <a href="/stock" class="btn-action"><i class="fa-solid fa-magnifying-glass-chart"></i> 개별 종목 분석</a>
             <button class="btn-action btn-refresh" onclick="fetchMarketTrend()"><i class="fa-solid fa-rotate-right"></i> 최신화</button>
@@ -418,7 +425,8 @@
     <main>
         <div class="leaderboard-container">
             <div class="section-title">
-                <i class="fa-solid fa-ranking-star"></i> 오늘자 거래대금 TOP 10
+                <i class="fa-solid fa-ranking-star"></i>
+                <span id="sectionTitle">거래대금 TOP 10</span>
             </div>
             <div class="stock-list" id="stockList">
                 <!-- Stocks will be injected here -->
@@ -477,12 +485,18 @@
         const formatPrice = (val) => new Intl.NumberFormat('ko-KR').format(val) + '원';
 
         async function fetchMarketTrend() {
+            const dateInput = document.getElementById('dateInput');
+            const selectedDate = dateInput.value; // YYYY-MM-DD or empty
+
             document.getElementById('loader').style.display = 'flex';
             document.getElementById('stockList').innerHTML = '';
             document.getElementById('aiReport').innerHTML = '<div style="color: var(--text-muted); font-style: italic;">분석 중...</div>';
             
             try {
-                const response = await fetch('/api/stock/market_trend');
+                const url = selectedDate
+                    ? `/api/stock/market_trend?date=${selectedDate}`
+                    : '/api/stock/market_trend';
+                const response = await fetch(url);
                 const data = await response.json();
                 window.marketData = data;
                 
@@ -491,6 +505,11 @@
                     return;
                 }
                 
+                // 기준일 표시 업데이트
+                const dateLabel = data.data_date || new Date().toISOString().slice(0, 10);
+                const [y, m, d] = dateLabel.split('-');
+                document.getElementById('sectionTitle').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일 거래대금 TOP 10`;
+
                 // 1. Render Stocks
                 const listEl = document.getElementById('stockList');
                 data.top_stocks.forEach((s, idx) => {
@@ -600,7 +619,9 @@
             }
 
             const data = window.marketData;
-            const dateStr = new Date().toLocaleDateString('ko-KR');
+            const dateLabel = data.data_date || new Date().toISOString().slice(0, 10);
+            const [y, m, d] = dateLabel.split('-');
+            const dateStr = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
             let content = `# 📈 ${dateStr} 주식 시장 트렌드 스캐너 결과\n\n`;
 
             if (data.ai_report && data.ai_report.overall_summary) {
