@@ -1683,3 +1683,104 @@ def api_meetup_recommend():
 @tools_bp.route('/survival_test')
 def survival_test_view():
     return render_template('viral_test.html')
+
+
+# ─────────────────────────────────────────────
+# 카카오톡 답장 추천기
+# ─────────────────────────────────────────────
+@tools_bp.route('/kakao_reply')
+def kakao_reply_view():
+    return render_template('kakao_reply.html')
+
+
+@tools_bp.route('/api/kakao/reply', methods=['POST'])
+def api_kakao_reply():
+    import base64, json, traceback
+    import google.generativeai as genai
+
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'success': False, 'error': 'GEMINI_API_KEY가 설정되지 않았습니다.'})
+
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'error': '이미지 파일이 없습니다.'})
+
+    image_file = request.files['image']
+    context_text = request.form.get('context', '').strip()
+    tones_raw = request.form.get('tones', '[]')
+
+    try:
+        tones = json.loads(tones_raw)
+    except:
+        tones = ['친근하게', '쿨하게', '유머있게', '따뜻하게']
+
+    if not tones:
+        tones = ['친근하게', '쿨하게', '유머있게', '따뜻하게']
+
+    try:
+        image_bytes = image_file.read()
+        mime_type = image_file.mimetype or 'image/jpeg'
+
+        # Gemini Vision 호출
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+
+        tones_str = ', '.join(tones)
+        context_part = f'\n추가 상황 정보: {context_text}' if context_text else ''
+
+        prompt = f"""당신은 대화 맥락 분석과 소셜 커뮤니케이션 전문가입니다.
+
+위 이미지는 카카오톡 대화 캡처입니다. 다음을 수행해 주세요:
+
+1. 대화 맥락 파악: 누가 누구에게 무슨 말을 했는지, 대화의 흐름과 분위기를 파악하세요.
+2. 마지막 메시지에 대한 적절한 답장을 아래 분위기별로 각 1개씩 생성하세요: {tones_str}{context_part}
+
+**중요 규칙:**
+- 답장은 반드시 한국어로 작성하세요
+- 카카오톡에서 실제로 보낼 수 있는 자연스러운 문체로 작성하세요
+- 각 분위기에 맞게 확실히 다른 느낌으로 작성하세요
+- 너무 길지 않게 (3~5문장 이내)
+
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요:
+{{
+  "summary": "AI가 파악한 대화 맥락 요약 (2~3문장, 예: 'A가 B에게 주말 약속을 제안하는 상황입니다. 마지막으로 B가...')",
+  "replies": [
+    {{"tone": "{tones[0] if tones else '친근하게'}", "text": "답장 내용"}},
+    {{"tone": "{tones[1] if len(tones) > 1 else '쿨하게'}", "text": "답장 내용"}}
+  ]
+}}"""
+
+        image_part = {
+            'mime_type': mime_type,
+            'data': base64.b64encode(image_bytes).decode('utf-8')
+        }
+
+        response = model.generate_content(
+            [image_part, prompt],
+            generation_config=genai.types.GenerationConfig(temperature=0.8)
+        )
+        result_text = response.text.strip()
+
+        # JSON 파싱
+        if '```json' in result_text:
+            result_text = result_text.split('```json')[1].split('```')[0].strip()
+        elif '```' in result_text:
+            result_text = result_text.split('```')[1].split('```')[0].strip()
+
+        parsed = json.loads(result_text)
+
+        # 선택한 톤 수만큼 replies 보장
+        replies = parsed.get('replies', [])
+        # 혹시 톤 수가 부족하면 있는 것만 반환
+        return jsonify({
+            'success': True,
+            'summary': parsed.get('summary', ''),
+            'replies': replies
+        })
+
+    except json.JSONDecodeError as je:
+        return jsonify({'success': False, 'error': f'AI 응답 파싱 오류입니다. 다시 시도해주세요.'})
+    except Exception as e:
+        print(f"Kakao Reply Error: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'분석 중 오류가 발생했습니다: {str(e)}'})
+
