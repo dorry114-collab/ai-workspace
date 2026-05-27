@@ -1765,14 +1765,15 @@ function kakaoRenderMultiResults(results, tones) {
                 const toneIcon = KAKAO_TONE_ICON_MAP[reply.tone] || '💬';
                 const card = document.createElement('div');
                 card.className = `kakao-reply-card ${toneClass}`;
+                card.dataset.tone = reply.tone;
                 card.innerHTML = `
                     <div class="kakao-reply-tone">${toneIcon} ${reply.tone}</div>
                     <div class="kakao-reply-text">${hubEscapeHtml(reply.text)}</div>
                     <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px;">
-                        <button class="kakao-btn-copy-reply" style="position:static; margin:0;" onclick="kakaoCopyReply(this, ${JSON.stringify(reply.text)})">
+                        <button class="kakao-btn-copy-reply" style="position:static; margin:0;" onclick="kakaoCopyReply(this)">
                             <i class="fa-regular fa-copy"></i> 복사
                         </button>
-                        <button class="kakao-btn-copy-reply" style="position:static; margin:0; background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.25); color:var(--primary);" onclick="kakaoContinueWithReply(this, ${JSON.stringify(reply.text)}, ${JSON.stringify(reply.tone)})">
+                        <button class="kakao-btn-copy-reply" style="position:static; margin:0; background:rgba(236,72,153,0.1); border-color:rgba(236,72,153,0.25); color:var(--primary);" onclick="kakaoContinueWithReply(this)">
                             <i class="fa-solid fa-reply"></i> 복사 및 이어가기
                         </button>
                     </div>
@@ -1790,7 +1791,12 @@ function kakaoRenderMultiResults(results, tones) {
     document.getElementById('kakaoResultPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-function kakaoCopyReply(btn, text) {
+function kakaoCopyReply(btn) {
+    const card = btn.closest('.kakao-reply-card');
+    if (!card) return;
+    const textEl = card.querySelector('.kakao-reply-text');
+    const text = textEl ? textEl.textContent : '';
+
     hubCopyToClipboard(text).then(() => {
         btn.innerHTML = '<i class="fa-solid fa-check"></i> 복사됨!';
         btn.classList.add('copied');
@@ -1806,7 +1812,13 @@ function kakaoCopyReply(btn, text) {
 }
 
 // ── 복사하고 대화 이어가기 처리
-function kakaoContinueWithReply(btn, text, tone) {
+function kakaoContinueWithReply(btn) {
+    const card = btn.closest('.kakao-reply-card');
+    if (!card) return;
+    const textEl = card.querySelector('.kakao-reply-text');
+    const text = textEl ? textEl.textContent : '';
+    const tone = card.dataset.tone || '친근하게';
+
     hubCopyToClipboard(text).then(() => {
         hubShowToast('✅ 복사 완료! 이 답장으로 흐름을 이어갑니다.');
 
