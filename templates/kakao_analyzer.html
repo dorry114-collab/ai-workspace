@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💖 AI 카톡 관계 분석기 & 연애 컨설턴트</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --primary: #ff007f;
+            --primary-glow: rgba(255, 0, 127, 0.4);
+            --secondary: #7000ff;
+            --secondary-glow: rgba(112, 0, 255, 0.4);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --border-glow: rgba(255, 255, 255, 0.08);
+            --card-bg: rgba(18, 22, 33, 0.75);
+            --glass-blur: blur(20px);
+            --shadow-glow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+            min-height: 100vh;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 0, 127, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(112, 0, 255, 0.08) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        /* ── HEADER ── */
+        .app-header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border-glow);
+            background: rgba(11, 14, 20, 0.8);
+            backdrop-filter: var(--glass-blur);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .home-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-glow);
+            color: var(--text-main);
+            padding: 10px 18px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .home-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 12px var(--primary-glow);
+        }
+
+        .app-title {
+            font-size: 1.4rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ── MAIN CONTAINER ── */
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Glassmorphism Card Utility */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-glow);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: var(--shadow-glow);
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        /* ── STATE 1: UPLOAD/INPUT STATE ── */
+        .hero-section {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .hero-section h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            margin-bottom: 0.8rem;
+            letter-spacing: -0.5px;
+        }
+
+        .hero-section p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .input-group {
+            margin-bottom: 2rem;
+        }
+
+        .input-label {
+            display: block;
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.8rem;
+            color: var(--text-main);
+        }
+
+        /* Mode Selector Chips */
+        .mode-container {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .mode-chip {
+            flex: 1;
+            min-width: 120px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glow);
+            color: var(--text-muted);
+            padding: 14px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .mode-chip:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            color: var(--text-main);
+        }
+
+        .mode-chip.active {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 20px var(--primary-glow);
+        }
+
+        /* Nickname Text Input */
+        .nickname-input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            color: var(--text-main);
+            padding: 14px 20px;
+            font-size: 1rem;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .nickname-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+            background: rgba(0, 0, 0, 0.6);
+        }
+
+        /* Dropzone */
+        .dropzone {
+            border: 2px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 3.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.01);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .dropzone:hover, .dropzone.dragover {
+            border-color: var(--primary);
+            background: rgba(255, 0, 127, 0.02);
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.05);
+        }
+
+        .dropzone i {
+            font-size: 3rem;
+            margin-bottom: 1.2rem;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .dropzone h3 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .dropzone p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .file-selected-name {
+            margin-top: 1.2rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 0, 127, 0.1);
+            border: 1px solid rgba(255, 0, 127, 0.2);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        /* Start Button */
+        .action-btn {
+            width: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border: none;
+            color: #fff;
+            padding: 16px 30px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: 0 4px 20px var(--primary-glow);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            margin-top: 2rem;
+        }
+
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--primary-glow);
+        }
+
+        .action-btn:disabled {
+            background: #2a2c36;
+            color: var(--text-muted);
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        /* ── STATE 2: LOADING STATE ── */
+        .loading-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .loading-orb {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, var(--primary), var(--secondary));
+            position: relative;
+            animation: pulseOrb 2s infinite ease-in-out;
+            margin-bottom: 2.5rem;
+            box-shadow: 0 0 30px var(--primary-glow);
+        }
+
+        .loading-orb::after {
+            content: '';
+            position: absolute;
+            top: -10px; left: -10px; right: -10px; bottom: -10px;
+            border-radius: 50%;
+            border: 2px solid var(--primary);
+            opacity: 0.5;
+            animation: ringRipple 2s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+        }
+
+        @keyframes pulseOrb {
+            0%, 100% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 50px var(--secondary-glow); }
+        }
+
+        @keyframes ringRipple {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+
+        .loading-title {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 0.8rem;
+        }
+
+        .loading-step {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+            height: 24px;
+        }
+
+        .progress-bar-bg {
+            width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar-fill {
+            width: 10%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        /* ── STATE 3: RESULT DASHBOARD ── */
+        .result-container {
+            display: none;
+        }
+
+        /* Top Info Grid */
+        .dashboard-header-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 2fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-header-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .score-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .score-circle {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: conic-gradient(var(--primary) 0%, var(--secondary) 0%, rgba(255, 255, 255, 0.05) 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .score-circle::after {
+            content: '';
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: #121621;
+        }
+
+        .score-value {
+            position: relative;
+            z-index: 10;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(45deg, var(--primary), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .type-badge {
+            background: rgba(255, 0, 127, 0.1);
+            border: 1px solid rgba(255, 0, 127, 0.2);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 30px;
+            font-weight: 800;
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .type-sub {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        /* Senders MBTI cards */
+        .mbti-grid {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 1.2rem;
+        }
+
+        .mbti-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .mbti-card:hover {
+            border-color: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        .mbti-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .mbti-avatar.user {
+            background: linear-gradient(135deg, var(--primary), #ffa3c4);
+        }
+
+        .mbti-avatar.counterpart {
+            background: linear-gradient(135deg, var(--secondary), #bc8cff);
+        }
+
+        .mbti-info {
+            flex: 1;
+        }
+
+        .mbti-name-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 2px;
+        }
+
+        .mbti-display {
+            font-size: 1.15rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mbti-tag {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        /* ── SECTION TITLES ── */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.8rem;
+            border-left: 4px solid var(--primary);
+            padding-left: 12px;
+        }
+
+        .section-header h2 {
+            font-size: 1.3rem;
+            font-weight: 800;
+        }
+
+        /* ── RADAR CHART PANEL ── */
+        .radar-panel {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .radar-panel {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .radar-chart-container {
+            position: relative;
+            width: 100%;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .radar-description {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+        }
+
+        .radar-desc-item {
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
+        .radar-desc-item strong {
+            color: var(--primary);
+        }
+
+        .radar-desc-item.counterpart strong {
+            color: #bc8cff;
+        }
+
+        /* ── STATS COMPARISON CARDS ── */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 576px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 1.2rem;
+            font-weight: 600;
+        }
+
+        .stat-comparison-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 0.8rem;
+        }
+
+        .stat-val-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-val-box.user {
+            color: var(--primary);
+        }
+
+        .stat-val-box.counterpart {
+            color: #bc8cff;
+            text-align: right;
+        }
+
+        .stat-val-box .name {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 3px;
+        }
+
+        .stat-val-box .value {
+            font-size: 1.4rem;
+            font-weight: 800;
+        }
+
+        .stat-progress-bar {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+        }
+
+        .stat-progress-fill-user {
+            height: 100%;
+            background: var(--primary);
+            border-radius: 10px 0 0 10px;
+        }
+
+        .stat-progress-fill-counterpart {
+            height: 100%;
+            background: var(--secondary);
+            border-radius: 0 10px 10px 0;
+        }
+
+        /* ── WORD CLOUD TAGS ── */
+        .word-cloud-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            padding: 1rem 0;
+        }
+
+        .word-tag {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glow);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .word-tag:hover {
+            transform: scale(1.05);
+            background: rgba(255, 0, 127, 0.08);
+            border-color: var(--primary);
+            color: #fff;
+        }
+
+        /* ── DOS & DON'TS ── */
+        .dos-donts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .dos-donts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .dos-box {
+            background: rgba(34, 197, 94, 0.02);
+            border: 1px solid rgba(34, 197, 94, 0.1);
+            border-radius: 16px;
+            padding: 1.8rem;
+        }
+
+        .dos-box h3 {
+            color: #22c55e;
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .donts-box {
+            background: rgba(239, 68, 68, 0.02);
+            border: 1px solid rgba(239, 68, 68, 0.1);
+            border-radius: 16px;
+            padding: 1.8rem;
+        }
+
+        .donts-box h3 {
+            color: #ef4444;
+            font-size: 1.1rem;
+            font-weight: 800;
+            margin-bottom: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .rule-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .rule-list li {
+            position: relative;
+            padding-left: 20px;
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: #e2e8f0;
+        }
+
+        .dos-box .rule-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #22c55e;
+            font-weight: 900;
+        }
+
+        .donts-box .rule-list li::before {
+            content: '×';
+            position: absolute;
+            left: 0;
+            color: #ef4444;
+            font-weight: 900;
+            font-size: 1.2rem;
+            top: -2px;
+        }
+
+        /* ── CHAT CPR ── */
+        .cpr-panel {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 1.8rem;
+        }
+
+        .cpr-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+        }
+
+        .cpr-tab-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glow);
+            color: var(--text-muted);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+
+        .cpr-tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .cpr-tab-btn.active {
+            background: rgba(255, 0, 127, 0.1);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .cpr-content-box {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-glow);
+            border-radius: 12px;
+            padding: 1.2rem 1.5rem;
+            min-height: 80px;
+            position: relative;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.55;
+            color: #fff;
+            white-space: pre-wrap;
+        }
+
+        .cpr-copy-btn {
+            background: rgba(255, 0, 127, 0.1);
+            border: 1px solid rgba(255, 0, 127, 0.2);
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .cpr-copy-btn:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        /* ── TIMELINE TEMPERATURE PANEL ── */
+        .timeline-chart-container {
+            position: relative;
+            width: 100%;
+            height: 250px;
+        }
+
+        /* ── FOOTER ACTIONS ── */
+        .footer-actions {
+            display: flex;
+            gap: 1.2rem;
+            margin-top: 3rem;
+            margin-bottom: 4rem;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-glow);
+            color: var(--text-main);
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-export {
+            flex: 1.5;
+            background: linear-gradient(90deg, #00d2ff, #0066ff);
+            border: none;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(0, 102, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 102, 255, 0.45);
+        }
+
+        /* Toast Alert */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(18, 22, 33, 0.9);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 12px 24px;
+            border-radius: 30px;
+            box-shadow: var(--shadow-glow);
+            z-index: 1000;
+            font-weight: 700;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* Spinner inside button */
+        .spinner-sm {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- App Header -->
+    <header class="app-header">
+        <a href="/" class="home-btn"><i class="fa-solid fa-house"></i> 홈으로</a>
+        <div class="app-title">💖 AI 카톡 관계 분석기 & 연애 컨설턴트</div>
+        <div style="width: 90px;"></div> <!-- Spacer for balance -->
+    </header>
+
+    <div class="container">
+        
+        <!-- ── STATE 1: UPLOAD / SELECTION VIEW ── -->
+        <div id="analyzerInputSection">
+            <div class="hero-section">
+                <h1>상대방과의 대화 속에 숨은 진실</h1>
+                <p>대화 파일을 공유하여 상대방의 성격, 감정 온도, 나에 대한 호감 점수와<br>어려운 순간에 관계를 살리는 대화 팁을 받아보세요.</p>
+            </div>
+
+            <div class="glass-card">
+                <!-- 1. Room Mode Selection -->
+                <div class="input-group">
+                    <label class="input-label">대화방 성격 선택</label>
+                    <div class="mode-container">
+                        <button class="mode-chip active" data-mode="썸/연인"><i class="fa-solid fa-heart"></i> 썸 / 연인</button>
+                        <button class="mode-chip" data-mode="친구/단톡"><i class="fa-solid fa-user-group"></i> 친구 / 지인</button>
+                        <button class="mode-chip" data-mode="비즈니스"><i class="fa-solid fa-briefcase"></i> 직장 / 업무</button>
+                    </div>
+                </div>
+
+                <!-- 2. Self Nickname input -->
+                <div class="input-group">
+                    <label class="input-label" for="userNicknameInput">본인 카카오톡 닉네임 입력</label>
+                    <input type="text" id="userNicknameInput" class="nickname-input" placeholder="대화방에 표시된 본인의 닉네임을 정확히 적어주세요.">
+                </div>
+
+                <!-- 3. File Dropzone -->
+                <div class="input-group" style="margin-bottom: 0;">
+                    <label class="input-label">카카오톡 대화방 대화록 업로드 (.txt)</label>
+                    <div class="dropzone" id="fileDropzone">
+                        <i class="fa-regular fa-file-lines"></i>
+                        <h3>카톡 대화방 텍스트 파일 올려놓기</h3>
+                        <p>PC 버전 '대화 내보내기' 또는 모바일 '대화록 저장하기'로 뽑아낸 .txt 파일을 올려주세요.</p>
+                        <input type="file" id="fileInput" accept=".txt" style="display: none;">
+                        <div id="fileSelectedName" class="file-selected-name" style="display: none;">
+                            <i class="fa-solid fa-file-shield"></i> <span id="fileNameSpan"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button class="action-btn" id="startAnalyzeBtn" disabled>
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> AI 심층 관계 분석 시작
+                </button>
+            </div>
+        </div>
+
+        <!-- ── STATE 2: LOADING VIEW ── -->
+        <div class="glass-card loading-container" id="analyzerLoadingSection">
+            <div class="loading-orb"></div>
+            <div class="loading-title">관계 분석을 시작합니다</div>
+            <div class="loading-step" id="loadingProgressStep">대화 파일 데이터를 분석 중입니다...</div>
+            
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" id="progressBarFill"></div>
+            </div>
+            <p style="color: var(--text-muted); font-size: 0.88rem; max-width: 320px; line-height: 1.5;">대화 분량이 많거나 AI의 고정밀 성향 리포트를 연산할 때 약 10~20초 정도 지연될 수 있습니다.</p>
+        </div>
+
+        <!-- ── STATE 3: REPORT DASHBOARD ── -->
+        <div id="analyzerResultSection" class="result-container">
+            
+            <!-- Export Wrapper Target -->
+            <div id="exportReportWrapper" style="padding: 10px; border-radius: 20px;">
+                
+                <!-- Title inside export wrapper so it appears in image -->
+                <div style="display: none;" id="exportReportTitle">
+                    <h2 style="font-size: 1.8rem; font-weight:900; color: #fff; margin-bottom: 1.5rem; text-align:center;">💖 AI 카톡 관계 분석 & 관계 성향 리포트</h2>
+                </div>
+
+                <!-- 1. Compatibility & MBTI Card -->
+                <div class="glass-card dashboard-header-grid">
+                    <div class="score-card">
+                        <div class="score-circle" id="resultScoreRing">
+                            <span class="score-value" id="resultScoreVal">0</span>
+                        </div>
+                        <div class="type-badge" id="resultRelationType">티키타카형 소통가</div>
+                        <div class="type-sub" id="resultRelationTypeSub">두 사람의 소통 분석 결과입니다.</div>
+                    </div>
+
+                    <div class="mbti-grid">
+                        <div class="mbti-card">
+                            <div class="mbti-avatar user" id="userAvatarChar">나</div>
+                            <div class="mbti-info">
+                                <div class="mbti-name-label">분석 요청자 (나)</div>
+                                <div class="mbti-display">
+                                    <span id="userNameSpan">나</span>
+                                    <span class="mbti-tag" id="userMbtiSpan">MBTI</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mbti-card">
+                            <div class="mbti-avatar counterpart" id="counterpartAvatarChar">상</div>
+                            <div class="mbti-info">
+                                <div class="mbti-name-label">대화 상대방</div>
+                                <div class="mbti-display">
+                                    <span id="counterpartNameSpan">상대방</span>
+                                    <span class="mbti-tag" id="counterpartMbtiSpan">MBTI</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Radar Chart Analysis -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>📊 소통 다이어그램 분석</h2>
+                    </div>
+                    <div class="radar-panel">
+                        <div class="radar-chart-container">
+                            <canvas id="personalityRadarChart"></canvas>
+                        </div>
+                        <div class="radar-description">
+                            <div class="radar-desc-item">
+                                <strong id="descUserName">나</strong>: <span id="userPersonalityText">나의 대화 성향 로드 중...</span>
+                            </div>
+                            <div class="radar-desc-item counterpart">
+                                <strong id="descCounterpartName">상대방</strong>: <span id="counterpartPersonalityText">상대방의 대화 성향 로드 중...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Quantitative Comparison Cards -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>📊 1:1 대화 데이터 통계 비교</h2>
+                    </div>
+                    <div class="stats-grid">
+                        <!-- Stat Item 1: Message Count -->
+                        <div class="stat-card">
+                            <div class="stat-title"><i class="fa-regular fa-comment-dots"></i> 총 메시지 전송량</div>
+                            <div class="stat-comparison-row">
+                                <div class="stat-val-box user">
+                                    <span class="name" id="barLabelUser1">나</span>
+                                    <span class="value" id="valUserMsgCount">0</span>
+                                </div>
+                                <div class="stat-val-box counterpart">
+                                    <span class="name" id="barLabelCounterpart1">상대</span>
+                                    <span class="value" id="valCounterpartMsgCount">0</span>
+                                </div>
+                            </div>
+                            <div class="stat-progress-bar">
+                                <div class="stat-progress-fill-user" id="barFillMsgUser" style="width: 50%;"></div>
+                                <div class="stat-progress-fill-counterpart" id="barFillMsgCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stat Item 2: Character Avg -->
+                        <div class="stat-card">
+                            <div class="stat-title"><i class="fa-solid fa-align-left"></i> 평균 글자 수</div>
+                            <div class="stat-comparison-row">
+                                <div class="stat-val-box user">
+                                    <span class="name" id="barLabelUser2">나</span>
+                                    <span class="value" id="valUserCharAvg">0자</span>
+                                </div>
+                                <div class="stat-val-box counterpart">
+                                    <span class="name" id="barLabelCounterpart2">상대</span>
+                                    <span class="value" id="valCounterpartCharAvg">0자</span>
+                                </div>
+                            </div>
+                            <div class="stat-progress-bar">
+                                <div class="stat-progress-fill-user" id="barFillCharUser" style="width: 50%;"></div>
+                                <div class="stat-progress-fill-counterpart" id="barFillCharCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stat Item 3: Reply Speed -->
+                        <div class="stat-card">
+                            <div class="stat-title"><i class="fa-regular fa-clock"></i> 평균 답장 간격 (낮을수록 바람직)</div>
+                            <div class="stat-comparison-row">
+                                <div class="stat-val-box user">
+                                    <span class="name" id="barLabelUser3">나</span>
+                                    <span class="value" id="valUserReplySpeed">0분</span>
+                                </div>
+                                <div class="stat-val-box counterpart">
+                                    <span class="name" id="barLabelCounterpart3">상대</span>
+                                    <span class="value" id="valCounterpartReplySpeed">0분</span>
+                                </div>
+                            </div>
+                            <div class="stat-progress-bar">
+                                <div class="stat-progress-fill-user" id="barFillSpeedUser" style="width: 50%;"></div>
+                                <div class="stat-progress-fill-counterpart" id="barFillSpeedCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stat Item 4: Emoji Use -->
+                        <div class="stat-card">
+                            <div class="stat-title"><i class="fa-regular fa-face-smile"></i> 하트 / 이모티콘 사용량</div>
+                            <div class="stat-comparison-row">
+                                <div class="stat-val-box user">
+                                    <span class="name" id="barLabelUser4">나</span>
+                                    <span class="value" id="valUserEmojis">0회</span>
+                                </div>
+                                <div class="stat-val-box counterpart">
+                                    <span class="name" id="barLabelCounterpart4">상대</span>
+                                    <span class="value" id="valCounterpartEmojis">0회</span>
+                                </div>
+                            </div>
+                            <div class="stat-progress-bar">
+                                <div class="stat-progress-fill-user" id="barFillEmojiUser" style="width: 50%;"></div>
+                                <div class="stat-progress-fill-counterpart" id="barFillEmojiCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stat Item 5: Double texting -->
+                        <div class="stat-card">
+                            <div class="stat-title"><i class="fa-solid fa-angles-right"></i> 연속 톡 전송 (재촉/몰아치기)</div>
+                            <div class="stat-comparison-row">
+                                <div class="stat-val-box user">
+                                    <span class="name" id="barLabelUser5">나</span>
+                                    <span class="value" id="valUserDoubleCount">0회</span>
+                                </div>
+                                <div class="stat-val-box counterpart">
+                                    <span class="name" id="barLabelCounterpart5">상대</span>
+                                    <span class="value" id="valCounterpartDoubleCount">0회</span>
+                                </div>
+                            </div>
+                            <div class="stat-progress-bar">
+                                <div class="stat-progress-fill-user" id="barFillDoubleUser" style="width: 50%;"></div>
+                                <div class="stat-progress-fill-counterpart" id="barFillDoubleCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Stat Item 6: Initiative -->
+                        <div class="stat-card">
+                            <div class="stat-title"><i class="fa-solid fa-door-open"></i> 선톡 횟수 (대화 활성화 주도)</div>
+                            <div class="stat-comparison-row">
+                                <div class="stat-val-box user">
+                                    <span class="name" id="barLabelUser6">나</span>
+                                    <span class="value" id="valUserInitiative">0회</span>
+                                </div>
+                                <div class="stat-val-box counterpart">
+                                    <span class="name" id="barLabelCounterpart6">상대</span>
+                                    <span class="value" id="valCounterpartInitiative">0회</span>
+                                </div>
+                            </div>
+                            <div class="stat-progress-bar">
+                                <div class="stat-progress-fill-user" id="barFillInitiativeUser" style="width: 50%;"></div>
+                                <div class="stat-progress-fill-counterpart" id="barFillInitiativeCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Word Cloud Tag Matrix -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>☁️ 우리가 가장 많이 나눈 핵심 어휘</h2>
+                    </div>
+                    <div class="word-cloud-container" id="wordCloudGrid">
+                        <!-- Dynamic Word Tags will be appended here -->
+                    </div>
+                </div>
+
+                <!-- 5. Relationship Temperature Timeline -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>📈 주차별 친밀도 온도 변화 추이</h2>
+                    </div>
+                    <div class="timeline-chart-container">
+                        <canvas id="relationTimelineChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 6. Dos & Don'ts -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>⚠️ 상대방 공략 백서 (Dos & Don'ts)</h2>
+                    </div>
+                    <div class="dos-donts-grid">
+                        <div class="dos-box">
+                            <h3><i class="fa-regular fa-circle-check"></i> 하면 좋은 대화 방식 (Do)</h3>
+                            <ul class="rule-list" id="resultDosList">
+                                <!-- Appended dynamically -->
+                            </ul>
+                        </div>
+
+                        <div class="donts-box">
+                            <h3><i class="fa-regular fa-circle-xmark"></i> 절대 삼가야 할 지뢰밭 (Don't)</h3>
+                            <ul class="rule-list" id="resultDontsList">
+                                <!-- Appended dynamically -->
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Chat CPR (Revival scripts) -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>🚑 대화 심폐소생술 (Chat CPR) - 맞춤 선톡 멘트</h2>
+                    </div>
+                    <div class="cpr-panel">
+                        <div class="cpr-tabs">
+                            <button class="cpr-tab-btn active" data-type="ghosting">대화가 끊겼을 때 (읽씹/안읽씹)</button>
+                            <button class="cpr-tab-btn" data-type="awkward">연락이 뜸해져 어색할 때</button>
+                            <button class="cpr-tab-btn" data-type="general">자연스러운 일상 선톡</button>
+                        </div>
+                        <div class="cpr-content-box" id="cprContentText">
+                            선톡 메시지를 불러오고 있습니다...
+                        </div>
+                        <button class="cpr-copy-btn" onclick="copyCprText()">
+                            <i class="fa-regular fa-copy"></i> 메시지 복사하기
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Action Buttons -->
+            <div class="footer-actions">
+                <button class="btn-secondary" onclick="resetAnalyzer()"><i class="fa-solid fa-rotate-left"></i> 처음으로 돌아가기</button>
+                <button class="btn-export" onclick="exportReportToImage()"><i class="fa-solid fa-download"></i> 리포트를 카드 이미지로 다운로드</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Invisible Toast Alert -->
+    <div id="hubToast" class="toast">
+        <i class="fa-solid fa-circle-info"></i>
+        <span>토스트 메시지</span>
+    </div>
+
+    <script>
+        // ── GLOBAL VARIABLES & STATE ──
+        let activeRoomMode = '썸/연인';
+        let selectedFile = null;
+        let cprMessages = {}; // Stores general, awkward, ghosting messages
+        
+        let radarChartInstance = null;
+        let lineChartInstance = null;
+
+        // Toast utility
+        function showToast(msg, color) {
+            const t = document.getElementById('hubToast');
+            t.querySelector('span').textContent = msg;
+            t.style.borderColor = color ? color : 'var(--primary)';
+            t.style.color = color ? color : 'var(--primary)';
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2800);
+        }
+
+        // Room Mode Toggle
+        const modeChips = document.querySelectorAll('.mode-chip');
+        modeChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                modeChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                activeRoomMode = chip.dataset.mode;
+            });
+        });
+
+        // ── DROPZONE HANDLERS ──
+        const dropzone = document.getElementById('fileDropzone');
+        const fileInput = document.getElementById('fileInput');
+        const startBtn = document.getElementById('startAnalyzeBtn');
+        const fileSelectedName = document.getElementById('fileSelectedName');
+        const fileNameSpan = document.getElementById('fileNameSpan');
+
+        dropzone.addEventListener('click', () => fileInput.click());
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('dragover');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('dragover');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length) {
+                handleFileSelection(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length) {
+                handleFileSelection(files[0]);
+            }
+        });
+
+        function handleFileSelection(file) {
+            if (!file.name.endsWith('.txt')) {
+                showToast('❌ 텍스트 파일(.txt)만 업로드할 수 있습니다.', '#ef4444');
+                return;
+            }
+            selectedFile = file;
+            fileNameSpan.textContent = file.name + ` (${(file.size / 1024).toFixed(1)} KB)`;
+            fileSelectedName.style.display = 'inline-flex';
+            startBtn.disabled = false;
+            showToast('✅ 파일이 등록되었습니다.');
+        }
+
+        // ── ACTION: RUN ANALYSIS ──
+        startBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            const userName = document.getElementById('userNicknameInput').value.trim();
+            if (!userName) {
+                showToast('⚠️ 분석 시작 전에 본인의 닉네임을 적어주세요!', '#ef4444');
+                document.getElementById('userNicknameInput').focus();
+                return;
+            }
+
+            // UI Transition: Input -> Loading
+            document.getElementById('analyzerInputSection').style.display = 'none';
+            const loadingSec = document.getElementById('analyzerLoadingSection');
+            loadingSec.style.display = 'flex';
+
+            const stepText = document.getElementById('loadingProgressStep');
+            const barFill = document.getElementById('progressBarFill');
+
+            // Cycle progress simulation
+            const steps = [
+                { text: "대화방 텍스트 파일 구문 분석 중...", percent: "25%" },
+                { text: "메시지 전송 간격 및 선톡 패턴 산출 중...", percent: "45%" },
+                { text: "자주 나눈 고유 표현 및 감정이입 지수 통계 처리 중...", percent: "68%" },
+                { text: "AI 관계 분석 리포트 및 소생 시나리오 생성 중...", percent: "90%" }
+            ];
+
+            let stepIdx = 0;
+            const stepInterval = setInterval(() => {
+                if (stepIdx < steps.length) {
+                    stepText.textContent = steps[stepIdx].text;
+                    barFill.style.width = steps[stepIdx].percent;
+                    stepIdx++;
+                }
+            }, 3000);
+
+            // FormData packing
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('user_name', userName);
+            formData.append('room_mode', activeRoomMode);
+
+            try {
+                const response = await fetch('/api/kakao/analyze_file', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                clearInterval(stepInterval);
+
+                if (result.success) {
+                    barFill.style.width = "100%";
+                    stepText.textContent = "분석 완료! 리포트를 로드합니다...";
+                    setTimeout(() => {
+                        renderDashboard(result.stats, result.report);
+                    }, 800);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (err) {
+                clearInterval(stepInterval);
+                loadingSec.style.display = 'none';
+                document.getElementById('analyzerInputSection').style.display = 'block';
+                showToast(`❌ 오류 발생: ${err.message}`, '#ef4444');
+            }
+        });
+
+        // ── RENDER DASHBOARD RESULTS ──
+        function renderDashboard(stats, report) {
+            // UI Transition: Loading -> Result
+            document.getElementById('analyzerLoadingSection').style.display = 'none';
+            const resSec = document.getElementById('analyzerResultSection');
+            resSec.style.display = 'block';
+
+            // 1. General compatibility score & layout mapping
+            const scoreVal = report.relationship_score || 80;
+            document.getElementById('resultScoreVal').textContent = scoreVal;
+            
+            // Set gauge color degree
+            const ring = document.getElementById('resultScoreRing');
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+            const secondaryColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim();
+            ring.style.background = `conic-gradient(${primaryColor} 0%, ${secondaryColor} ${scoreVal}%, rgba(255, 255, 255, 0.05) ${scoreVal}%)`;
+
+            document.getElementById('resultRelationType').textContent = report.relationship_type || '동반자형 대화';
+            
+            // Nicknames & MBTI
+            document.getElementById('userNameSpan').textContent = stats.user_name;
+            document.getElementById('userMbtiSpan').textContent = report.mbti_user || '미파악';
+            document.getElementById('userAvatarChar').textContent = stats.user_name.substring(0, 1);
+            document.getElementById('descUserName').textContent = stats.user_name;
+
+            document.getElementById('counterpartNameSpan').textContent = stats.counterpart_name;
+            document.getElementById('counterpartMbtiSpan').textContent = report.mbti_counterpart || '미파악';
+            document.getElementById('counterpartAvatarChar').textContent = stats.counterpart_name.substring(0, 1);
+            document.getElementById('descCounterpartName').textContent = stats.counterpart_name;
+
+            // Qualitative description
+            document.getElementById('userPersonalityText').textContent = report.personality_analysis_user || '다정한 소통 어투를 지니고 있습니다.';
+            document.getElementById('counterpartPersonalityText').textContent = report.personality_analysis_counterpart || '논리적이고 깔끔한 어조를 주로 활용합니다.';
+
+            // 2. Render comparative statistic cards
+            const total = stats.total_messages;
+            const uMsg = stats.user_msg_count;
+            const cMsg = stats.counterpart_msg_count;
+            document.getElementById('barLabelUser1').textContent = stats.user_name;
+            document.getElementById('barLabelCounterpart1').textContent = stats.counterpart_name;
+            document.getElementById('valUserMsgCount').textContent = uMsg.toLocaleString() + '개';
+            document.getElementById('valCounterpartMsgCount').textContent = cMsg.toLocaleString() + '개';
+            const msgRatio = total ? (uMsg / total) * 100 : 50;
+            document.getElementById('barFillMsgUser').style.width = `${msgRatio}%`;
+            document.getElementById('barFillMsgCounterpart').style.width = `${100 - msgRatio}%`;
+
+            const uChar = stats.user_char_avg;
+            const cChar = stats.counterpart_char_avg;
+            document.getElementById('barLabelUser2').textContent = stats.user_name;
+            document.getElementById('barLabelCounterpart2').textContent = stats.counterpart_name;
+            document.getElementById('valUserCharAvg').textContent = uChar.toFixed(1) + '자';
+            document.getElementById('valCounterpartCharAvg').textContent = cChar.toFixed(1) + '자';
+            const charRatio = (uChar + cChar) ? (uChar / (uChar + cChar)) * 100 : 50;
+            document.getElementById('barFillCharUser').style.width = `${charRatio}%`;
+            document.getElementById('barFillCharCounterpart').style.width = `${100 - charRatio}%`;
+
+            const uSpeed = stats.user_reply_speed;
+            const cSpeed = stats.counterpart_reply_speed;
+            document.getElementById('barLabelUser3').textContent = stats.user_name;
+            document.getElementById('barLabelCounterpart3').textContent = stats.counterpart_name;
+            document.getElementById('valUserReplySpeed').textContent = uSpeed.toFixed(1) + '분';
+            document.getElementById('valCounterpartReplySpeed').textContent = cSpeed.toFixed(1) + '분';
+            // Speed latency: smaller values are faster. Speed ratio represents quickness (inverse of speed).
+            const uQuick = cSpeed || 1;
+            const cQuick = uSpeed || 1;
+            const speedRatio = (uQuick + cQuick) ? (uQuick / (uQuick + cQuick)) * 100 : 50;
+            document.getElementById('barFillSpeedUser').style.width = `${speedRatio}%`;
+            document.getElementById('barFillSpeedCounterpart').style.width = `${100 - speedRatio}%`;
+
+            const uEmo = stats.user_emojis;
+            const cEmo = stats.counterpart_emojis;
+            document.getElementById('barLabelUser4').textContent = stats.user_name;
+            document.getElementById('barLabelCounterpart4').textContent = stats.counterpart_name;
+            document.getElementById('valUserEmojis').textContent = uEmo.toLocaleString() + '회';
+            document.getElementById('valCounterpartEmojis').textContent = cEmo.toLocaleString() + '회';
+            const emoRatio = (uEmo + cEmo) ? (uEmo / (uEmo + cEmo)) * 100 : 50;
+            document.getElementById('barFillEmojiUser').style.width = `${emoRatio}%`;
+            document.getElementById('barFillEmojiCounterpart').style.width = `${100 - emoRatio}%`;
+
+            const uDouble = stats.user_double_text_count;
+            const cDouble = stats.counterpart_double_text_count;
+            document.getElementById('barLabelUser5').textContent = stats.user_name;
+            document.getElementById('barLabelCounterpart5').textContent = stats.counterpart_name;
+            document.getElementById('valUserDoubleCount').textContent = uDouble + '회';
+            document.getElementById('valCounterpartDoubleCount').textContent = cDouble + '회';
+            const doubleRatio = (uDouble + cDouble) ? (uDouble / (uDouble + cDouble)) * 100 : 50;
+            document.getElementById('barFillDoubleUser').style.width = `${doubleRatio}%`;
+            document.getElementById('barFillDoubleCounterpart').style.width = `${100 - doubleRatio}%`;
+
+            const uInit = stats.user_initiative_count;
+            const cInit = stats.counterpart_initiative_count;
+            document.getElementById('barLabelUser6').textContent = stats.user_name;
+            document.getElementById('barLabelCounterpart6').textContent = stats.counterpart_name;
+            document.getElementById('valUserInitiative').textContent = uInit + '회';
+            document.getElementById('valCounterpartInitiative').textContent = cInit + '회';
+            const initRatio = (uInit + cInit) ? (uInit / (uInit + cInit)) * 100 : 50;
+            document.getElementById('barFillInitiativeUser').style.width = `${initRatio}%`;
+            document.getElementById('barFillInitiativeCounterpart').style.width = `${100 - initRatio}%`;
+
+            // 3. Render Word Cloud
+            const wcGrid = document.getElementById('wordCloudGrid');
+            wcGrid.innerHTML = '';
+            const words = stats.word_cloud || [];
+            if (words.length === 0) {
+                wcGrid.innerHTML = '<span style="color: var(--text-muted); font-size: 0.9rem;">충분한 단어 통계 데이터가 없습니다.</span>';
+            } else {
+                words.forEach(word => {
+                    const tag = document.createElement('span');
+                    tag.className = 'word-tag';
+                    // Scale font-size relative to frequency
+                    const maxVal = Math.max(...words.map(w => w.value));
+                    const minVal = Math.min(...words.map(w => w.value));
+                    const range = (maxVal - minVal) || 1;
+                    const size = 0.85 + ((word.value - minVal) / range) * 0.7; // size range: 0.85rem - 1.55rem
+                    tag.style.fontSize = `${size}rem`;
+                    tag.style.opacity = `${0.65 + ((word.value - minVal) / range) * 0.35}`;
+                    tag.textContent = `${word.text} (${word.value})`;
+                    wcGrid.appendChild(tag);
+                });
+            }
+
+            // 4. Render Dos and Don'ts Lists
+            const dosList = document.getElementById('resultDosList');
+            const dontsList = document.getElementById('resultDontsList');
+            dosList.innerHTML = '';
+            dontsList.innerHTML = '';
+            
+            const dos = report.dos || ['대화 속에서 다정한 리액션 늘리기'];
+            const donts = report.donts || ['바쁠 때 답장 늦는다고 다그치지 말기'];
+
+            dos.forEach(d => {
+                const li = document.createElement('li');
+                li.textContent = d;
+                dosList.appendChild(li);
+            });
+
+            donts.forEach(d => {
+                const li = document.createElement('li');
+                li.textContent = d;
+                dontsList.appendChild(li);
+            });
+
+            // 5. Store Chat CPR
+            cprMessages = report.cpr_revival || {
+                ghosting: "상대방과 나눈 최근 이야기를 연결해 톡을 시작해 보세요.",
+                awkward: "요즘 날씨나 재미있는 최신 트렌드로 분위기를 깨 보세요.",
+                general: "편하게 안부를 물으며 톡을 보내 보세요."
+            };
+            cprTabButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.cpr-tab-btn[data-type="ghosting"]').classList.add('active');
+            document.getElementById('cprContentText').textContent = cprMessages.ghosting;
+
+            // 6. Draw Chart.js Radar & Line Charts
+            drawRadarChart(stats.user_name, stats.counterpart_name, report.radar_user, report.radar_counterpart);
+            drawLineChart(stats.temperature_timeline);
+
+            showToast('✅ 관계 진단 보고서 생성이 완료되었습니다!');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ── DRAW RADAR CHART ──
+        function drawRadarChart(uName, cName, uData, cData) {
+            const ctx = document.getElementById('personalityRadarChart').getContext('2d');
+            
+            if (radarChartInstance) {
+                radarChartInstance.destroy();
+            }
+
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+            const secondaryColor = getComputedStyle(document.documentElement).getPropertyValue('--secondary').trim();
+
+            const labels = ['다정함(Warmth)', '논리성(Logic)', '감정표현(Expression)', '신속성(Speed)', '선톡적극성(Initiative)'];
+            const uValues = uData ? [uData.warmth, uData.logic, uData.expression, uData.speed, uData.initiative] : [70, 50, 70, 80, 60];
+            const cValues = cData ? [cData.warmth, cData.logic, cData.expression, cData.speed, cData.initiative] : [60, 70, 50, 60, 70];
+
+            radarChartInstance = new Chart(ctx, {
+                type: 'radar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: uName,
+                            data: uValues,
+                            backgroundColor: 'rgba(255, 0, 127, 0.18)',
+                            borderColor: primaryColor,
+                            pointBackgroundColor: primaryColor,
+                            pointBorderColor: '#fff',
+                            borderWidth: 2
+                        },
+                        {
+                            label: cName,
+                            data: cValues,
+                            backgroundColor: 'rgba(112, 0, 255, 0.18)',
+                            borderColor: secondaryColor,
+                            pointBackgroundColor: secondaryColor,
+                            pointBorderColor: '#fff',
+                            borderWidth: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
+                            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+                            pointLabels: { color: '#8b949e', font: { size: 9, family: 'Pretendard' } },
+                            ticks: { display: false },
+                            suggestedMin: 20,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f0f6fc', font: { size: 11, weight: 'bold' } },
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        // ── DRAW LINE CHART ──
+        function drawLineChart(timelineData) {
+            const ctx = document.getElementById('relationTimelineChart').getContext('2d');
+
+            if (lineChartInstance) {
+                lineChartInstance.destroy();
+            }
+
+            const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--primary').trim();
+
+            const labels = timelineData.map(item => item.label);
+            const scores = timelineData.map(item => item.score);
+
+            lineChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '친밀도 지수 (°C)',
+                        data: scores,
+                        borderColor: primaryColor,
+                        backgroundColor: 'rgba(255, 0, 127, 0.04)',
+                        borderWidth: 3,
+                        pointBackgroundColor: primaryColor,
+                        pointBorderColor: '#fff',
+                        tension: 0.35,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#8b949e', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#8b949e', font: { size: 10 } },
+                            suggestedMin: 50,
+                            suggestedMax: 100
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // ── CPR TAB SWITCH ──
+        const cprTabButtons = document.querySelectorAll('.cpr-tab-btn');
+        cprTabButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                cprTabButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const type = btn.dataset.type;
+                document.getElementById('cprContentText').textContent = cprMessages[type] || '';
+            });
+        });
+
+        // CPR Copy function
+        function copyCprText() {
+            const text = document.getElementById('cprContentText').textContent;
+            
+            // Standard invisible clipboard textarea logic
+            const textArea = document.createElement("textarea");
+            textArea.value = text;
+            textArea.style.position = "fixed";
+            textArea.style.opacity = "0.01";
+            document.body.appendChild(textArea);
+            
+            const isiOS = navigator.userAgent.match(/ipad|iphone|ipod/i);
+            if (isiOS) {
+                const range = document.createRange();
+                range.selectNodeContents(textArea);
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(range);
+                textArea.setSelectionRange(0, 999999);
+            } else {
+                textArea.focus();
+                textArea.select();
+            }
+
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                if (successful) {
+                    showToast('📋 선톡 메시지를 클립보드에 복사했습니다!');
+                } else {
+                    throw new Error("fallback fail");
+                }
+            } catch (err) {
+                document.body.removeChild(textArea);
+                showToast('❌ 복사 실패. 직접 텍스트를 복사해주세요.', '#ef4444');
+            }
+        }
+
+        // ── EXPORT REPORT AS IMAGE CARD ──
+        function exportReportToImage() {
+            showToast('📸 보고서 이미지 제작 중... 잠시만 기다려주세요.', '#00d2ff');
+            
+            const wrapper = document.getElementById('exportReportWrapper');
+            const titleDiv = document.getElementById('exportReportTitle');
+            
+            // Temporarily enable title inside wrapper & style padding/background for export
+            titleDiv.style.display = 'block';
+            const originalBg = wrapper.style.background;
+            const originalPad = wrapper.style.padding;
+            
+            wrapper.style.background = '#0b0e14';
+            wrapper.style.padding = '30px';
+
+            html2canvas(wrapper, {
+                useCORS: true,
+                allowTaint: true,
+                backgroundColor: '#0b0e14',
+                scale: 2 // Boost scale for crisp text resolution
+            }).then(canvas => {
+                // Restore wrapper styles
+                titleDiv.style.display = 'none';
+                wrapper.style.background = originalBg;
+                wrapper.style.padding = originalPad;
+
+                // Download Link trigger
+                const link = document.createElement('a');
+                link.download = '카카오톡_관계분석_리포트.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                showToast('💾 이미지 저장이 완료되었습니다!');
+            }).catch(err => {
+                console.error(err);
+                titleDiv.style.display = 'none';
+                wrapper.style.background = originalBg;
+                wrapper.style.padding = originalPad;
+                showToast('❌ 이미지 저장 실패. 브라우저 권한을 확인해주세요.', '#ef4444');
+            });
+        }
+
+        // Reset functions
+        function resetAnalyzer() {
+            selectedFile = null;
+            document.getElementById('fileNameSpan').textContent = '';
+            document.getElementById('fileSelectedName').style.display = 'none';
+            document.getElementById('startAnalyzeBtn').disabled = true;
+            document.getElementById('userNicknameInput').value = '';
+            
+            document.getElementById('analyzerResultSection').style.display = 'none';
+            document.getElementById('analyzerInputSection').style.display = 'block';
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    </script>
+
+</body>
+</html>
