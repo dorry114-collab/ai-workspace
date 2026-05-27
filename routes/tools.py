@@ -1778,6 +1778,7 @@ def api_kakao_reply():
     history_raw = request.form.get('history', '[]')
     custom_style = request.form.get('custom_style', '').strip()
     custom_style_active = request.form.get('custom_style_active', 'false').lower() == 'true'
+    custom_style_name = request.form.get('custom_style_name', '나의 말투').strip()
 
     try:
         tones = json.loads(tones_raw)
@@ -1795,8 +1796,8 @@ def api_kakao_reply():
     # If custom style is active and not empty, inject it as a tone option
     custom_style_injected = False
     if custom_style_active and custom_style:
-        if '나의 말투' not in tones:
-            tones.insert(0, '나의 말투')
+        if custom_style_name not in tones:
+            tones.insert(0, custom_style_name)
             custom_style_injected = True
 
     try:
@@ -1813,7 +1814,7 @@ def api_kakao_reply():
         # Build custom style guide
         style_guide = ""
         if custom_style_active and custom_style:
-            style_guide = f"\n\n[특별 요건 - '나의 말투' 스타일 안내]\n사용자가 평소에 쓰는 말투 분석 결과는 다음과 같습니다: '{custom_style}'\n추천 답장 중 '나의 말투' 톤으로 생성하는 답장은 반드시 이 어투와 특성을 완벽히 흉내 내어 작성하세요. (종결어미, 이모티콘 사용 빈도 등을 일치시킬 것)"
+            style_guide = f"\n\n[특별 요건 - '{custom_style_name}' 스타일 안내]\n사용자가 평소에 쓰는 말투 분석 결과는 다음과 같습니다: '{custom_style}'\n추천 답장 중 '{custom_style_name}' 톤으로 생성하는 답장은 반드시 이 어투와 특성을 완벽히 흉내 내어 작성하세요. (종결어미, 이모티콘 사용 빈도 등을 일치시킬 것)"
 
         # Build history context
         history_prompt = ""
