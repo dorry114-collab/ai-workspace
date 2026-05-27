@@ -201,6 +201,87 @@
             position: absolute; inset: 0;
             opacity: 0; cursor: pointer; width: 100%; height: 100%;
         }
+
+        /* 다중 이미지 썸네일 그리드 */
+        .kakao-thumb-grid {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            padding: 1rem;
+            background: rgba(22,27,34,0.8);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            margin-bottom: 0;
+        }
+        .kakao-thumb-item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            background: #000;
+            border: 2px solid rgba(255,255,255,0.08);
+            transition: 0.2s;
+        }
+        .kakao-thumb-item.analyzing {
+            border-color: #FEE500;
+            box-shadow: 0 0 10px rgba(254,229,0,0.3);
+        }
+        .kakao-thumb-item.done {
+            border-color: #22c55e;
+        }
+        .kakao-thumb-item img {
+            width: 100%; height: 100%; object-fit: cover; display: block;
+        }
+        .kakao-thumb-badge {
+            position: absolute; top: 4px; right: 4px;
+            background: rgba(0,0,0,0.75);
+            border-radius: 20px; padding: 2px 7px;
+            font-size: 0.7rem; font-weight: 700; color: #fff;
+        }
+        .kakao-thumb-item.analyzing .kakao-thumb-badge { background: #FEE500; color: #000; }
+        .kakao-thumb-item.done .kakao-thumb-badge { background: #22c55e; }
+
+        .kakao-multi-header {
+            display: none;
+            align-items: center; justify-content: space-between;
+            padding: 0.5rem 0 0.8rem;
+            font-size: 0.9rem; color: var(--muted);
+        }
+        .kakao-multi-header b { color: var(--text); }
+        .kakao-add-more-btn {
+            background: rgba(255,255,255,0.07);
+            border: 1px dashed rgba(255,255,255,0.15);
+            color: var(--muted); border-radius: 8px;
+            padding: 5px 12px; font-size: 0.82rem;
+            cursor: pointer; transition: 0.2s;
+            font-family: 'Outfit', sans-serif;
+            position: relative; overflow: hidden;
+        }
+        .kakao-add-more-btn input {
+            position: absolute; inset: 0; opacity: 0; cursor: pointer;
+        }
+        .kakao-add-more-btn:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+
+        /* 이미지별 결과 섹션 */
+        .kakao-img-result-section {
+            margin-bottom: 1.5rem;
+            background: rgba(22,27,34,0.6);
+            border: 1px solid rgba(255,255,255,0.07);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        .kakao-img-result-header {
+            display: flex; align-items: center; gap: 10px;
+            padding: 0.8rem 1rem;
+            background: rgba(0,0,0,0.25);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            font-size: 0.88rem; font-weight: 700; color: var(--muted);
+        }
+        .kakao-img-result-header img {
+            width: 36px; height: 36px; border-radius: 6px;
+            object-fit: cover; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .kakao-img-result-body { padding: 1rem; }
         .kakao-upload-icon {
             font-size: 3.5rem;
             margin-bottom: 1rem;
@@ -640,26 +721,30 @@
 <main>
     <!-- 업로드 영역 -->
     <div class="kakao-upload-zone" id="kakaoUploadZone">
-        <input type="file" id="kakaoFileInput" accept="image/*" capture="environment">
+        <input type="file" id="kakaoFileInput" accept="image/*" multiple>
         <div class="kakao-upload-icon">💬</div>
         <h2>카카오톡 대화 캡처를 올려주세요</h2>
-        <p>사진을 드래그하거나 탭해서 선택하세요<br>스마트폰에서는 카메라로 바로 찍을 수 있어요</p>
+        <p>여러 장을 한 번에 선택할 수 있어요<br>드래그 앤 드롭도 지원합니다</p>
         <div class="kakao-upload-hint">
-            <span class="kakao-hint-tag"><i class="fa-solid fa-image"></i> PNG / JPG</span>
-            <span class="kakao-hint-tag"><i class="fa-solid fa-camera"></i> 카메라 촬영</span>
+            <span class="kakao-hint-tag"><i class="fa-solid fa-images"></i> 여러 장 동시 선택</span>
+            <span class="kakao-hint-tag"><i class="fa-solid fa-mobile-screen"></i> 모바일 갤러리</span>
             <span class="kakao-hint-tag"><i class="fa-solid fa-lock"></i> 분석 후 즉시 삭제</span>
         </div>
     </div>
 
-    <!-- 이미지 미리보기 -->
-    <div class="kakao-preview-wrap" id="kakaoPreviewWrap">
-        <img id="kakaoPreviewImg" src="" alt="카카오톡 대화 캡처">
-        <div class="kakao-preview-actions">
-            <button class="kakao-btn-remove-img" onclick="kakaoResetAll()">
-                <i class="fa-solid fa-xmark"></i> 다시 선택
-            </button>
-        </div>
+    <!-- 다중 이미지 헤더 -->
+    <div class="kakao-multi-header" id="kakaoMultiHeader">
+        <span>📎 선택된 이미지 <b id="kakaoFileCount">0</b>장</span>
+        <label class="kakao-add-more-btn">
+            <input type="file" id="kakaoAddMoreInput" accept="image/*" multiple>
+            <i class="fa-solid fa-plus"></i> 추가
+        </label>
     </div>
+
+    <!-- 썸네일 그리드 -->
+    <div class="kakao-thumb-grid" id="kakaoThumbGrid"></div>
+
+
 
     <!-- 추가 컨텍스트 입력 -->
     <div class="kakao-context-box" id="kakaoContextBox">
@@ -823,9 +908,9 @@
 <!-- Bottom Nav -->
 <div class="bottom-nav">
     <a href="/" class="nav-item"><i class="fa-solid fa-house"></i><span>홈</span></a>
-    <a href="/message" class="nav-item active"><i class="fa-solid fa-envelope-open-text"></i><span>메세지</span></a>
+    <a href="/message_hub" class="nav-item active"><i class="fa-solid fa-envelope-open-text"></i><span>메시지</span></a>
     <a href="/love" class="nav-item"><i class="fa-solid fa-heart-crack"></i><span>썸 판독</span></a>
-    <a href="/saju" class="nav-item"><i class="fa-solid fa-yin-yang"></i><span>운세</span></a>
+    <a href="/mystic" class="nav-item"><i class="fa-solid fa-yin-yang"></i><span>운세</span></a>
 </div>
 
 
@@ -869,65 +954,96 @@ function hubEscapeHtml(str) {
 /* ═══════════════════════════════════════
    TAB 1: 카톡 답장 추천
 ═══════════════════════════════════════ */
-let kakaoUploadedFile = null;
+// ── 다중 파일 관리
+let kakaoUploadedFiles = [];  // File 객체 배열
+let kakaoThumbDataUrls = [];  // 미리보기 DataURL 배열
 
 const KAKAO_TONE_CLASS_MAP = {
-    '친근하게': 'tone-friendly',
-    '쿨하게': 'tone-cool',
-    '유머있게': 'tone-funny',
-    '따뜻하게': 'tone-warm',
-    '공식적으로': 'tone-formal',
-    '짧고 심플하게': 'tone-short'
+    '친근하게': 'tone-friendly', '쿨하게': 'tone-cool',
+    '유머있게': 'tone-funny',   '따뜻하게': 'tone-warm',
+    '공식적으로': 'tone-formal', '짧고 심플하게': 'tone-short'
 };
 const KAKAO_TONE_ICON_MAP = {
     '친근하게': '😊', '쿨하게': '😎', '유머있게': '😄',
     '따뜻하게': '🥰', '공식적으로': '💼', '짧고 심플하게': '⚡'
 };
 
-// Drag & Drop
+// ── Drag & Drop
 const kakaoZone = document.getElementById('kakaoUploadZone');
 kakaoZone.addEventListener('dragover', e => { e.preventDefault(); kakaoZone.classList.add('drag-over'); });
 kakaoZone.addEventListener('dragleave', () => kakaoZone.classList.remove('drag-over'));
 kakaoZone.addEventListener('drop', e => {
     e.preventDefault();
     kakaoZone.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) kakaoHandleFile(file);
+    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    if (files.length) kakaoAddFiles(files);
 });
 
+// ── 파일 선택 (최초 + 추가)
 document.getElementById('kakaoFileInput').addEventListener('change', e => {
-    if (e.target.files[0]) kakaoHandleFile(e.target.files[0]);
+    const files = [...e.target.files].filter(f => f.type.startsWith('image/'));
+    if (files.length) kakaoAddFiles(files);
+    e.target.value = '';
+});
+document.getElementById('kakaoAddMoreInput').addEventListener('change', e => {
+    const files = [...e.target.files].filter(f => f.type.startsWith('image/'));
+    if (files.length) kakaoAddFiles(files);
+    e.target.value = '';
 });
 
-function kakaoHandleFile(file) {
-    kakaoUploadedFile = file;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        document.getElementById('kakaoPreviewImg').src = e.target.result;
-        document.getElementById('kakaoPreviewWrap').style.display = 'block';
-        document.getElementById('kakaoUploadZone').style.display = 'none';
-        document.getElementById('kakaoContextBox').style.display = 'block';
-        document.getElementById('kakaoToneSelector').style.display = 'block';
-        document.getElementById('kakaoBtnAnalyze').style.display = 'flex';
-        document.getElementById('kakaoResultPanel').style.display = 'none';
-        document.getElementById('kakaoBtnRetry').style.display = 'none';
-    };
-    reader.readAsDataURL(file);
+function kakaoAddFiles(newFiles) {
+    kakaoUploadedFiles = [...kakaoUploadedFiles, ...newFiles];
+    kakaoRenderThumbs();
+    kakaoShowUploadedState();
 }
 
-// Tone Chip Toggle
+function kakaoRenderThumbs() {
+    const grid = document.getElementById('kakaoThumbGrid');
+    const count = kakaoUploadedFiles.length;
+    document.getElementById('kakaoFileCount').textContent = count;
+
+    // 새로 추가된 파일만 렌더
+    const existingCount = grid.querySelectorAll('.kakao-thumb-item').length;
+    kakaoUploadedFiles.slice(existingCount).forEach((file, relIdx) => {
+        const absIdx = existingCount + relIdx;
+        const item = document.createElement('div');
+        item.className = 'kakao-thumb-item';
+        item.id = `kakaoThumb_${absIdx}`;
+        item.innerHTML = `<img src="" alt="캡처 ${absIdx+1}"><div class="kakao-thumb-badge">${absIdx+1}</div>`;
+        grid.appendChild(item);
+
+        const reader = new FileReader();
+        reader.onload = ev => {
+            item.querySelector('img').src = ev.target.result;
+            kakaoThumbDataUrls[absIdx] = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function kakaoShowUploadedState() {
+    document.getElementById('kakaoUploadZone').style.display = 'none';
+    document.getElementById('kakaoMultiHeader').style.display = 'flex';
+    document.getElementById('kakaoThumbGrid').style.display = 'grid';
+    document.getElementById('kakaoContextBox').style.display = 'block';
+    document.getElementById('kakaoToneSelector').style.display = 'block';
+    document.getElementById('kakaoBtnAnalyze').style.display = 'flex';
+    document.getElementById('kakaoResultPanel').style.display = 'none';
+    document.getElementById('kakaoBtnRetry').style.display = 'none';
+}
+
+// ── 톤 칩 토글
 document.querySelectorAll('.kakao-tone-chip').forEach(chip => {
     chip.addEventListener('click', () => chip.classList.toggle('selected'));
 });
 
 function kakaoGetSelectedTones() {
-    return Array.from(document.querySelectorAll('.kakao-tone-chip.selected'))
-                .map(c => c.dataset.tone);
+    return Array.from(document.querySelectorAll('.kakao-tone-chip.selected')).map(c => c.dataset.tone);
 }
 
+// ── 메인 분석 함수 (이미지 순차 처리)
 async function kakaoAnalyzeImage() {
-    if (!kakaoUploadedFile) { hubShowToast('이미지를 먼저 업로드해주세요!'); return; }
-
+    if (kakaoUploadedFiles.length === 0) { hubShowToast('이미지를 먼저 업로드해주세요!'); return; }
     const tones = kakaoGetSelectedTones();
     if (tones.length === 0) { hubShowToast('분위기를 최소 1개 이상 선택해주세요!'); return; }
 
@@ -935,9 +1051,14 @@ async function kakaoAnalyzeImage() {
     btn.disabled = true;
     btn.innerHTML = '<div class="spinner-sm"></div> 분석 중...';
 
+    const contextText = document.getElementById('kakaoContextInput').value.trim();
+    const resultContainer = document.getElementById('kakaoReplyCards');
+    const summaryEl = document.getElementById('kakaoSummaryText');
+    resultContainer.innerHTML = '';
+    summaryEl.textContent = '';
+
     document.getElementById('kakaoLoadingBar').style.display = 'block';
     document.getElementById('kakaoResultPanel').style.display = 'none';
-    document.getElementById('kakaoBtnRetry').style.display = 'none';
 
     const steps = ['대화 내용을 읽고 있습니다...', '맥락과 감정을 파악 중...', '최적의 답장을 생성 중...'];
     let si = 0;
@@ -947,55 +1068,94 @@ async function kakaoAnalyzeImage() {
         stepEl.textContent = steps[si];
     }, 1800);
 
-    try {
-        const formData = new FormData();
-        formData.append('image', kakaoUploadedFile);
-        formData.append('context', document.getElementById('kakaoContextInput').value.trim());
-        formData.append('tones', JSON.stringify(tones));
+    let allResults = [];
+    let hasError = false;
 
-        const res = await fetch('/api/kakao/reply', { method: 'POST', body: formData });
-        const data = await res.json();
+    for (let i = 0; i < kakaoUploadedFiles.length; i++) {
+        // 썸네일 강조
+        document.querySelectorAll('.kakao-thumb-item').forEach(t => t.classList.remove('analyzing'));
+        const thumb = document.getElementById(`kakaoThumb_${i}`);
+        if (thumb) thumb.classList.add('analyzing');
+        stepEl.textContent = `[${i+1}/${kakaoUploadedFiles.length}] 이미지 분석 중...`;
 
-        clearInterval(stepInterval);
-        document.getElementById('kakaoLoadingBar').style.display = 'none';
+        try {
+            const formData = new FormData();
+            formData.append('image', kakaoUploadedFiles[i]);
+            formData.append('context', contextText);
+            formData.append('tones', JSON.stringify(tones));
 
-        if (!data.success) {
-            hubShowToast(data.error || '분석에 실패했습니다. 다시 시도해주세요.');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기';
-            return;
+            const res = await fetch('/api/kakao/reply', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (thumb) { thumb.classList.remove('analyzing'); thumb.classList.add('done'); }
+
+            if (data.success) {
+                allResults.push({ idx: i, dataUrl: kakaoThumbDataUrls[i], data });
+            } else {
+                allResults.push({ idx: i, dataUrl: kakaoThumbDataUrls[i], error: data.error });
+            }
+        } catch(e) {
+            if (thumb) { thumb.classList.remove('analyzing'); }
+            allResults.push({ idx: i, dataUrl: kakaoThumbDataUrls[i], error: '서버 오류' });
+            hasError = true;
         }
-
-        kakaoRenderResults(data);
-    } catch(e) {
-        clearInterval(stepInterval);
-        document.getElementById('kakaoLoadingBar').style.display = 'none';
-        hubShowToast('서버 오류가 발생했습니다. 다시 시도해주세요.');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기';
     }
+
+    clearInterval(stepInterval);
+    document.getElementById('kakaoLoadingBar').style.display = 'none';
+
+    // 결과 렌더
+    kakaoRenderMultiResults(allResults, tones);
 }
 
-function kakaoRenderResults(data) {
-    document.getElementById('kakaoSummaryText').textContent = data.summary || '';
-
+function kakaoRenderMultiResults(results, tones) {
     const container = document.getElementById('kakaoReplyCards');
     container.innerHTML = '';
 
-    (data.replies || []).forEach((reply, i) => {
-        const toneClass = KAKAO_TONE_CLASS_MAP[reply.tone] || 'tone-friendly';
-        const toneIcon = KAKAO_TONE_ICON_MAP[reply.tone] || '💬';
+    // 요약: 첫 번째 성공 결과의 summary
+    const firstOk = results.find(r => r.data);
+    if (firstOk) {
+        document.getElementById('kakaoSummaryText').textContent =
+            results.length === 1 ? (firstOk.data.summary || '') :
+            `${results.length}장의 대화를 분석했습니다. 각 이미지별 답장을 확인하세요.`;
+    }
 
-        const card = document.createElement('div');
-        card.className = `kakao-reply-card ${toneClass}`;
-        card.innerHTML = `
-            <div class="kakao-reply-tone">${toneIcon} ${reply.tone}</div>
-            <div class="kakao-reply-text">${hubEscapeHtml(reply.text)}</div>
-            <button class="kakao-btn-copy-reply" onclick="kakaoCopyReply(this, ${JSON.stringify(reply.text)})">
-                <i class="fa-regular fa-copy"></i> 복사
-            </button>
+    results.forEach((r, i) => {
+        const section = document.createElement('div');
+        section.className = 'kakao-img-result-section';
+
+        const header = document.createElement('div');
+        header.className = 'kakao-img-result-header';
+        header.innerHTML = `
+            ${r.dataUrl ? `<img src="${r.dataUrl}" alt="캡처 ${r.idx+1}">` : ''}
+            <span>이미지 ${r.idx + 1}</span>
+            ${r.error ? '<span style="color:#ef4444;margin-left:auto;">⚠️ 분석 실패</span>' : '<span style="color:#22c55e;margin-left:auto;">✅ 완료</span>'}
         `;
-        container.appendChild(card);
+        section.appendChild(header);
+
+        const body = document.createElement('div');
+        body.className = 'kakao-img-result-body';
+
+        if (r.error) {
+            body.innerHTML = `<p style="color:var(--muted);font-size:0.9rem;">${r.error}</p>`;
+        } else {
+            (r.data.replies || []).forEach(reply => {
+                const toneClass = KAKAO_TONE_CLASS_MAP[reply.tone] || 'tone-friendly';
+                const toneIcon = KAKAO_TONE_ICON_MAP[reply.tone] || '💬';
+                const card = document.createElement('div');
+                card.className = `kakao-reply-card ${toneClass}`;
+                card.innerHTML = `
+                    <div class="kakao-reply-tone">${toneIcon} ${reply.tone}</div>
+                    <div class="kakao-reply-text">${hubEscapeHtml(reply.text)}</div>
+                    <button class="kakao-btn-copy-reply" onclick="kakaoCopyReply(this, ${JSON.stringify(reply.text)})">
+                        <i class="fa-regular fa-copy"></i> 복사
+                    </button>
+                `;
+                body.appendChild(card);
+            });
+        }
+        section.appendChild(body);
+        container.appendChild(section);
     });
 
     document.getElementById('kakaoResultPanel').style.display = 'block';
@@ -1017,10 +1177,12 @@ function kakaoCopyReply(btn, text) {
 }
 
 function kakaoResetAll() {
-    kakaoUploadedFile = null;
+    kakaoUploadedFiles = [];
+    kakaoThumbDataUrls = [];
     document.getElementById('kakaoFileInput').value = '';
-    document.getElementById('kakaoPreviewImg').src = '';
-    document.getElementById('kakaoPreviewWrap').style.display = 'none';
+    document.getElementById('kakaoThumbGrid').innerHTML = '';
+    document.getElementById('kakaoThumbGrid').style.display = 'none';
+    document.getElementById('kakaoMultiHeader').style.display = 'none';
     document.getElementById('kakaoUploadZone').style.display = 'block';
     document.getElementById('kakaoContextBox').style.display = 'none';
     document.getElementById('kakaoToneSelector').style.display = 'none';

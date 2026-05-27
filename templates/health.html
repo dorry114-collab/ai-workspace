@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI 건강 & 식단 코치</title>
+    <title>🥗 AI 건강 & 식단 코치</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;700;900&family=Nanum+Pen+Script&family=Suit:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -377,10 +377,22 @@
 
     <!-- ===== PAGE HEADER ===== -->
     <div class="page-header">
-        <a href="/"><i class="fa-solid fa-arrow-left"></i> 홈으로</a>
+        <a href="/"><i class="fa-solid fa-house"></i> 홈</a>
         <span class="header-sep">|</span>
         <span class="header-title">🥗 AI 건강 &amp; 식단 코치</span>
     </div>
+
+    <!-- Toast 알림 -->
+    <div id="healthToast" style="
+        display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+        background:rgba(15,23,42,0.95); color:#fff;
+        padding:12px 24px; border-radius:12px;
+        border:1px solid rgba(255,255,255,0.12);
+        box-shadow:0 8px 24px rgba(0,0,0,0.4);
+        z-index:9999; font-size:0.95rem; font-weight:600;
+        max-width:90vw; text-align:center;
+        transition:opacity 0.3s;
+    "></div>
 
     <!-- ===== TAB BAR ===== -->
     <div class="page-tab-bar">
@@ -520,7 +532,7 @@
         }
 
         async function evaluateDiet() {
-            if (!base64Image) return alert('음식이나 영수증 사진을 올려주세요.');
+            if (!base64Image) { showHealthToast('📷 음식이나 영수증 사진을 올려주세요!'); return; }
 
             const btn = document.getElementById('evalBtn');
             const loader = document.getElementById('d-loader');
@@ -547,7 +559,7 @@
                     throw new Error(data.error);
                 }
             } catch(e) {
-                alert("PT 선생님이 접속을 거부했습니다. (" + e.message + ")");
+                showHealthToast('⚠️ PT 선생님이 접속을 거부했습니다. (' + e.message + ')');
                 btn.style.display = 'block';
             } finally {
                 loader.style.display = 'none';
@@ -557,7 +569,7 @@
         /* ── CHEF TAB LOGIC ── */
         async function cook() {
             const ing = document.getElementById('ingredients').value.trim();
-            if (!ing) return alert('재료를 하나라도 적어주세유!');
+            if (!ing) { showHealthToast('🌳 재료를 하나라도 적어주세유!'); return; }
 
             document.getElementById('c-inputPanel').style.display = 'none';
             document.getElementById('c-loader').style.display = 'block';
@@ -580,7 +592,7 @@
                     throw new Error(data.error);
                 }
             } catch(e) {
-                alert(e.message);
+                showHealthToast('⚠️ 시연이 괌습니다🔥 (' + e.message + ')');
                 document.getElementById('c-inputPanel').style.display = 'block';
                 document.getElementById('c-loader').style.display = 'none';
             }
@@ -590,6 +602,19 @@
             document.getElementById('ingredients').value = '';
             document.getElementById('c-resultPanel').style.display = 'none';
             document.getElementById('c-inputPanel').style.display = 'block';
+        }
+
+        /* ── 토스트 ── */
+        function showHealthToast(msg) {
+            const t = document.getElementById('healthToast');
+            t.textContent = msg;
+            t.style.display = 'block';
+            t.style.opacity = '1';
+            clearTimeout(t._timer);
+            t._timer = setTimeout(() => {
+                t.style.opacity = '0';
+                setTimeout(() => t.style.display = 'none', 300);
+            }, 3000);
         }
     </script>
 </body>
