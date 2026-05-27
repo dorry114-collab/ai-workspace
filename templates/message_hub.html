@@ -1104,9 +1104,47 @@ async function kakaoAnalyzeStyle() {
     loader.style.display = 'block';
     resultBox.style.display = 'none';
 
+    // 1단계: 브라우저 로컬에서 파일을 읽고 마지막 1500라인만 슬라이싱
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    
+    reader.onload = async function(e) {
+        let content = e.target.result;
+        
+        // EUC-KR / CP949 인코딩 감지 및 재처리
+        if (content.includes('\ufffd') || content.includes('')) {
+            const secondReader = new FileReader();
+            secondReader.onload = async function(ev) {
+                await sendSampledStyleChat(ev.target.result, nickname, btn, loader, resultBox, resultText);
+            };
+            secondReader.readAsText(file, 'euc-kr');
+        } else {
+            await sendSampledStyleChat(content, nickname, btn, loader, resultBox, resultText);
+        }
+    };
+    
+    reader.onerror = function() {
+        hubShowToast('❌ 로컬 파일 읽기 실패', '#ef4444');
+        btn.disabled = false;
+        loader.style.display = 'none';
+    };
+    
+    reader.readAsText(file, 'utf-8');
+}
+
+// ── 로컬 가공 후 샘플링된 텍스트만 서버로 전송
+async function sendSampledStyleChat(content, nickname, btn, loader, resultBox, resultText) {
     try {
+        const lines = content.split(/\r?\n/);
+        const maxLines = 1500;
+        const sampledLines = lines.slice(-maxLines);
+        const sampledText = sampledLines.join('\n');
+        
+        // 50MB 이상이어도 전송되는 실제 크기는 100KB 이내로 축소됨
+        const blob = new Blob([sampledText], { type: 'text/plain' });
+        
         const formData = new FormData();
-        formData.append('file', fileInput.files[0]);
+        formData.append('file', blob, 'sampled_chat.txt');
         formData.append('nickname', nickname);
 
         const res = await fetch('/api/kakao/analyze_style', {
