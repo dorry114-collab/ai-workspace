@@ -1145,6 +1145,66 @@ function hubCopyToClipboard(text) {
     }
 }
 
+// ── 클라이언트 이미지 압축 및 과거 로그 제약 헬퍼
+function compressImage(file, maxWidth = 1000, quality = 0.85) {
+    return new Promise((resolve, reject) => {
+        if (!file.type || !file.type.startsWith('image/')) {
+            return resolve(file);
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+
+                // 세로형 카톡 캡처본 등에서 폰트 가독성을 보존하기 위해 width 기준으로만 축소
+                if (width > maxWidth) {
+                    height = Math.round((height * maxWidth) / width);
+                    width = maxWidth;
+                }
+
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (!blob) {
+                        return reject(new Error('Canvas blob is empty'));
+                    }
+                    const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
+                    const compressedFile = new File([blob], newFileName, {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    resolve(compressedFile);
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = (err) => reject(err);
+            img.src = e.target.result;
+        };
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+    });
+}
+
+function limitPastLogText(text, maxLines = 1000, maxChars = 50000) {
+    if (!text) return "";
+    let lines = text.split('\n');
+    if (lines.length > maxLines) {
+        lines = lines.slice(-maxLines);
+    }
+    let trimmed = lines.join('\n');
+    if (trimmed.length > maxChars) {
+        trimmed = trimmed.substring(trimmed.length - maxChars);
+    }
+    return trimmed;
+}
+
 
 /* ═══════════════════════════════════════
    TAB 1: 카톡 답장 추천
@@ -1502,10 +1562,37 @@ document.getElementById('kakaoAddMoreInput').addEventListener('change', e => {
     e.target.value = '';
 });
 
-function kakaoAddFiles(newFiles) {
-    kakaoUploadedFiles = [...kakaoUploadedFiles, ...newFiles];
+async function kakaoAddFiles(newFiles) {
+    // 최적화 중 상태 표시
+    hubShowToast("⚡ 이미지를 모바일에 최적화하는 중입니다...", "rgba(236,72,153,0.3)");
+    
+    const btnAnalyze = document.getElementById('kakaoBtnAnalyze');
+    if (btnAnalyze) {
+        btnAnalyze.disabled = true;
+        btnAnalyze.innerHTML = '<div class="spinner-sm"></div> 최적화 중...';
+    }
+
+    const compressedFiles = [];
+    for (let i = 0; i < newFiles.length; i++) {
+        const file = newFiles[i];
+        try {
+            const compFile = await compressImage(file);
+            compressedFiles.push(compFile);
+        } catch (err) {
+            console.error("Compression failed for file:", file.name, err);
+            compressedFiles.push(file); // 실패 시 원본 유지
+        }
+    }
+
+    kakaoUploadedFiles = [...kakaoUploadedFiles, ...compressedFiles];
     kakaoRenderThumbs();
     kakaoShowUploadedState();
+
+    if (btnAnalyze) {
+        btnAnalyze.disabled = false;
+        btnAnalyze.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 답장 추천 받기';
+    }
+    hubShowToast("✅ 이미지 최적화 완료!");
 }
 
 function kakaoRemoveFile(e, idx) {
@@ -1575,7 +1662,8 @@ async function kakaoAnalyzeImage() {
     if (tones.length === 0) { hubShowToast('분위기를 최소 1개 이상 선택해주세요!'); return; }
 
     const contextText = document.getElementById('kakaoContextInput').value.trim();
-    const pastLogText = document.getElementById('kakaoPastLogInput').value.trim();
+    const rawPastLogText = document.getElementById('kakaoPastLogInput').value.trim();
+    const pastLogText = limitPastLogText(rawPastLogText, 1000);
     const resultContainer = document.getElementById('kakaoReplyCards');
     const summaryEl = document.getElementById('kakaoSummaryText');
     resultContainer.innerHTML = '';
