@@ -763,47 +763,62 @@
     <div class="kakao-style-section" style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem; margin-bottom: 1.2rem;">
         <div class="kakao-style-header" style="display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="kakaoToggleStylePanel()">
             <div style="font-weight: 700; font-size: 1.02rem; display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.2rem;">✨</span> 나의 카톡 말투 학습 &amp; 적용
+                <span style="font-size: 1.2rem;">✨</span> 나의 카톡 말투 프로필 관리자
             </div>
             <div id="kakaoStyleToggleIcon" style="color: var(--muted); transition: 0.2s;"><i class="fa-solid fa-chevron-down"></i></div>
         </div>
         
         <div id="kakaoStyleContent" style="display: none; margin-top: 1.2rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem;">
-            <p style="font-size: 0.88rem; color: var(--muted); line-height: 1.5; margin-bottom: 1rem;">
-                카카오톡 대화방 설정에서 <b>대화 내보내기(텍스트만)</b>로 저장한 <code>.txt</code> 파일을 업로드하고 대화방 내 본인의 닉네임을 입력하시면, AI가 평소 말투(어미, 자주 쓰는 이모티콘 등)를 분석해 맞춤형 답장을 추천합니다.
-            </p>
-            <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1rem;">
-                <div>
-                    <label style="font-size: 0.8rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 6px;">1. 대화 로그 파일 (.txt)</label>
-                    <input type="file" id="kakaoStyleFileInput" accept=".txt" style="display: block; width: 100%; color: var(--text); font-size: 0.9rem;">
+            <!-- 말투 프로필 셀렉터 -->
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.82rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 6px;">활성화할 말투 프로필 선택:</label>
+                <div style="display: flex; gap: 8px;">
+                    <select id="kakaoProfileSelect" onchange="kakaoSelectProfile()" style="flex: 1; background: rgba(0,0,0,0.45); border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 10px; font-size: 0.92rem; outline: none; font-family: 'Pretendard', sans-serif;">
+                        <option value="none">❌ 적용 안 함</option>
+                    </select>
+                    <button onclick="kakaoDeleteSelectedProfile()" id="kakaoBtnDeleteProfile" style="display: none; background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #ef4444; border-radius: 8px; padding: 0 14px; cursor: pointer; font-size: 0.85rem;" title="선택한 프로필 삭제">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
                 </div>
-                <div>
-                    <label style="font-size: 0.8rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 6px;">2. 나의 대화방 닉네임</label>
-                    <input type="text" id="kakaoStyleNickname" placeholder="예: 길동 (정확히 일치해야 함)" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 8px 12px; font-size: 0.9rem; outline: none; font-family: 'Outfit', sans-serif;">
-                </div>
-            </div>
-            <button class="polisher-btn" id="kakaoBtnAnalyzeStyle" onclick="kakaoAnalyzeStyle()" style="margin-top: 0.5rem; padding: 0.75rem;">
-                <i class="fa-solid fa-brain"></i> 나의 말투 분석 시작하기
-            </button>
-            
-            <!-- 분석 로딩 -->
-            <div id="kakaoStyleLoader" style="display: none; text-align: center; margin-top: 1rem; color: var(--primary);">
-                <div class="spinner-sm" style="margin-right: 6px;"></div> 분석 중... (약 5~10초 소요)
             </div>
 
-            <!-- 분석 결과 -->
-            <div id="kakaoStyleResultBox" style="display: none; margin-top: 1.2rem; background: rgba(236,72,153,0.06); border: 1px solid rgba(236,72,153,0.15); border-radius: 12px; padding: 1rem;">
-                <div style="font-weight: 700; font-size: 0.9rem; color: var(--primary); margin-bottom: 6px;">🎯 분석된 나의 대화 스타일</div>
-                <div id="kakaoStyleResultText" style="font-size: 0.92rem; line-height: 1.6; color: #e6edf3; margin-bottom: 12px; word-break: keep-all;"></div>
-                <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(236,72,153,0.1); padding-top: 10px;">
-                     <span style="font-size: 0.85rem; color: var(--muted);">답장 추천 시 내 말투 자동 적용</span>
-                     <!-- 토글 스위치 -->
-                     <label class="kakao-switch-label">
-                         <input type="checkbox" id="kakaoStyleApplyToggle" onchange="kakaoToggleStyleApply()">
-                         <span class="kakao-switch-slider"></span>
-                     </label>
-                 </div>
+            <!-- 활성화된 프로필 설명 -->
+            <div id="kakaoProfileDetails" style="display: none; background: rgba(236,72,153,0.04); border: 1px solid rgba(236,72,153,0.15); border-radius: 12px; padding: 1rem; margin-bottom: 1.2rem;">
+                <div style="font-weight: 700; font-size: 0.88rem; color: var(--primary); margin-bottom: 4px;">🎯 분석된 말투 스타일</div>
+                <div id="kakaoProfileStyleText" style="font-size: 0.9rem; line-height: 1.55; color: #e6edf3; word-break: keep-all;"></div>
             </div>
+
+            <!-- 새 프로필 추가 토글 버튼 -->
+            <button onclick="kakaoToggleNewProfileForm()" class="kakao-add-more-btn" style="width: 100%; border-style: dashed; padding: 10px; display: block; text-align: center; font-weight: 600;">
+                <i class="fa-solid fa-plus"></i> 새 말투 프로필 학습/추가하기
+            </button>
+
+            <!-- 새 프로필 추가 폼 -->
+            <div id="kakaoNewProfileForm" style="display: none; margin-top: 1.2rem; border-top: 1px dashed rgba(255,255,255,0.1); padding-top: 1.2rem;">
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 1rem;">
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">1. 프로필 이름 (예: 회사동료, 찐친방, 여친방)</label>
+                        <input type="text" id="kakaoNewProfileName" placeholder="예: 친구방 말투" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 8px 12px; font-size: 0.9rem; outline: none; font-family: 'Pretendard', sans-serif;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">2. 대화 로그 파일 (.txt)</label>
+                        <input type="file" id="kakaoStyleFileInput" accept=".txt" style="display: block; width: 100%; color: var(--text); font-size: 0.88rem;">
+                    </div>
+                    <div>
+                        <label style="font-size: 0.8rem; color: var(--muted); font-weight: 600; display: block; margin-bottom: 4px;">3. 나의 대화방 닉네임</label>
+                        <input type="text" id="kakaoStyleNickname" placeholder="예: 길동 (정확히 일치해야 함)" style="width: 100%; background: rgba(0,0,0,0.4); border: 1px solid var(--border); border-radius: 8px; color: #fff; padding: 8px 12px; font-size: 0.9rem; outline: none; font-family: 'Pretendard', sans-serif;">
+                    </div>
+                </div>
+                <button class="polisher-btn" id="kakaoBtnAnalyzeStyle" onclick="kakaoAnalyzeStyle()" style="margin-top: 0.5rem; padding: 0.75rem; width: 100%;">
+                    <i class="fa-solid fa-brain"></i> 대화 분석 및 새 프로필 저장
+                </button>
+                
+                <!-- 분석 로딩 -->
+                <div id="kakaoStyleLoader" style="display: none; text-align: center; margin-top: 1rem; color: var(--primary);">
+                    <div class="spinner-sm" style="margin-right: 6px;"></div> 분석 중... (약 3~5초 소요)
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -1081,14 +1096,25 @@ function kakaoToggleStylePanel() {
     }
 }
 
+// ── 말투 프로필 상태
+let kakaoProfiles = [];
+
+function kakaoToggleNewProfileForm() {
+    const form = document.getElementById('kakaoNewProfileForm');
+    if (form.style.display === 'none') {
+        form.style.display = 'block';
+    } else {
+        form.style.display = 'none';
+    }
+}
+
 // ── 말투 분석 API 연동
 async function kakaoAnalyzeStyle() {
     const fileInput = document.getElementById('kakaoStyleFileInput');
     const nicknameInput = document.getElementById('kakaoStyleNickname');
+    const nameInput = document.getElementById('kakaoNewProfileName');
     const btn = document.getElementById('kakaoBtnAnalyzeStyle');
     const loader = document.getElementById('kakaoStyleLoader');
-    const resultBox = document.getElementById('kakaoStyleResultBox');
-    const resultText = document.getElementById('kakaoStyleResultText');
 
     if (!fileInput.files || fileInput.files.length === 0) {
         hubShowToast('대화 로그(.txt) 파일을 업로드해주세요!', '#ef4444');
@@ -1099,27 +1125,33 @@ async function kakaoAnalyzeStyle() {
         hubShowToast('나의 대화방 닉네임을 입력해주세요!', '#ef4444');
         return;
     }
+    const profileName = nameInput.value.trim();
+    if (!profileName) {
+        hubShowToast('말투 프로필 이름을 입력해주세요!', '#ef4444');
+        return;
+    }
 
     btn.disabled = true;
     loader.style.display = 'block';
-    resultBox.style.display = 'none';
 
-    // 1단계: 브라우저 로컬에서 파일을 읽고 마지막 1500라인만 슬라이싱
     const file = fileInput.files[0];
+    const fileSize = file.size;
+    const chunkSize = 300 * 1024; // 300KB
+    const start = Math.max(0, fileSize - chunkSize);
+    const blobChunk = file.slice(start, fileSize);
+
     const reader = new FileReader();
     
     reader.onload = async function(e) {
         let content = e.target.result;
-        
-        // EUC-KR / CP949 인코딩 감지 및 재처리
         if (content.includes('\ufffd') || content.includes('')) {
             const secondReader = new FileReader();
             secondReader.onload = async function(ev) {
-                await sendSampledStyleChat(ev.target.result, nickname, btn, loader, resultBox, resultText);
+                await sendSampledStyleChat(ev.target.result, nickname, profileName, btn, loader);
             };
-            secondReader.readAsText(file, 'euc-kr');
+            secondReader.readAsText(blobChunk, 'euc-kr');
         } else {
-            await sendSampledStyleChat(content, nickname, btn, loader, resultBox, resultText);
+            await sendSampledStyleChat(content, nickname, profileName, btn, loader);
         }
     };
     
@@ -1129,18 +1161,21 @@ async function kakaoAnalyzeStyle() {
         loader.style.display = 'none';
     };
     
-    reader.readAsText(file, 'utf-8');
+    reader.readAsText(blobChunk, 'utf-8');
 }
 
 // ── 로컬 가공 후 샘플링된 텍스트만 서버로 전송
-async function sendSampledStyleChat(content, nickname, btn, loader, resultBox, resultText) {
+async function sendSampledStyleChat(content, nickname, profileName, btn, loader) {
     try {
         const lines = content.split(/\r?\n/);
+        if (lines.length > 1) {
+            lines.shift();
+        }
+        
         const maxLines = 1500;
         const sampledLines = lines.slice(-maxLines);
         const sampledText = sampledLines.join('\n');
         
-        // 50MB 이상이어도 전송되는 실제 크기는 100KB 이내로 축소됨
         const blob = new Blob([sampledText], { type: 'text/plain' });
         
         const formData = new FormData();
@@ -1154,18 +1189,27 @@ async function sendSampledStyleChat(content, nickname, btn, loader, resultBox, r
         const data = await res.json();
 
         if (data.success) {
-            resultText.textContent = data.style;
-            resultBox.style.display = 'block';
+            // 새 프로필 저장
+            const newProfile = {
+                id: Date.now().toString(),
+                name: profileName,
+                style: data.style,
+                nickname: nickname
+            };
+            kakaoProfiles.push(newProfile);
+            localStorage.setItem('kakaoProfiles', JSON.stringify(kakaoProfiles));
+            localStorage.setItem('kakaoActiveProfileId', newProfile.id);
             
-            // 로컬 스토리지 저장
-            localStorage.setItem('kakaoCustomStyle', data.style);
-            localStorage.setItem('kakaoStyleNickname', nickname);
-            localStorage.setItem('kakaoCustomStyleActive', 'true');
+            // 입력폼 초기화
+            document.getElementById('kakaoNewProfileName').value = '';
+            document.getElementById('kakaoStyleNickname').value = '';
+            document.getElementById('kakaoStyleFileInput').value = '';
+            document.getElementById('kakaoNewProfileForm').style.display = 'none';
             
-            document.getElementById('kakaoStyleApplyToggle').checked = true;
-            kakaoUpdateCustomToneChipVisibility(true);
+            // UI 갱신
+            kakaoUpdateProfileDropdown();
             
-            hubShowToast('✅ 말투 학습 완료! 아래 토글을 켜면 말투가 반영됩니다.');
+            hubShowToast('✅ 말투 학습 및 프로필 추가 완료!');
         } else {
             hubShowToast('❌ 분석 실패: ' + data.error, '#ef4444');
         }
@@ -1180,44 +1224,105 @@ async function sendSampledStyleChat(content, nickname, btn, loader, resultBox, r
 
 // ── 말투 저장값 로드
 function kakaoLoadStyleSettings() {
-    const savedStyle = localStorage.getItem('kakaoCustomStyle');
-    const savedNickname = localStorage.getItem('kakaoStyleNickname');
-    const isActive = localStorage.getItem('kakaoCustomStyleActive') === 'true';
-
-    if (savedNickname) {
-        document.getElementById('kakaoStyleNickname').value = savedNickname;
+    try {
+        const saved = localStorage.getItem('kakaoProfiles');
+        kakaoProfiles = saved ? jsonSafeParse(saved, []) : [];
+    } catch(e) {
+        kakaoProfiles = [];
     }
-    if (savedStyle) {
-        document.getElementById('kakaoStyleResultText').textContent = savedStyle;
-        document.getElementById('kakaoStyleResultBox').style.display = 'block';
-        document.getElementById('kakaoStyleApplyToggle').checked = isActive;
-        kakaoUpdateCustomToneChipVisibility(isActive);
-    }
-}
-
-// ── 말투 적용 토글 동작
-function kakaoToggleStyleApply() {
-    const isChecked = document.getElementById('kakaoStyleApplyToggle').checked;
-    localStorage.setItem('kakaoCustomStyleActive', isChecked ? 'true' : 'false');
-    kakaoUpdateCustomToneChipVisibility(isChecked);
     
-    if (isChecked) {
-        hubShowToast('✨ 내 말투를 적용합니다. 답장에 "나의 말투" 결과가 추가됩니다.');
+    kakaoUpdateProfileDropdown();
+}
+
+function jsonSafeParse(str, fallback) {
+    try { return JSON.parse(str); } catch(e) { return fallback; }
+}
+
+// ── 프로필 드롭다운 리스트 갱신
+function kakaoUpdateProfileDropdown() {
+    const select = document.getElementById('kakaoProfileSelect');
+    if (!select) return;
+    select.innerHTML = '<option value="none">❌ 적용 안 함</option>';
+    
+    kakaoProfiles.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `✨ ${p.name}`;
+        select.appendChild(opt);
+    });
+    
+    const activeId = localStorage.getItem('kakaoActiveProfileId') || 'none';
+    select.value = activeId;
+    
+    kakaoRenderActiveProfileDetails();
+}
+
+// ── 프로필 선택 변경 시 동작
+function kakaoSelectProfile() {
+    const select = document.getElementById('kakaoProfileSelect');
+    const val = select.value;
+    localStorage.setItem('kakaoActiveProfileId', val);
+    kakaoRenderActiveProfileDetails();
+}
+
+// ── 활성화된 프로필 세부내용 렌더링
+function kakaoRenderActiveProfileDetails() {
+    const activeId = localStorage.getItem('kakaoActiveProfileId') || 'none';
+    const details = document.getElementById('kakaoProfileDetails');
+    const textEl = document.getElementById('kakaoProfileStyleText');
+    const delBtn = document.getElementById('kakaoBtnDeleteProfile');
+    const customChip = document.getElementById('kakaoCustomToneChip');
+
+    if (!details) return;
+
+    if (activeId === 'none') {
+        details.style.display = 'none';
+        delBtn.style.display = 'none';
+        if (customChip) {
+            customChip.style.display = 'none';
+            customChip.classList.remove('selected');
+        }
     } else {
-        hubShowToast('정상적인 답장 스타일들로 추천합니다.');
+        const profile = kakaoProfiles.find(p => p.id === activeId);
+        if (profile) {
+            details.style.display = 'block';
+            textEl.textContent = profile.style;
+            delBtn.style.display = 'block';
+            
+            // 톤 선택 칩 업데이트
+            if (customChip) {
+                customChip.style.display = 'inline-block';
+                customChip.classList.add('selected');
+                customChip.dataset.tone = profile.name + " 말투";
+                customChip.innerHTML = `✨ ${profile.name}`;
+            }
+            hubShowToast(`✨ "${profile.name}" 프로필이 활성화되었습니다.`);
+        } else {
+            details.style.display = 'none';
+            delBtn.style.display = 'none';
+            if (customChip) {
+                customChip.style.display = 'none';
+                customChip.classList.remove('selected');
+            }
+        }
     }
 }
 
-// ── 톤 칩 목록에 "나의 말투" 보이기/숨기기
-function kakaoUpdateCustomToneChipVisibility(visible) {
-    const chip = document.getElementById('kakaoCustomToneChip');
-    if (!chip) return;
-    if (visible) {
-        chip.style.display = 'inline-block';
-        chip.classList.add('selected');
-    } else {
-        chip.style.display = 'none';
-        chip.classList.remove('selected');
+// ── 말투 프로필 삭제
+function kakaoDeleteSelectedProfile() {
+    const activeId = localStorage.getItem('kakaoActiveProfileId') || 'none';
+    if (activeId === 'none') return;
+    
+    const profile = kakaoProfiles.find(p => p.id === activeId);
+    if (!profile) return;
+
+    if (confirm(`"${profile.name}" 말투 프로필을 정말 삭제하시겠습니까?`)) {
+        kakaoProfiles = kakaoProfiles.filter(p => p.id !== activeId);
+        localStorage.setItem('kakaoProfiles', JSON.stringify(kakaoProfiles));
+        localStorage.setItem('kakaoActiveProfileId', 'none');
+        
+        kakaoUpdateProfileDropdown();
+        hubShowToast('🗑️ 프로필이 삭제되었습니다.');
     }
 }
 
@@ -1325,8 +1430,19 @@ async function kakaoAnalyzeImage() {
     let hasError = false;
 
     // 말투 데이터 준비
-    const customStyleText = localStorage.getItem('kakaoCustomStyle') || '';
-    const customStyleActive = localStorage.getItem('kakaoCustomStyleActive') === 'true';
+    const activeProfileId = localStorage.getItem('kakaoActiveProfileId') || 'none';
+    let customStyleText = '';
+    let customStyleActive = false;
+    let customStyleName = '나의 말투';
+
+    if (activeProfileId !== 'none') {
+        const activeProfile = kakaoProfiles.find(p => p.id === activeProfileId);
+        if (activeProfile) {
+            customStyleText = activeProfile.style || '';
+            customStyleActive = true;
+            customStyleName = activeProfile.name + " 말투";
+        }
+    }
 
     for (let i = 0; i < kakaoUploadedFiles.length; i++) {
         // 썸네일 강조
@@ -1345,6 +1461,7 @@ async function kakaoAnalyzeImage() {
             formData.append('history', JSON.stringify(kakaoSessionHistory));
             formData.append('custom_style', customStyleText);
             formData.append('custom_style_active', customStyleActive);
+            formData.append('custom_style_name', customStyleName);
 
             const res = await fetch('/api/kakao/reply', { method: 'POST', body: formData });
             const data = await res.json();
