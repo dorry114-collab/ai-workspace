@@ -2067,3 +2067,470 @@ def redirect_fashion():
     return redirect('/vision_ai?tab=fashion', code=301)
 
 
+# ═══════════════════════════════════════════════════════════════
+#  9. 💖 AI 카톡 관계 분석기 (AI Relationship Coach)
+# ═══════════════════════════════════════════════════════════════
+
+@tools_bp.route('/relation')
+def relation_view():
+    return render_template('kakao_analyzer.html')
+
+
+@tools_bp.route('/api/kakao/analyze_file', methods=['POST'])
+def api_kakao_analyze_file():
+    import re
+    from datetime import datetime
+    import collections
+    import traceback
+    import json
+    import google.generativeai as genai
+
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'success': False, 'error': 'GEMINI_API_KEY가 설정되지 않았습니다.'})
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': '대화 로그 파일(.txt)이 필요합니다.'})
+
+    file = request.files['file']
+    user_name = request.form.get('user_name', '').strip()
+    room_mode = request.form.get('room_mode', '썸/연인').strip()
+
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'error': '올바른 대화 로그 파일을 선택해주세요.'})
+
+    try:
+        # 파일 인코딩 읽기 시도 (BOM 있는 UTF-8, 일반 UTF-8, CP949, EUC-KR 순서)
+        raw_bytes = file.read()
+        file_content = ""
+        for encoding in ['utf-8-sig', 'utf-8', 'cp949', 'euc-kr']:
+            try:
+                file_content = raw_bytes.decode(encoding)
+                break
+            except:
+                continue
+
+        if not file_content:
+            return jsonify({'success': False, 'error': '파일의 인코딩을 분석할 수 없습니다. UTF-8 포맷으로 올려주세요.'})
+
+        # ── 1. 정규식 파서 및 메시지 추출
+        pc_pat = re.compile(r'^\[([^\]]+)\]\s+\[([^\]]+)\]\s+(.*)$')
+        android_pat = re.compile(r'^(\d{4}년 \d{1,2}월 \d{1,2}일 (?:오전|오후) \d{1,2}:\d{2}),\s*([^:]+)\s*:\s*(.*)$')
+        android_en_pat = re.compile(r'^([A-Za-z]+ \d{1,2},\s*\d{4},\s*\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)),\s*([^:]+)\s*:\s*(.*)$')
+        ios_pat = re.compile(r'^([^,]+),\s*(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.\s*\d{1,2}:\d{2})\s*:\s*(.*)$')
+        date_marker_pat = re.compile(r'^-+\s*([^-]+)\s*-+$')
+
+        messages = []
+        lines = file_content.split('\n')
+        current_date = ""
+        current_msg = None
+
+        for line in lines:
+            line = line.strip('\r\n')
+            if not line:
+                continue
+
+            # 날짜 마커 확인
+            m_date = date_marker_pat.match(line)
+            if m_date:
+                text_inside = m_date.group(1).strip()
+                if ('년' in text_inside and '월' in text_inside) or ('.' in text_inside) or any(m in text_inside.upper() for m in ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']):
+                    current_date = text_inside
+                continue
+
+            # 1. PC 포맷 매칭
+            m_pc = pc_pat.match(line)
+            if m_pc:
+                if current_msg:
+                    messages.append(current_msg)
+                sender = m_pc.group(1).strip()
+                time_str = m_pc.group(2).strip()
+                content = m_pc.group(3)
+                current_msg = {
+                    'sender': sender,
+                    'date_str': current_date,
+                    'time_str': time_str,
+                    'content': content,
+                    'format': 'PC'
+                }
+                continue
+
+            # 2. Android 포맷 매칭
+            m_and = android_pat.match(line)
+            if m_and:
+                if current_msg:
+                    messages.append(current_msg)
+                time_str = m_and.group(1).strip()
+                sender = m_and.group(3).strip()
+                content = m_and.group(4)
+                current_msg = {
+                    'sender': sender,
+                    'date_str': time_str,
+                    'time_str': '',
+                    'content': content,
+                    'format': 'Android'
+                }
+                continue
+
+            # 3. Android English 포맷 매칭
+            m_and_en = android_en_pat.match(line)
+            if m_and_en:
+                if current_msg:
+                    messages.append(current_msg)
+                time_str = m_and_en.group(1).strip()
+                sender = m_and_en.group(2).strip()
+                content = m_and_en.group(3)
+                current_msg = {
+                    'sender': sender,
+                    'date_str': time_str,
+                    'time_str': '',
+                    'content': content,
+                    'format': 'Android_EN'
+                }
+                continue
+
+            # 4. iOS 포맷 매칭
+            m_ios = ios_pat.match(line)
+            if m_ios:
+                if current_msg:
+                    messages.append(current_msg)
+                sender = m_ios.group(1).strip()
+                time_str = m_ios.group(2).strip()
+                content = m_ios.group(3)
+                current_msg = {
+                    'sender': sender,
+                    'date_str': time_str,
+                    'time_str': '',
+                    'content': content,
+                    'format': 'iOS'
+                }
+                continue
+
+            # 이전 메시지 개행 내용 처리
+            if current_msg and not line.startswith('-----'):
+                current_msg['content'] += '\n' + line
+
+        if current_msg:
+            messages.append(current_msg)
+
+        if not messages:
+            return jsonify({'success': False, 'error': '대화 추출에 실패했습니다. 올바른 포맷의 카톡 대화방 텍스트 파일인지 확인해 주세요.'})
+
+        # ── 2. 발신자(나와 상대방) 구분
+        senders_count = collections.Counter([m['sender'] for m in messages])
+        unique_senders = [s[0] for s in senders_count.most_common()]
+
+        user_alias = user_name if user_name in unique_senders else (unique_senders[1] if len(unique_senders) > 1 else unique_senders[0])
+        counterpart_alias = unique_senders[0] if user_alias != unique_senders[0] else (unique_senders[1] if len(unique_senders) > 1 else "상대방")
+
+        # ── 3. 날짜/시간 데이터 파싱 및 정밀 통계 계산
+        def parse_to_datetime(date_s, time_s):
+            try:
+                # 1. PC 포맷 파싱 (date_s: "2026년 5월 27일 수요일", time_s: "오후 3:15")
+                if date_s and time_s:
+                    date_clean = re.sub(r'\s*[가-힣]+요일', '', date_s).strip()
+                    d_nums = [int(x) for x in re.findall(r'\d+', date_clean)]
+                    t_nums = [int(x) for x in re.findall(r'\d+', time_s)]
+                    if len(d_nums) >= 3 and len(t_nums) >= 2:
+                        hour = t_nums[0]
+                        minute = t_nums[1]
+                        if '오후' in time_s and hour != 12:
+                            hour += 12
+                        if '오전' in time_s and hour == 12:
+                            hour = 0
+                        return datetime(d_nums[0], d_nums[1], d_nums[2], hour, minute)
+
+                # 2. Android 포맷 파싱 (date_s: "2026년 5월 27일 오후 3:15")
+                if '년' in date_s and '월' in date_s and '일' in date_s:
+                    nums = [int(x) for x in re.findall(r'\d+', date_s)]
+                    if len(nums) >= 5:
+                        hour = nums[3]
+                        minute = nums[4]
+                        if '오후' in date_s and hour != 12:
+                            hour += 12
+                        if '오전' in date_s and hour == 12:
+                            hour = 0
+                        return datetime(nums[0], nums[1], nums[2], hour, minute)
+
+                # 3. iOS 포맷 파싱 (date_s: "2026. 5. 27. 15:15")
+                if '.' in date_s:
+                    nums = [int(x) for x in re.findall(r'\d+', date_s)]
+                    if len(nums) >= 5:
+                        return datetime(nums[0], nums[1], nums[2], nums[3], nums[4])
+
+                # 4. English 포맷 파싱 ("May 27, 2026, 3:15 PM")
+                is_pm = 'PM' in date_s.upper()
+                nums = [int(x) for x in re.findall(r'\d+', date_s)]
+                if len(nums) >= 5:
+                    year = 2026
+                    for num in nums:
+                        if num > 1900 and num < 2100:
+                            year = num
+                            break
+                    months = {"JAN":1, "FEB":2, "MAR":3, "APR":4, "MAY":5, "JUN":6, "JUL":7, "AUG":8, "SEP":9, "OCT":10, "NOV":11, "DEC":12}
+                    month = 1
+                    for m_name, m_val in months.items():
+                        if m_name in date_s.upper():
+                            month = m_val
+                            break
+                    other_nums = [n for n in nums if n != year]
+                    if len(other_nums) >= 3:
+                        day = other_nums[0]
+                        hour = other_nums[1]
+                        minute = other_nums[2]
+                        if is_pm and hour != 12:
+                            hour += 12
+                        if 'AM' in date_s.upper() and hour == 12:
+                            hour = 0
+                        return datetime(year, month, day, hour, minute)
+            except:
+                pass
+            return None
+
+        valid_messages = []
+        for m in messages:
+            dt = parse_to_datetime(m['date_str'], m['time_str'])
+            if dt:
+                m['dt'] = dt
+                valid_messages.append(m)
+
+        valid_messages.sort(key=lambda x: x['dt'])
+
+        if not valid_messages:
+            valid_messages = [{'dt': datetime.now(), 'sender': m['sender'], 'content': m['content']} for m in messages]
+
+        # ── 4. 통계 항목별 정량 계산
+        total_count = len(valid_messages)
+        user_msg_count = sum(1 for m in valid_messages if m['sender'] == user_alias)
+        counterpart_msg_count = sum(1 for m in valid_messages if m['sender'] == counterpart_alias)
+
+        user_char_sum = sum(len(m['content']) for m in valid_messages if m['sender'] == user_alias)
+        counterpart_char_sum = sum(len(m['content']) for m in valid_messages if m['sender'] == counterpart_alias)
+        
+        user_char_avg = user_char_sum / user_msg_count if user_msg_count else 0
+        counterpart_char_avg = counterpart_char_sum / counterpart_msg_count if counterpart_msg_count else 0
+
+        # 하트/이모티콘 카운팅
+        emoji_patt = re.compile(r'❤️|💕|😍|😘|🥰|💖|💘|💑|💋|사랑|좋아|\(하트\)|\(하트콘\)|\(크크\)|\(우와\)|\(눈물\)|\(하하\)|😂|🤣|👍|😊|😺|🐶|🐱')
+        user_emojis = sum(len(emoji_patt.findall(m['content'])) for m in valid_messages if m['sender'] == user_alias)
+        counterpart_emojis = sum(len(emoji_patt.findall(m['content'])) for m in valid_messages if m['sender'] == counterpart_alias)
+
+        hourly_activity = [0] * 24
+        for m in valid_messages:
+            hourly_activity[m['dt'].hour] += 1
+
+        user_latencies = []
+        counterpart_latencies = []
+        user_initiatives = 0
+        counterpart_initiatives = 0
+        user_double_texts = 0
+        counterpart_double_texts = 0
+
+        last_sender = None
+        last_dt = None
+
+        for m in valid_messages:
+            current_sender = m['sender']
+            current_dt = m['dt']
+
+            if last_dt is None:
+                last_sender = current_sender
+                last_dt = current_dt
+                if current_sender == user_alias:
+                    user_initiatives += 1
+                else:
+                    counterpart_initiatives += 1
+                continue
+
+            diff = (current_dt - last_dt).total_seconds()
+
+            if diff >= 21600:
+                if current_sender == user_alias:
+                    user_initiatives += 1
+                else:
+                    counterpart_initiatives += 1
+            else:
+                if current_sender == last_sender:
+                    if diff >= 180:
+                        if current_sender == user_alias:
+                            user_double_texts += 1
+                        else:
+                            counterpart_double_texts += 1
+                else:
+                    if diff < 43200:
+                        if current_sender == user_alias:
+                            user_latencies.append(diff)
+                        else:
+                            counterpart_latencies.append(diff)
+
+            last_sender = current_sender
+            last_dt = current_dt
+
+        user_reply_speed_mins = (sum(user_latencies) / len(user_latencies) / 60) if user_latencies else 5.0
+        counterpart_reply_speed_mins = (sum(counterpart_latencies) / len(counterpart_latencies) / 60) if counterpart_latencies else 5.0
+
+        # ── 5. 핵심 어휘 클라우드 생성
+        stop_words = {
+            '은','는','이','가','을','를','에','에서','에게','한테','의','과','와','로','으로','고','라고','면','이라','서','며','고','하','있',
+            'ㅋ','ㅎ','ㅠ','ㅜ','ㅇ','아','오','응','어','웅','아아','오오','앗','대박','진짜','너무','그냥','내가','너가','나도','너도','우리',
+            '오늘','내일','어제','지금','이제','그거','저녁','아침','점심','했다','했어','그래','근데','아니','어떻게','왜','어디','언제','해서',
+            '보내','하고','보면','한번','다시','많이','대체','하고','어디서','어디가','해서','하고','했네','했지','이지','이야','이다','했다가'
+        }
+        word_counter = collections.Counter()
+        for m in valid_messages:
+            content_clean = re.sub(r'[^가-힣\s]', '', m['content'])
+            words = content_clean.split()
+            for w in words:
+                if len(w) >= 2 and w not in stop_words:
+                    word_counter[w] += 1
+
+        top_words = [{'text': pair[0], 'value': pair[1]} for pair in word_counter.most_common(30)]
+
+        # ── 6. 주차별 친밀도 온도 타임라인 계산
+        week_groups = collections.defaultdict(list)
+        for m in valid_messages:
+            week_key = m['dt'].strftime("%Y-w%W")
+            week_groups[week_key].append(m)
+
+        sorted_weeks = sorted(week_groups.keys())
+        temperature_timeline = []
+        
+        if len(sorted_weeks) > 10:
+            sorted_weeks = sorted_weeks[-10:]
+
+        for i, wk in enumerate(sorted_weeks):
+            week_msgs = week_groups[wk]
+            w_total = len(week_msgs)
+            w_emojis = sum(len(emoji_patt.findall(m['content'])) for m in week_msgs)
+            
+            emoji_ratio = (w_emojis / w_total) if w_total else 0
+            base_score = 70 + min(20, int(emoji_ratio * 100))
+            base_score = max(60, min(99, base_score + min(9, int(w_total / 20))))
+            
+            temperature_timeline.append({
+                'label': f"{i+1}주차",
+                'score': base_score
+            })
+
+        if not temperature_timeline:
+            temperature_timeline = [{'label': '1주차', 'score': 75}]
+
+        # ── 7. 최근 350줄 추출하여 대화 샘플 구성
+        recent_log_text = ""
+        sample_msgs = valid_messages[-350:] if len(valid_messages) > 350 else valid_messages
+        for m in sample_msgs:
+            recent_log_text += f"[{m['sender']}] {m['content']}\n"
+
+        # ── 8. Gemini API 호출
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+
+        prompt = f"""당신은 연애 심리학 및 대화 분석 전문가입니다.
+두 사람의 카카오톡 대화방 통계 데이터와 대화의 최신 일부 로그를 기반으로, 두 사람의 관계와 성향을 심층 분석한 리포트를 작성해 주세요.
+
+[대화 분석 대상자]
+- 나(사용자): {user_alias}
+- 상대방(대화 상대): {counterpart_alias}
+- 대화방 모드(성격): {room_mode} (썸/연인, 친구, 비즈니스 중 하나)
+
+[통계 분석 결과]
+- 총 메시지 수: {total_count} (나: {user_msg_count}개, 상대방: {counterpart_msg_count}개)
+- 평균 문장 글자 수: 나 {user_char_avg:.1f}자, 상대방 {counterpart_char_avg:.1f}자
+- 평균 답장 시간(분): 나 {user_reply_speed_mins:.1f}분, 상대방 {counterpart_reply_speed_mins:.1f}분
+- 선톡(대화 시작) 횟수: 나 {user_initiatives}회, 상대방 {counterpart_initiatives}회
+- 연속 톡 전송(Double-texting) 횟수: 나 {user_double_texts}회, 상대방 {counterpart_double_texts}회
+- 하트/이모티콘 사용 횟수: 나 {user_emojis}회, 상대방 {counterpart_emojis}회
+
+[최근 대화 로그 일부 (어조 및 관계 맥락 파악용)]
+\"\"\"
+{recent_log_text}
+\"\"\"
+
+위 데이터와 대화 어조를 바탕으로 다음 요건을 만족하여 분석 리포트를 작성해 주세요.
+
+**작성 가이드:**
+1. **relationship_score**: 두 사람의 친밀도 및 케미 점수 (0~100 사이의 정수). 대화 모드(썸/연인, 친구, 비즈니스)에 맞춰 판단하세요.
+2. **relationship_type**: 두 사람의 관계 소통 유형 한 줄 요약 (예: '티키타카형 소통가', '조심스러운 탐색기', '사무적인 협조자').
+3. **mbti_user** & **mbti_counterpart**: 대화 패턴과 로그를 바탕으로 유추한 각각의 MBTI.
+4. **radar_user** & **radar_counterpart**: 다음 5가지 지표의 백분율 점수(0~100 사이 정수):
+   - warmth (다정함/공감도)
+   - logic (논리성/분석적 성향)
+   - expression (감정 표현력/이모티콘 빈도)
+   - speed (답장 속도/신속성)
+   - initiative (대화 적극성/선톡 빈도)
+5. **personality_analysis_user** & **personality_analysis_counterpart**: 두 사람 각각의 대화 방식 성향 분석 (3~4문장).
+6. **dos**: 상대방과 대화할 때 하면 좋은 행동이나 대화 팁 (2~3가지, 리스트 형태).
+7. **donts**: 상대방과 대화할 때 피해야 할 행동이나 지뢰밭 행동 (2~3가지, 리스트 형태).
+8. **cpr_revival**: 상대방과의 이전 대화 맥락과 상대 성향에 완벽히 맞춘 '대화 심폐소생(Chat CPR) 선톡 메시지' 3가지 상황별 생성:
+   - ghosting: 상대방이 답장을 안 하거나(읽씹/안읽씹) 대화가 끊겼을 때 보내기 좋은 톡.
+   - awkward: 한동안 연락이 뜸해져서 어색해진 분위기를 깨는 톡.
+   - general: 일상적으로 편하게 관계를 다지는 톡.
+   *(각 메시지는 구체적이고 자연스러운 어투여야 하며, 상대방이 좋아하는 관심사나 최근 대화 언급을 반드시 반영해 작성할 것)*
+
+반드시 아래 JSON 형식으로만 응답해 주세요. 다른 텍스트는 절대 포함하지 마세요:
+{{
+  "relationship_score": 85,
+  "relationship_type": "...",
+  "mbti_user": "...",
+  "mbti_counterpart": "...",
+  "radar_user": {{"warmth": 80, "logic": 40, "expression": 90, "speed": 85, "initiative": 70}},
+  "radar_counterpart": {{"warmth": 60, "logic": 80, "expression": 50, "speed": 55, "initiative": 75}},
+  "personality_analysis_user": "...",
+  "personality_analysis_counterpart": "...",
+  "dos": ["...", "..."],
+  "donts": ["...", "..."],
+  "cpr_revival": {{
+    "ghosting": "...",
+    "awkward": "...",
+    "general": "..."
+  }}
+}}"""
+
+        response = model.generate_content(
+            [prompt],
+            generation_config=genai.types.GenerationConfig(temperature=0.8)
+        )
+        
+        result_text = response.text.strip()
+
+        if '```json' in result_text:
+            result_text = result_text.split('```json')[1].split('```')[0].strip()
+        elif '```' in result_text:
+            result_text = result_text.split('```')[1].split('```')[0].strip()
+
+        report_parsed = json.loads(result_text)
+
+        hours_labels = [f"{h}시" for h in range(24)]
+        stats_response = {
+            'user_name': user_alias,
+            'counterpart_name': counterpart_alias,
+            'total_messages': total_count,
+            'user_msg_count': user_msg_count,
+            'counterpart_msg_count': counterpart_msg_count,
+            'user_char_avg': round(user_char_avg, 1),
+            'counterpart_char_avg': round(counterpart_char_avg, 1),
+            'user_reply_speed_mins': round(user_reply_speed_mins, 1),
+            'counterpart_reply_speed_mins': round(counterpart_reply_speed_mins, 1),
+            'user_initiative_count': user_initiatives,
+            'counterpart_initiative_count': counterpart_initiatives,
+            'user_double_text_count': user_double_texts,
+            'counterpart_double_text_count': counterpart_double_texts,
+            'user_emojis': user_emojis,
+            'counterpart_emojis': counterpart_emojis,
+            'hourly_activity': hourly_activity,
+            'hourly_labels': hours_labels,
+            'word_cloud': top_words,
+            'temperature_timeline': temperature_timeline
+        }
+
+        return jsonify({
+            'success': True,
+            'stats': stats_response,
+            'report': report_parsed
+        })
+
+    except Exception as e:
+        print(f"Kakao File Analyze Error: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'파일 분석 중 오류가 발생했습니다: {str(e)}'})
+
+
