@@ -1769,11 +1769,14 @@ def api_kakao_reply():
     if not api_key:
         return jsonify({'success': False, 'error': 'GEMINI_API_KEY가 설정되지 않았습니다.'})
 
-    if 'image' not in request.files:
-        return jsonify({'success': False, 'error': '이미지 파일이 없습니다.'})
+    image_files = request.files.getlist('image')
+    chat_text = request.form.get('chat_text', '').strip()
 
-    image_file = request.files['image']
+    if not image_files and not chat_text:
+        return jsonify({'success': False, 'error': '대화 캡처 이미지 또는 대화 텍스트가 필요합니다.'})
+
     context_text = request.form.get('context', '').strip()
+    past_chat_log = request.form.get('past_chat_log', '').strip()
     tones_raw = request.form.get('tones', '[]')
     history_raw = request.form.get('history', '[]')
     custom_style = request.form.get('custom_style', '').strip()
@@ -1801,10 +1804,7 @@ def api_kakao_reply():
             custom_style_injected = True
 
     try:
-        image_bytes = image_file.read()
-        mime_type = image_file.mimetype or 'image/jpeg'
-
-        # Gemini Vision 호출
+        # Gemini 호출
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
 
@@ -1824,14 +1824,59 @@ def api_kakao_reply():
                 history_prompt += f"단계 {i+1}:\n"
                 history_prompt += f"  - 대화 맥락 요약: {turn.get('summary', '')}\n"
                 history_prompt += f"  - 사용자가 전송한 답장 ({turn.get('tone', '')}): {turn.get('selectedReply', '')}\n"
-            history_prompt += "\n**중요:** 이번에 업로드된 대화 캡처 이미지는 위 역사 바로 다음에 이어진 새로운 메시지 내용입니다. 이전 대화 흐름, 보낸 답변들의 내용 및 톤앤매너를 일관되게 고려하여 흐름이 자연스럽게 이어지도록 답장을 추천해 주세요."
+            history_prompt += "\n**중요:** 이번에 분석할 대화 내용은 위 역사 바로 다음에 이어진 새로운 메시지 내용입니다. 이전 대화 흐름, 보낸 답변들의 내용 및 톤앤매너를 일관되게 고려하여 흐름이 자연스럽게 이어지도록 답장을 추천해 주세요."
 
-        prompt = f"""당신은 대화 맥락 분석과 소셜 커뮤니케이션 전문가입니다.
+        # Build past chat log context
+        past_log_prompt = ""
+        if past_chat_log:
+            past_log_prompt = f"\n\n[이전 대화 맥락 (사용자가 텍스트로 붙여넣은 과거 대화 내용)]\n\"\"\"\n{past_chat_log}\n\"\"\""
 
-위 이미지는 카카오톡 대화 캡처입니다. 다음을 수행해 주세요:
+        if image_files:
+            contents = []
+            for img in image_files:
+                image_bytes = img.read()
+                mime_type = img.mimetype or 'image/jpeg'
+                contents.append({
+                    'mime_type': mime_type,
+                    'data': base64.b64encode(image_bytes).decode('utf-8')
+                })
+            
+            prompt = f"""당신은 대화 맥락 분석과 소셜 커뮤니케이션 전문가입니다.
 
-1. 대화 맥락 파악: 누가 누구에게 무슨 말을 했는지, 대화의 흐름과 분위기를 파악하세요.
-2. 마지막 메시지에 대한 적절한 답장을 아래 분위기별로 각 1개씩 생성하세요: {tones_str}{context_part}{style_guide}{history_prompt}
+제공된 이미지들은 하나의 카카오톡 대화방 내용을 시간 순서대로 캡처한 파일들입니다 (첫 번째 이미지부터 순서대로 대화가 이어짐).
+전체 대화 맥락을 완벽히 이해한 뒤, 가장 마지막 이미지의 맨 아래에 위치한 '마지막 메시지'에 대한 적절한 답장을 아래 분위기별로 각 1개씩 생성해 주세요: {tones_str}{context_part}{style_guide}{history_prompt}{past_log_prompt}
+
+**중요 규칙:**
+- 각 이미지별로 각각 답장을 생성하지 마세요. 오직 전체 대화의 맨 마지막 메시지에 답장하는 1세트만 생성해야 합니다.
+- 답장은 반드시 한국어로 작성하세요.
+- 카카오톡에서 실제로 보낼 수 있는 자연스러운 문체로 작성하세요.
+- 각 분위기에 맞게 확실히 다른 느낌으로 작성하세요.
+- 너무 길지 않게 (3~5문장 이내)
+
+반드시 아래 JSON 형식으로만 응답하세요. 다른 텍스트는 절대 포함하지 마세요:
+{{
+  "summary": "AI가 파악한 전체 대화 맥락 요약 (2~3문장, 예: 'A가 B에게 주말 약속을 제안하는 상황입니다. 마지막으로 B가...')",
+  "replies": [
+    {{"tone": "{tones[0] if tones else '친근하게'}", "text": "답장 내용"}},
+    {{"tone": "{tones[1] if len(tones) > 1 else '쿨하게'}", "text": "답장 내용"}}
+  ]
+}}"""
+            contents.append(prompt)
+            response = model.generate_content(
+                contents,
+                generation_config=genai.types.GenerationConfig(temperature=0.8)
+            )
+        else:
+            prompt = f"""당신은 대화 맥락 분석과 소셜 커뮤니케이션 전문가입니다.
+
+다음은 입력된 카카오톡 대화 내용입니다:
+\"\"\"
+{chat_text}
+\"\"\"
+
+다음을 수행해 주세요:
+1. 대화 맥락 파악: 입력된 대화의 흐름과 분위기를 파악하세요.
+2. 마지막 메시지에 대한 적절한 답장을 아래 분위기별로 각 1개씩 생성하세요: {tones_str}{context_part}{style_guide}{history_prompt}{past_log_prompt}
 
 **중요 규칙:**
 - 답장은 반드시 한국어로 작성하세요
@@ -1847,16 +1892,10 @@ def api_kakao_reply():
     {{"tone": "{tones[1] if len(tones) > 1 else '쿨하게'}", "text": "답장 내용"}}
   ]
 }}"""
-
-        image_part = {
-            'mime_type': mime_type,
-            'data': base64.b64encode(image_bytes).decode('utf-8')
-        }
-
-        response = model.generate_content(
-            [image_part, prompt],
-            generation_config=genai.types.GenerationConfig(temperature=0.8)
-        )
+            response = model.generate_content(
+                [prompt],
+                generation_config=genai.types.GenerationConfig(temperature=0.8)
+            )
         result_text = response.text.strip()
 
         # JSON 파싱
