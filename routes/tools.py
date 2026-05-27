@@ -1693,6 +1693,73 @@ def kakao_reply_view():
     return render_template('kakao_reply.html')
 
 
+@tools_bp.route('/api/kakao/analyze_style', methods=['POST'])
+def api_kakao_analyze_style():
+    import json, traceback
+    import google.generativeai as genai
+
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'success': False, 'error': 'GEMINI_API_KEY가 설정되지 않았습니다.'})
+
+    if 'file' not in request.files:
+        return jsonify({'success': False, 'error': '파일이 업로드되지 않았습니다.'})
+
+    chat_file = request.files['file']
+    nickname = request.form.get('nickname', '').strip()
+
+    if not nickname:
+        return jsonify({'success': False, 'error': '닉네임을 입력해주세요.'})
+
+    try:
+        content_bytes = chat_file.read()
+        try:
+            content = content_bytes.decode('utf-8')
+        except UnicodeDecodeError:
+            try:
+                content = content_bytes.decode('cp949')
+            except UnicodeDecodeError:
+                content = content_bytes.decode('euc-kr', errors='ignore')
+
+        lines = content.splitlines()
+        max_lines = 1500
+        sampled_lines = lines[-max_lines:] if len(lines) > max_lines else lines
+        sampled_chat = "\n".join(sampled_lines)
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-2.5-flash')
+
+        prompt = f"""당신은 대화 분석 전문가입니다.
+제공된 카카오톡 대화 로그 파일에서 닉네임 '{nickname}'을 사용하는 사람의 대화 스타일(말투, 어투)을 정밀 분석해 주세요.
+
+[분석 지침]
+1. 자주 사용하는 어미/종결형 (예: "~용", "~여", "~네", "~음/임")
+2. 문장 부호 및 이모티콘 사용 빈도와 스타일 (예: "ㅋㅋ", "ㅎㅎ", "ㅠㅠ", "!!", "...")
+3. 답변의 평균 길이 및 호흡 (단답형인지, 다정하게 풀어 쓰는지)
+4. 전반적인 소통 분위기 (다정다감함, 시크함, 격식 있음 등)
+
+[결과 요구사항]
+- 이 분석 내용은 나중에 AI가 이 사람의 말투를 흉내 내는 데 사용됩니다.
+- 분석 결과를 아주 구체적이고 직관적인 한국어 2~3문장으로 요약해 주세요.
+- 예: "주로 문장 끝에 'ㅎㅎ'나 'ㅋㅋ'를 자주 붙이고 어미는 '~용'이나 '~여'를 즐겨 사용합니다. 대답은 다소 간결하지만 느낌표와 물음표를 적절히 섞어 다정한 온도를 풍깁니다."
+- 분석 결과를 순수한 설명 텍스트로만 출력하세요. 다른 서론이나 마크다운 서식은 포함하지 마세요."""
+
+        response = model.generate_content(
+            [sampled_chat, prompt],
+            generation_config=genai.types.GenerationConfig(temperature=0.3)
+        )
+        style_result = response.text.strip()
+
+        return jsonify({
+            'success': True,
+            'style': style_result
+        })
+
+    except Exception as e:
+        print(f"Analyze Style Error: {traceback.format_exc()}")
+        return jsonify({'success': False, 'error': f'말투 분석 중 오류가 발생했습니다: {str(e)}'})
+
+
 @tools_bp.route('/api/kakao/reply', methods=['POST'])
 def api_kakao_reply():
     import base64, json, traceback
@@ -1708,6 +1775,9 @@ def api_kakao_reply():
     image_file = request.files['image']
     context_text = request.form.get('context', '').strip()
     tones_raw = request.form.get('tones', '[]')
+    history_raw = request.form.get('history', '[]')
+    custom_style = request.form.get('custom_style', '').strip()
+    custom_style_active = request.form.get('custom_style_active', 'false').lower() == 'true'
 
     try:
         tones = json.loads(tones_raw)
@@ -1716,6 +1786,18 @@ def api_kakao_reply():
 
     if not tones:
         tones = ['친근하게', '쿨하게', '유머있게', '따뜻하게']
+
+    try:
+        history_list = json.loads(history_raw)
+    except:
+        history_list = []
+
+    # If custom style is active and not empty, inject it as a tone option
+    custom_style_injected = False
+    if custom_style_active and custom_style:
+        if '나의 말투' not in tones:
+            tones.insert(0, '나의 말투')
+            custom_style_injected = True
 
     try:
         image_bytes = image_file.read()
@@ -1728,12 +1810,27 @@ def api_kakao_reply():
         tones_str = ', '.join(tones)
         context_part = f'\n추가 상황 정보: {context_text}' if context_text else ''
 
+        # Build custom style guide
+        style_guide = ""
+        if custom_style_active and custom_style:
+            style_guide = f"\n\n[특별 요건 - '나의 말투' 스타일 안내]\n사용자가 평소에 쓰는 말투 분석 결과는 다음과 같습니다: '{custom_style}'\n추천 답장 중 '나의 말투' 톤으로 생성하는 답장은 반드시 이 어투와 특성을 완벽히 흉내 내어 작성하세요. (종결어미, 이모티콘 사용 빈도 등을 일치시킬 것)"
+
+        # Build history context
+        history_prompt = ""
+        if history_list:
+            history_prompt = "\n\n[이전 대화 역사 (연속성 유지용)]\n"
+            for i, turn in enumerate(history_list):
+                history_prompt += f"단계 {i+1}:\n"
+                history_prompt += f"  - 대화 맥락 요약: {turn.get('summary', '')}\n"
+                history_prompt += f"  - 사용자가 전송한 답장 ({turn.get('tone', '')}): {turn.get('selectedReply', '')}\n"
+            history_prompt += "\n**중요:** 이번에 업로드된 대화 캡처 이미지는 위 역사 바로 다음에 이어진 새로운 메시지 내용입니다. 이전 대화 흐름, 보낸 답변들의 내용 및 톤앤매너를 일관되게 고려하여 흐름이 자연스럽게 이어지도록 답장을 추천해 주세요."
+
         prompt = f"""당신은 대화 맥락 분석과 소셜 커뮤니케이션 전문가입니다.
 
 위 이미지는 카카오톡 대화 캡처입니다. 다음을 수행해 주세요:
 
 1. 대화 맥락 파악: 누가 누구에게 무슨 말을 했는지, 대화의 흐름과 분위기를 파악하세요.
-2. 마지막 메시지에 대한 적절한 답장을 아래 분위기별로 각 1개씩 생성하세요: {tones_str}{context_part}
+2. 마지막 메시지에 대한 적절한 답장을 아래 분위기별로 각 1개씩 생성하세요: {tones_str}{context_part}{style_guide}{history_prompt}
 
 **중요 규칙:**
 - 답장은 반드시 한국어로 작성하세요
@@ -1771,13 +1868,11 @@ def api_kakao_reply():
 
         # 선택한 톤 수만큼 replies 보장
         replies = parsed.get('replies', [])
-        # 혹시 톤 수가 부족하면 있는 것만 반환
         return jsonify({
             'success': True,
             'summary': parsed.get('summary', ''),
             'replies': replies
         })
-
 
     except json.JSONDecodeError as je:
         return jsonify({'success': False, 'error': f'AI 응답 파싱 오류입니다. 다시 시도해주세요.'})
