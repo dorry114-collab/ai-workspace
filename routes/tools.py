@@ -2161,8 +2161,8 @@ def api_kakao_analyze_file():
                 if current_msg:
                     messages.append(current_msg)
                 time_str = m_and.group(1).strip()
-                sender = m_and.group(3).strip()
-                content = m_and.group(4)
+                sender = m_and.group(2).strip()
+                content = m_and.group(3)
                 current_msg = {
                     'sender': sender,
                     'date_str': time_str,
