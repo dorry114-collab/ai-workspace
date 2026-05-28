@@ -2125,7 +2125,7 @@ def api_kakao_analyze_file():
         default_date_str = f"{today.year}년 {today.month}월 {today.day}일"
         
         # 파일 전체에서 "저장한 날짜" 또는 첫 날짜 마커를 미리 찾아서 기본 날짜로 설정
-        baseline_date_pat = re.compile(r'(?:저장한 날짜\s*:\s*|Saved on\s*)(\d{4})[.-\s]+(\d{1,2})[.-\s]+(\d{1,2})')
+        baseline_date_pat = re.compile(r'(?:저장한 날짜\s*:\s*|Saved on\s*)(\d{4})[\.\-\s]+(\d{1,2})[\.\-\s]+(\d{1,2})')
         m_base = baseline_date_pat.search(file_content[:5000]) # 상위 5000자만 검색
         if m_base:
             default_date_str = f"{m_base.group(1)}년 {m_base.group(2)}월 {m_base.group(3)}일"
