@@ -919,6 +919,93 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Dialogue Coaching Section styling */
+        .coaching-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+        @media (max-width: 768px) {
+            .coaching-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .coaching-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .coaching-column h3 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .coaching-column.good h3 {
+            color: #4ade80; /* light green */
+        }
+        .coaching-column.bad h3 {
+            color: #f87171; /* light red */
+        }
+        .coaching-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .coaching-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+        .coaching-column.good .coaching-card {
+            border-left: 4px solid #22c55e;
+        }
+        .coaching-column.bad .coaching-card {
+            border-left: 4px solid #ef4444;
+        }
+        .coaching-quote-box {
+            background: rgba(0, 0, 0, 0.15);
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-family: inherit;
+            font-size: 0.92rem;
+            color: #f0f6fc;
+            white-space: pre-wrap;
+            line-height: 1.4;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+        .coaching-reason {
+            font-size: 0.88rem;
+            color: #c9d1d9;
+            line-height: 1.5;
+        }
+        .coaching-tip-box {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px dashed rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.86rem;
+            color: #8b949e;
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+        }
+        .coaching-tip-box i {
+            color: #e3b341; /* gold bulb icon */
+            margin-top: 2px;
+        }
+        .coaching-tip-text {
+            flex: 1;
+            line-height: 1.4;
+        }
     </style>
 </head>
 <body>
@@ -945,6 +1032,7 @@
                     <label class="input-label">대화방 성격 선택</label>
                     <div class="mode-container">
                         <button class="mode-chip active" data-mode="썸/연인"><i class="fa-solid fa-heart"></i> 썸 / 연인</button>
+                        <button class="mode-chip" data-mode="부부"><i class="fa-solid fa-ring"></i> 부부</button>
                         <button class="mode-chip" data-mode="친구/단톡"><i class="fa-solid fa-user-group"></i> 친구 / 지인</button>
                         <button class="mode-chip" data-mode="비즈니스"><i class="fa-solid fa-briefcase"></i> 직장 / 업무</button>
                     </div>
@@ -1172,6 +1260,33 @@
                             <div class="stat-progress-bar">
                                 <div class="stat-progress-fill-user" id="barFillInitiativeUser" style="width: 50%;"></div>
                                 <div class="stat-progress-fill-counterpart" id="barFillInitiativeCounterpart" style="width: 50%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dialogue Coaching Section -->
+                <div class="glass-card">
+                    <div class="section-header">
+                        <h2>💬 실제 대화 코칭 (잘된 대화 vs 잘못된 대화)</h2>
+                    </div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; line-height: 1.5;">
+                        실제 대화 중 잘된 소통 사례와 개선이 필요한 마찰 사례를 분석하여 더 나은 대화 방안을 제안합니다.
+                    </p>
+                    <div class="coaching-grid">
+                        <!-- Good Coaching Column -->
+                        <div class="coaching-column good">
+                            <h3><i class="fa-regular fa-circle-check"></i> 센스 있는 대화 모먼트 (Best 5)</h3>
+                            <div id="goodCoachingContainer" class="coaching-column">
+                                <!-- Dynamic cards -->
+                            </div>
+                        </div>
+
+                        <!-- Bad Coaching Column -->
+                        <div class="coaching-column bad">
+                            <h3><i class="fa-regular fa-circle-xmark"></i> 아쉬운 대화 모먼트 (Worst 5)</h3>
+                            <div id="badCoachingContainer" class="coaching-column">
+                                <!-- Dynamic cards -->
                             </div>
                         </div>
                     </div>
@@ -1518,6 +1633,51 @@
                 });
             }
 
+            // 7. Render dialogue coaching cards
+            const goodContainer = document.getElementById('goodCoachingContainer');
+            const badContainer = document.getElementById('badCoachingContainer');
+            goodContainer.innerHTML = '';
+            badContainer.innerHTML = '';
+
+            const goodEx = report.good_examples || [];
+            const badEx = report.bad_examples || [];
+
+            if (goodEx.length === 0) {
+                goodContainer.innerHTML = '<div class="coaching-card"><div class="coaching-reason">분석할 만한 대화 샘플이 부족합니다.</div></div>';
+            } else {
+                goodEx.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'coaching-card';
+                    card.innerHTML = `
+                        <div class="coaching-quote-box">${escapeHtml(item.quote)}</div>
+                        <div class="coaching-reason">${escapeHtml(item.reason)}</div>
+                        <div class="coaching-tip-box">
+                            <i class="fa-regular fa-lightbulb"></i>
+                            <div class="coaching-tip-text">${escapeHtml(item.tip)}</div>
+                        </div>
+                    `;
+                    goodContainer.appendChild(card);
+                });
+            }
+
+            if (badEx.length === 0) {
+                badContainer.innerHTML = '<div class="coaching-card"><div class="coaching-reason">피드백을 제안할 만한 대화 샘플이 부족합니다.</div></div>';
+            } else {
+                badEx.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'coaching-card';
+                    card.innerHTML = `
+                        <div class="coaching-quote-box">${escapeHtml(item.quote)}</div>
+                        <div class="coaching-reason">${escapeHtml(item.reason)}</div>
+                        <div class="coaching-tip-box">
+                            <i class="fa-regular fa-lightbulb"></i>
+                            <div class="coaching-tip-text">${escapeHtml(item.tip)}</div>
+                        </div>
+                    `;
+                    badContainer.appendChild(card);
+                });
+            }
+
             // 4. Render Dos and Don'ts Lists
             const dosList = document.getElementById('resultDosList');
             const dontsList = document.getElementById('resultDontsList');
@@ -1555,6 +1715,16 @@
 
             showToast('✅ 관계 진단 보고서 생성이 완료되었습니다!');
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
         }
 
         // ── DRAW RADAR CHART ──
