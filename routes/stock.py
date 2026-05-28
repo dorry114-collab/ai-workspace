@@ -442,68 +442,198 @@ def get_market_trend():
         data_date = target_date.strftime('%Y-%m-%d')
 
         top_stocks = []
-        try:
-            df = fdr.StockListing('KRX', date=data_date)
-            df = df[df['Amount'].notna()]
-            df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
-
-            for idx, row in df_sorted.iterrows():
-                # 등락률: KRX StockListing의 ChagesRatio는 오타인 경우 있어 직접 재계산
-                raw_ratio = row.get('ChagesRatio', row.get('ChangeRatio', row.get('Changes', None)))
-                try:
-                    changes_ratio = float(raw_ratio) if raw_ratio is not None else 0.0
-                except:
-                    changes_ratio = 0.0
-
-                top_stocks.append({
-                    'code': str(row['Code']).zfill(6),
-                    'name': str(row['Name']),
-                    'market': str(row.get('Market', 'KRX')),
-                    'close': float(row['Close']),
-                    'changes_ratio': changes_ratio,
-                    'volume': int(row['Volume']) if row.get('Volume') else 0,
-                    'amount': int(row['Amount'])
-                })
-        except Exception as e:
-            # Fallback for Render deployment (KRX blocks foreign IPs)
-            print(f"KRX Fetch Failed, using fallback: {e}")
-            fallback_codes = [
-                ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("042700", "한미반도체"), 
-                ("068270", "셀트리온"), ("005380", "현대차"), ("000270", "기아"), 
-                ("035420", "NAVER"), ("035720", "카카오"), ("373220", "LG에너지솔루션"), 
-                ("207940", "삼성바이오로직스"), ("104480", "티케케미칼"), ("012450", "한화에어로스페이스"),
-                ("028300", "HLB"), ("247540", "에코프로비엠"), ("086520", "에코프로")
-            ]
-            # 대상 날짜 기준 전후 7일 데이터 조회
-            fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
-            fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-            for code, name in fallback_codes:
-                try:
-                    hist = fdr.DataReader(code, fetch_start, fetch_end)
-                    if not hist.empty:
-                        # 대상 날짜 이전의 마지막 데이터 사용
-                        hist.index = pd.to_datetime(hist.index)
-                        valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
-                        if valid_rows.empty:
-                            continue
-                        last_row = valid_rows.iloc[-1]
-                        prev_row = valid_rows.iloc[-2] if len(valid_rows) > 1 else last_row
-                        close = float(last_row['Close'])
-                        prev_close = float(prev_row['Close'])
-                        changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
-                        vol = int(last_row['Volume'])
-                        amt = close * vol
-                        top_stocks.append({
+        
+        # 날짜가 오늘인지 확인 (오늘이면 실시간 네이버 크롤러 우선 사용)
+        is_today = target_date.date() == datetime.date.today() or not date_str
+        
+        if is_today:
+            try:
+                # 네이버 금융 크롤러 (KOSPI/KOSDAQ 시가총액 상위 + 거래량 상위 결합)
+                # Render 서버의 해외 IP 차단(KRX 공식 사이트 차단)을 우회하고 실제 거래대금 탑 10 추출
+                def get_market_cap_stocks(sosok, page):
+                    url = f'https://finance.naver.com/sise/sise_market_sum.naver?sosok={sosok}&page={page}'
+                    headers = {'User-Agent': 'Mozilla/5.0'}
+                    res = requests.get(url, headers=headers)
+                    res.encoding = 'euc-kr'
+                    soup = BeautifulSoup(res.text, 'html.parser')
+                    table = soup.select_one('table.type_2')
+                    if not table: return []
+                    
+                    stocks = []
+                    rows = table.select('tr')
+                    for row in rows[1:]:
+                        tds = [td.text.strip() for td in row.find_all('td')]
+                        if len(tds) < 12 or not tds[1]: continue
+                        name = tds[1]
+                        
+                        skip_keywords = ['KODEX', 'TIGER', 'KBSTAR', 'ARIRANG', 'SOL', 'ACE', 'HANARO', 'KOSEF', 'ETN', '인버스', '레버리지', '선물', '국채']
+                        if any(kw in name for kw in skip_keywords): continue
+                            
+                        code = ''
+                        a_tag = row.find('a', class_='tltle')
+                        if a_tag and 'code=' in a_tag['href']:
+                            code = a_tag['href'].split('code=')[1].split('&')[0]
+                            
+                        try:
+                            close = float(tds[2].replace(',', ''))
+                        except:
+                            close = 0.0
+                            
+                        raw_ratio = tds[4].replace('%', '').strip()
+                        try:
+                            changes_ratio = float(raw_ratio)
+                        except:
+                            changes_ratio = 0.0
+                            
+                        try:
+                            all_tds = row.find_all('td')
+                            vol_str = all_tds[9].text.strip().replace(',', '')
+                            volume = int(vol_str)
+                        except:
+                            volume = 0
+                            
+                        amount = close * volume
+                        stocks.append({
                             'code': code,
                             'name': name,
-                            'market': 'KRX',
                             'close': close,
                             'changes_ratio': changes_ratio,
-                            'volume': vol,
-                            'amount': amt
+                            'volume': volume,
+                            'amount': amount,
+                            'market': 'KOSPI' if sosok == 0 else 'KOSDAQ'
                         })
-                except: pass
-            top_stocks = sorted(top_stocks, key=lambda x: x['amount'], reverse=True)[:10]
+                    return stocks
+
+                def get_volume_stocks(sosok):
+                    url = f'https://finance.naver.com/sise/sise_quant.naver?sosok={sosok}'
+                    headers = {'User-Agent': 'Mozilla/5.0'}
+                    res = requests.get(url, headers=headers)
+                    res.encoding = 'euc-kr'
+                    soup = BeautifulSoup(res.text, 'html.parser')
+                    table = soup.select_one('table.type_2')
+                    if not table: return []
+                    
+                    stocks = []
+                    rows = table.select('tr')
+                    for row in rows[1:]:
+                        tds = [td.text.strip() for td in row.find_all('td')]
+                        if len(tds) < 10 or not tds[1]: continue
+                        name = tds[1]
+                        
+                        skip_keywords = ['KODEX', 'TIGER', 'KBSTAR', 'ARIRANG', 'SOL', 'ACE', 'HANARO', 'KOSEF', 'ETN', '인버스', '레버리지', '선물', '국채']
+                        if any(kw in name for kw in skip_keywords): continue
+                            
+                        code = ''
+                        a_tag = row.find('a', class_='tltle')
+                        if a_tag and 'code=' in a_tag['href']:
+                            code = a_tag['href'].split('code=')[1].split('&')[0]
+                            
+                        try:
+                            close = float(tds[2].replace(',', ''))
+                        except:
+                            close = 0.0
+                            
+                        raw_ratio = tds[4].replace('%', '').strip()
+                        try:
+                            changes_ratio = float(raw_ratio)
+                        except:
+                            changes_ratio = 0.0
+                            
+                        try:
+                            volume = int(tds[5].replace(',', ''))
+                        except:
+                            volume = 0
+                            
+                        try:
+                            amount = int(tds[6].replace(',', '')) * 1000000
+                        except:
+                            amount = 0
+                            
+                        stocks.append({
+                            'code': code,
+                            'name': name,
+                            'close': close,
+                            'changes_ratio': changes_ratio,
+                            'volume': volume,
+                            'amount': amount,
+                            'market': 'KOSPI' if sosok == 0 else 'KOSDAQ'
+                        })
+                    return stocks
+
+                from bs4 import BeautifulSoup
+                stocks_map = {}
+                # KOSPI 시총 상위 1~100위, KOSDAQ 시총 상위 1~100위, 그리고 당일 KOSPI/KOSDAQ 거래량 상위 1~100위 수집 후 결합
+                # 이를 통해 거래량이 적은 대형주(삼성SDI 등)와 거래대금이 급증한 테마주(디앤디파마텍 등)를 모두 확보 가능
+                for s in get_market_cap_stocks(0, 1) + get_market_cap_stocks(0, 2) + get_market_cap_stocks(1, 1) + get_market_cap_stocks(1, 2) + get_volume_stocks(0) + get_volume_stocks(1):
+                    stocks_map[s['code']] = s
+
+                all_stocks = list(stocks_map.values())
+                all_stocks.sort(key=lambda x: x['amount'], reverse=True)
+                top_stocks = all_stocks[:10]
+            except Exception as crawler_err:
+                print(f"Naver crawler failed: {crawler_err}")
+                top_stocks = []
+
+        # 크롤러가 실패했거나 오늘 날짜가 아니면 기존 KRX -> Fallback 로직 작동
+        if not top_stocks:
+            try:
+                df = fdr.StockListing('KRX', date=data_date)
+                df = df[df['Amount'].notna()]
+                df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
+
+                for idx, row in df_sorted.iterrows():
+                    raw_ratio = row.get('ChagesRatio', row.get('ChangeRatio', row.get('Changes', None)))
+                    try:
+                        changes_ratio = float(raw_ratio) if raw_ratio is not None else 0.0
+                    except:
+                        changes_ratio = 0.0
+
+                    top_stocks.append({
+                        'code': str(row['Code']).zfill(6),
+                        'name': str(row['Name']),
+                        'market': str(row.get('Market', 'KRX')),
+                        'close': float(row['Close']),
+                        'changes_ratio': changes_ratio,
+                        'volume': int(row['Volume']) if row.get('Volume') else 0,
+                        'amount': int(row['Amount'])
+                    })
+            except Exception as e:
+                print(f"KRX Fetch Failed, using fallback: {e}")
+                fallback_codes = [
+                    ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("042700", "한미반도체"), 
+                    ("068270", "셀트리온"), ("005380", "현대차"), ("000270", "기아"), 
+                    ("035420", "NAVER"), ("035720", "카카오"), ("373220", "LG에너지솔루션"), 
+                    ("207940", "삼성바이오로직스"), ("104480", "티케케미칼"), ("012450", "한화에어로스페이스"),
+                    ("028300", "HLB"), ("247540", "에코프로비엠"), ("086520", "에코프로")
+                ]
+                fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
+                fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+                for code, name in fallback_codes:
+                    try:
+                        hist = fdr.DataReader(code, fetch_start, fetch_end)
+                        if not hist.empty:
+                            hist.index = pd.to_datetime(hist.index)
+                            valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
+                            if valid_rows.empty:
+                                continue
+                            last_row = valid_rows.iloc[-1]
+                            prev_row = valid_rows.iloc[-2] if len(valid_rows) > 1 else last_row
+                            close = float(last_row['Close'])
+                            prev_close = float(prev_row['Close'])
+                            changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
+                            vol = int(last_row['Volume'])
+                            amt = close * vol
+                            top_stocks.append({
+                                'code': code,
+                                'name': name,
+                                'market': 'KRX',
+                                'close': close,
+                                'changes_ratio': changes_ratio,
+                                'volume': vol,
+                                'amount': amt
+                            })
+                    except: pass
+                top_stocks = sorted(top_stocks, key=lambda x: x['amount'], reverse=True)[:10]
 
         # KRX StockListing 데이터의 등락률을 실제 전일 대비로 재검증/보정
         def verify_changes_ratio(item):
