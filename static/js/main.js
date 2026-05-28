@@ -193,3 +193,47 @@ window.addEventListener('appinstalled', () => {
     deferredPrompt = null;
     console.log('PWA was installed');
 });
+
+// User Auth Status Check
+async function checkAuthStatus() {
+    try {
+        const res = await fetch('/auth/me');
+        const data = await res.json();
+        
+        const userInfoArea = document.getElementById('userInfoArea');
+        const kakaoLoginBtn = document.getElementById('kakaoLoginBtn');
+        const logoutBtn = document.getElementById('logoutBtn');
+        
+        if (data.logged_in && userInfoArea) {
+            userInfoArea.innerHTML = `<span style="color: #f8fafc; font-weight: bold;"><i class="fa-solid fa-face-smile"></i> 반가워요, ${data.nickname}님!</span> <span style="margin-left: 10px; background: #3b82f6; color: white; padding: 3px 8px; border-radius: 10px; font-size: 0.8rem;"><i class="fa-solid fa-coins"></i> ${data.points} P</span>`;
+            if (kakaoLoginBtn) kakaoLoginBtn.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = 'inline-block';
+        }
+    } catch (e) {
+        console.error("Auth status check failed", e);
+    }
+}
+
+// GA4 Event Tracking Helper
+function trackEvent(eventName, eventCategory, eventLabel) {
+    if (typeof gtag === 'function') {
+        gtag('event', eventName, {
+            'event_category': eventCategory,
+            'event_label': eventLabel
+        });
+    }
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuthStatus();
+    
+    // Add click tracking to all 'draw-btn' and 'btn-eval'
+    document.querySelectorAll('.draw-btn, .btn-eval').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const toolName = document.title;
+            const buttonText = e.target.innerText || 'Action Button';
+            trackEvent('tool_usage', toolName, buttonText);
+        });
+    });
+});

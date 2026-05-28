@@ -20,6 +20,7 @@ from routes.tools import tools_bp
 from routes.scanner import scanner_bp
 from routes.games_life import games_life_bp
 from routes.seo import seo_bp
+from routes.auth import auth_bp
 
 # Global SSL setup from original main.py
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -27,7 +28,8 @@ ssl._create_default_https_context = ssl._create_unverified_context
 def create_app():
     app = Flask(__name__)
     
-    # Configure Database
+    # Configure App Setup
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default_secret_key_antigravity_1234!')
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
@@ -48,12 +50,24 @@ def create_app():
     app.register_blueprint(scanner_bp)
     app.register_blueprint(games_life_bp)
     app.register_blueprint(seo_bp)
+    app.register_blueprint(auth_bp, url_prefix='/auth')
     
     @app.after_request
-    def add_header(response):
+    def add_header_and_help_widget(response):
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, post-check=0, pre-check=0, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '-1'
+        
+        # Inject user guide widget script for HTML templates
+        if response.content_type and "text/html" in response.content_type:
+            try:
+                html_data = response.get_data(as_text=True)
+                script_tag = '<script src="/static/js/help_widget.js" defer></script>'
+                if "</body>" in html_data:
+                    html_data = html_data.replace("</body>", f"{script_tag}\n</body>")
+                    response.set_data(html_data)
+            except Exception:
+                pass
         return response
     
     return app
