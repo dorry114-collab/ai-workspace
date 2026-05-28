@@ -878,6 +878,51 @@
             box-shadow: 0 6px 20px rgba(0, 102, 255, 0.45);
         }
 
+        .btn-hub {
+            flex: 1.5;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border: none;
+            color: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            font-weight: 800;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(112, 0, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-hub:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(112, 0, 255, 0.5);
+        }
+
+        .btn-hub-inline {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            border: none;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            box-shadow: 0 3px 10px rgba(112, 0, 255, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .btn-hub-inline:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(112, 0, 255, 0.35);
+        }
+
         /* Toast Alert */
         .toast {
             position: fixed;
@@ -1135,6 +1180,9 @@
                         <div class="radar-description">
                             <div class="radar-desc-item">
                                 <strong id="descUserName">나</strong>: <span id="userPersonalityText">나의 대화 성향 로드 중...</span>
+                                <div style="margin-top: 4px;">
+                                    <button class="btn-hub-inline" onclick="saveStyleAndGoToHub()"><i class="fa-solid fa-floppy-disk"></i> 이 말투 저장 후 답장 추천 받기</button>
+                                </div>
                             </div>
                             <div class="radar-desc-item counterpart">
                                 <strong id="descCounterpartName">상대방</strong>: <span id="counterpartPersonalityText">상대방의 대화 성향 로드 중...</span>
@@ -1358,6 +1406,7 @@
             <!-- Footer Action Buttons -->
             <div class="footer-actions">
                 <button class="btn-secondary" onclick="resetAnalyzer()"><i class="fa-solid fa-rotate-left"></i> 처음으로 돌아가기</button>
+                <button class="btn-hub" onclick="saveStyleAndGoToHub()"><i class="fa-solid fa-floppy-disk"></i> 말투 저장 후 답장 추천 (이동)</button>
                 <button class="btn-export" onclick="exportReportToImage()"><i class="fa-solid fa-download"></i> 리포트를 카드 이미지로 다운로드</button>
             </div>
         </div>
@@ -1378,6 +1427,9 @@
         
         let radarChartInstance = null;
         let lineChartInstance = null;
+
+        let lastStats = null;
+        let lastReport = null;
 
         // Toast utility
         function showToast(msg, color) {
@@ -1515,6 +1567,8 @@
         // ── RENDER DASHBOARD RESULTS ──
         function renderDashboard(stats, report) {
             // UI Transition: Loading -> Result
+            lastStats = stats;
+            lastReport = report;
             document.getElementById('analyzerLoadingSection').style.display = 'none';
             const resSec = document.getElementById('analyzerResultSection');
             resSec.style.display = 'block';
@@ -1943,6 +1997,60 @@
             document.getElementById('analyzerInputSection').style.display = 'block';
             
             window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // ── SAVE ANALYZED STYLE & REDIRECT TO HUB ──
+        function saveStyleAndGoToHub() {
+            if (!lastStats || !lastReport) {
+                showToast('❌ 저장할 분석 데이터가 존재하지 않습니다.', '#ef4444');
+                return;
+            }
+            
+            const userStyle = lastReport.personality_analysis_user || '';
+            if (!userStyle) {
+                showToast('❌ 분석된 사용자 말투 정보가 없습니다.', '#ef4444');
+                return;
+            }
+            
+            const nickname = lastStats.user_name || '나';
+            const counterpart = lastStats.counterpart_name || '상대방';
+            
+            // 프로필 이름 설정 (예: 지민 (민우 대화 분석))
+            const profileName = `${nickname} (${counterpart} 대화 분석)`;
+            
+            let kakaoProfiles = [];
+            try {
+                const saved = localStorage.getItem('kakaoProfiles');
+                kakaoProfiles = saved ? JSON.parse(saved) : [];
+            } catch(e) {
+                kakaoProfiles = [];
+            }
+            
+            // 동일 이름의 기존 프로필이 있으면 덮어쓰기, 없으면 새로 추가
+            const existingIdx = kakaoProfiles.findIndex(p => p.name === profileName);
+            const newProfileId = existingIdx >= 0 ? kakaoProfiles[existingIdx].id : Date.now().toString();
+            
+            const newProfile = {
+                id: newProfileId,
+                name: profileName,
+                style: userStyle,
+                nickname: nickname
+            };
+            
+            if (existingIdx >= 0) {
+                kakaoProfiles[existingIdx] = newProfile;
+            } else {
+                kakaoProfiles.push(newProfile);
+            }
+            
+            localStorage.setItem('kakaoProfiles', JSON.stringify(kakaoProfiles));
+            localStorage.setItem('kakaoActiveProfileId', newProfileId);
+            
+            showToast('✨ 말투 프로필 저장 완료! 메시지 마스터로 이동합니다.', 'var(--primary)');
+            
+            setTimeout(() => {
+                window.location.href = '/message_hub?tab=kakao';
+            }, 1000);
         }
     </script>
 

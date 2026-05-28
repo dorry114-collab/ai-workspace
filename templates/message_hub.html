@@ -1068,15 +1068,29 @@
     const tabBtns = document.querySelectorAll('.page-tab-btn');
     const tabPanels = document.querySelectorAll('.tab-panel');
 
+    function selectTab(target) {
+        tabBtns.forEach(b => {
+            if (b.dataset.tab === target) b.classList.add('active');
+            else b.classList.remove('active');
+        });
+        tabPanels.forEach(p => {
+            if (p.id === 'tab-' + target) p.classList.add('active');
+            else p.classList.remove('active');
+        });
+    }
+
     tabBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            const target = btn.dataset.tab;
-            tabBtns.forEach(b => b.classList.remove('active'));
-            tabPanels.forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            document.getElementById('tab-' + target).classList.add('active');
+            selectTab(btn.dataset.tab);
         });
     });
+
+    // URL 쿼리 파라미터 ?tab=kakao/maker/polisher 지원
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['kakao', 'maker', 'polisher'].includes(tabParam)) {
+        selectTab(tabParam);
+    }
 })();
 
 
