@@ -2115,14 +2115,29 @@ def api_kakao_analyze_file():
 
         # ── 1. 정규식 파서 및 메시지 추출
         pc_pat = re.compile(r'^\[([^\]]+)\]\s+\[([^\]]+)\]\s+(.*)$')
-        android_pat = re.compile(r'^(\d{4}년 \d{1,2}월 \d{1,2}일 (?:오전|오후) \d{1,2}:\d{2}),\s*([^:]+)\s*:\s*(.*)$')
-        android_en_pat = re.compile(r'^([A-Za-z]+ \d{1,2},\s*\d{4},\s*\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)),\s*([^:]+)\s*:\s*(.*)$')
-        ios_pat = re.compile(r'^([^,]+),\s*(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.\s*\d{1,2}:\d{2})\s*:\s*(.*)$')
+        android_pat = re.compile(r'^(\d{4}년 \d{1,2}월 \d{1,2}일(?:\s*(?:오전|오후|AM|PM|am|pm))?\s*\d{1,2}:\d{2}),\s*([^:]+)\s*:\s*(.*)$')
+        android_en_pat = re.compile(r'^([A-Za-z]+ \d{1,2},\s*\d{4},\s*\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?),\s*([^:]+)\s*:\s*(.*)$')
+        ios_pat = re.compile(r'^([^,]+),\s*(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.?\s*(?:오전|오후|AM|PM|am|pm)?\s*\d{1,2}:\d{2})\s*:\s*(.*)$')
         date_marker_pat = re.compile(r'^-+\s*([^-]+)\s*-+$')
+
+        # default_date_str을 오늘 날짜로 초기화하여 파일에 날짜 헤더가 없는 경우 대비
+        today = datetime.now()
+        default_date_str = f"{today.year}년 {today.month}월 {today.day}일"
+        
+        # 파일 전체에서 "저장한 날짜" 또는 첫 날짜 마커를 미리 찾아서 기본 날짜로 설정
+        baseline_date_pat = re.compile(r'(?:저장한 날짜\s*:\s*|Saved on\s*)(\d{4})[.-\s]+(\d{1,2})[.-\s]+(\d{1,2})')
+        m_base = baseline_date_pat.search(file_content[:5000]) # 상위 5000자만 검색
+        if m_base:
+            default_date_str = f"{m_base.group(1)}년 {m_base.group(2)}월 {m_base.group(3)}일"
+        else:
+            first_date_header_pat = re.compile(r'-+\s*(\d{4}년 \d{1,2}월 \d{1,2}일|[A-Za-z]+, [A-Za-z]+ \d{1,2}, \d{4}|\d{4}\.\s*\d{1,2}\.\s*\d{1,2})')
+            m_first_header = first_date_header_pat.search(file_content[:5000])
+            if m_first_header:
+                default_date_str = m_first_header.group(1).strip()
 
         messages = []
         lines = file_content.split('\n')
-        current_date = ""
+        current_date = default_date_str
         current_msg = None
 
         for line in lines:
@@ -2252,11 +2267,21 @@ def api_kakao_analyze_file():
                             hour = 0
                         return datetime(nums[0], nums[1], nums[2], hour, minute)
 
-                # 3. iOS 포맷 파싱 (date_s: "2026. 5. 27. 15:15")
+                # 3. iOS 포맷 파싱 (date_s: "2026. 5. 27. 15:15" 또는 "2026. 5. 27. 오후 3:15")
                 if '.' in date_s:
                     nums = [int(x) for x in re.findall(r'\d+', date_s)]
                     if len(nums) >= 5:
-                        return datetime(nums[0], nums[1], nums[2], nums[3], nums[4])
+                        hour = nums[3]
+                        minute = nums[4]
+                        if '오후' in date_s and hour != 12:
+                            hour += 12
+                        if '오전' in date_s and hour == 12:
+                            hour = 0
+                        if 'PM' in date_s.upper() and hour != 12:
+                            hour += 12
+                        if 'AM' in date_s.upper() and hour == 12:
+                            hour = 0
+                        return datetime(nums[0], nums[1], nums[2], hour, minute)
 
                 # 4. English 포맷 파싱 ("May 27, 2026, 3:15 PM")
                 is_pm = 'PM' in date_s.upper()
@@ -2509,8 +2534,8 @@ def api_kakao_analyze_file():
             'counterpart_msg_count': counterpart_msg_count,
             'user_char_avg': round(user_char_avg, 1),
             'counterpart_char_avg': round(counterpart_char_avg, 1),
-            'user_reply_speed_mins': round(user_reply_speed_mins, 1),
-            'counterpart_reply_speed_mins': round(counterpart_reply_speed_mins, 1),
+            'user_reply_speed': round(user_reply_speed_mins, 1),
+            'counterpart_reply_speed': round(counterpart_reply_speed_mins, 1),
             'user_initiative_count': user_initiatives,
             'counterpart_initiative_count': counterpart_initiatives,
             'user_double_text_count': user_double_texts,
