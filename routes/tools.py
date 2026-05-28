@@ -2115,10 +2115,11 @@ def api_kakao_analyze_file():
 
         # ── 1. 정규식 파서 및 메시지 추출
         pc_pat = re.compile(r'^\[([^\]]+)\]\s+\[([^\]]+)\]\s+(.*)$')
+        pc_win_pat = re.compile(r'^\[((?:오전|오후|AM|PM|am|pm)?\s*\d{1,2}:\d{2})\]\s+([^:]+)\s*:\s*(.*)$')
         android_pat = re.compile(r'^(\d{4}년 \d{1,2}월 \d{1,2}일(?:\s*(?:오전|오후|AM|PM|am|pm))?\s*\d{1,2}:\d{2}),\s*([^:]+)\s*:\s*(.*)$')
         android_en_pat = re.compile(r'^([A-Za-z]+ \d{1,2},\s*\d{4},\s*\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?),\s*([^:]+)\s*:\s*(.*)$')
         ios_pat = re.compile(r'^([^,]+),\s*(\d{4}\.\s*\d{1,2}\.\s*\d{1,2}\.?\s*(?:오전|오후|AM|PM|am|pm)?\s*\d{1,2}:\d{2})\s*:\s*(.*)$')
-        date_marker_pat = re.compile(r'^-+\s*([^-]+)\s*-+$')
+        date_marker_pat = re.compile(r'^-+\s*(.*?)\s*-+$')
 
         # default_date_str을 오늘 날짜로 초기화하여 파일에 날짜 헤더가 없는 경우 대비
         today = datetime.now()
@@ -2153,7 +2154,7 @@ def api_kakao_analyze_file():
                     current_date = text_inside
                 continue
 
-            # 1. PC 포맷 매칭
+            # 1. PC 포맷 매칭 (이름 시간 내용)
             m_pc = pc_pat.match(line)
             if m_pc:
                 if current_msg:
@@ -2167,6 +2168,23 @@ def api_kakao_analyze_file():
                     'time_str': time_str,
                     'content': content,
                     'format': 'PC'
+                }
+                continue
+
+            # 1-2. Windows PC 포맷 매칭 (시간 이름: 내용)
+            m_pc_win = pc_win_pat.match(line)
+            if m_pc_win:
+                if current_msg:
+                    messages.append(current_msg)
+                time_str = m_pc_win.group(1).strip()
+                sender = m_pc_win.group(2).strip()
+                content = m_pc_win.group(3)
+                current_msg = {
+                    'sender': sender,
+                    'date_str': current_date,
+                    'time_str': time_str,
+                    'content': content,
+                    'format': 'PC_WIN'
                 }
                 continue
 
@@ -2245,6 +2263,19 @@ def api_kakao_analyze_file():
                 if date_s and time_s:
                     date_clean = re.sub(r'\s*[가-힣]+요일', '', date_s).strip()
                     d_nums = [int(x) for x in re.findall(r'\d+', date_clean)]
+                    t_nums = [int(x) for x in re.findall(r'\d+', time_s)]
+                    if len(d_nums) >= 3 and len(t_nums) >= 2:
+                        hour = t_nums[0]
+                        minute = t_nums[1]
+                        if '오후' in time_s and hour != 12:
+                            hour += 12
+                        if '오전' in time_s and hour == 12:
+                            hour = 0
+                        return datetime(d_nums[0], d_nums[1], d_nums[2], hour, minute)
+
+                # 1-2. YYYY-MM-DD 포맷 파싱 (date_s: "2026-05-27", time_s: "오후 3:15")
+                if date_s and '-' in date_s:
+                    d_nums = [int(x) for x in re.findall(r'\d+', date_s)]
                     t_nums = [int(x) for x in re.findall(r'\d+', time_s)]
                     if len(d_nums) >= 3 and len(t_nums) >= 2:
                         hour = t_nums[0]
@@ -2450,13 +2481,13 @@ def api_kakao_analyze_file():
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-2.5-flash')
 
-        prompt = f"""당신은 연애 심리학 및 대화 분석 전문가입니다.
+        prompt = f"""당신은 부부/연애 심리학 및 소통 전문가입니다.
 두 사람의 카카오톡 대화방 통계 데이터와 대화의 최신 일부 로그를 기반으로, 두 사람의 관계와 성향을 심층 분석한 리포트를 작성해 주세요.
 
 [대화 분석 대상자]
 - 나(사용자): {user_alias}
 - 상대방(대화 상대): {counterpart_alias}
-- 대화방 모드(성격): {room_mode} (썸/연인, 친구, 비즈니스 중 하나)
+- 대화방 모드(성격): {room_mode} (썸/연인, 부부, 친구/지인, 비즈니스 중 하나. 만약 '부부'라면 가사 분담, 육아, 부부 공동의 경제생활, 반려 관계, 감정적 지지 등 부부 관계에 맞추어 맞춤형 심리 코칭과 피드백을 제공해 주세요.)
 
 [통계 분석 결과]
 - 총 메시지 수: {total_count} (나: {user_msg_count}개, 상대방: {counterpart_msg_count}개)
@@ -2474,8 +2505,8 @@ def api_kakao_analyze_file():
 위 데이터와 대화 어조를 바탕으로 다음 요건을 만족하여 분석 리포트를 작성해 주세요.
 
 **작성 가이드:**
-1. **relationship_score**: 두 사람의 친밀도 및 케미 점수 (0~100 사이의 정수). 대화 모드(썸/연인, 친구, 비즈니스)에 맞춰 판단하세요.
-2. **relationship_type**: 두 사람의 관계 소통 유형 한 줄 요약 (예: '티키타카형 소통가', '조심스러운 탐색기', '사무적인 협조자').
+1. **relationship_score**: 두 사람의 친밀도 및 케미 점수 (0~100 사이의 정수). 대화 모드(썸/연인, 부부, 친구, 비즈니스)에 맞춰 판단하세요.
+2. **relationship_type**: 두 사람의 관계 소통 유형 한 줄 요약 (예: '티키타카형 소통가', '조심스러운 탐색기', '신혼 같은 티격태격 부부', '사무적인 협조자').
 3. **mbti_user** & **mbti_counterpart**: 대화 패턴과 로그를 바탕으로 유추한 각각의 MBTI.
 4. **radar_user** & **radar_counterpart**: 다음 5가지 지표의 백분율 점수(0~100 사이 정수):
    - warmth (다정함/공감도)
@@ -2486,11 +2517,19 @@ def api_kakao_analyze_file():
 5. **personality_analysis_user** & **personality_analysis_counterpart**: 두 사람 각각의 대화 방식 성향 분석 (3~4문장).
 6. **dos**: 상대방과 대화할 때 하면 좋은 행동이나 대화 팁 (2~3가지, 리스트 형태).
 7. **donts**: 상대방과 대화할 때 피해야 할 행동이나 지뢰밭 행동 (2~3가지, 리스트 형태).
-8. **cpr_revival**: 상대방과의 이전 대화 맥락과 상대 성향에 완벽히 맞춘 '대화 심폐소생(Chat CPR) 선톡 메시지' 3가지 상황별 생성:
-   - ghosting: 상대방이 답장을 안 하거나(읽씹/안읽씹) 대화가 끊겼을 때 보내기 좋은 톡.
-   - awkward: 한동안 연락이 뜸해져서 어색해진 분위기를 깨는 톡.
-   - general: 일상적으로 편하게 관계를 다지는 톡.
-   *(각 메시지는 구체적이고 자연스러운 어투여야 하며, 상대방이 좋아하는 관심사나 최근 대화 언급을 반드시 반영해 작성할 것)*
+8. **good_examples**: 대화 로그 중 잘된 소통 사례 5가지. 대화가 아주 짧더라도 인사나 리액션, 일상 공유 등을 포함하여 반드시 딱 5가지를 꽉 채워 분석해 주세요. 각 항목은 다음 필드를 가집니다:
+   - quote: 실제 대화 로그의 구체적인 문장(인용구)
+   - reason: 이 대화가 칭찬받을 만하고 잘된 소통 방식인 이유
+   - tip: 앞으로 이러한 긍정적인 대화 패턴을 어떻게 유지하거나 더 가꿀 수 있는지의 팁
+9. **bad_examples**: 대화 로그 중 마찰이 생겼거나 아쉽거나 오해를 사기 쉬운 잘못된 소통 사례 5가지. 대화가 아주 짧더라도 평이한 문장이나 리액션 등에서 아쉬운 점을 찾아 어떻게든 딱 5가지를 꽉 채워 분석해 주세요. 각 항목은 다음 필드를 가집니다:
+   - quote: 실제 대화 로그의 구체적인 문장(인용구)
+   - reason: 이 대화가 상대방에게 오해나 불쾌감, 혹은 소통 단절을 유발할 수 있어 아쉬운 이유
+   - tip: 이 말을 어떤 식으로 고쳐서 말하면 훨씬 다정하고 부드럽게 표현될 수 있는지 구체적인 대안 문장 제시
+10. **cpr_revival**: 상대방과의 이전 대화 맥락과 상대 성향에 완벽히 맞춘 '대화 심폐소생(Chat CPR) 선톡 메시지' 3가지 상황별 생성:
+    - ghosting: 상대방이 답장을 안 하거나(읽씹/안읽씹) 대화가 끊겼을 때 보내기 좋은 톡.
+    - awkward: 한동안 연락이 뜸해져서 어색해진 분위기를 깨는 톡.
+    - general: 일상적으로 편하게 관계를 다지는 톡.
+    *(각 메시지는 구체적이고 자연스러운 어투여야 하며, 상대방이 좋아하는 관심사나 최근 대화 언급을 반드시 반영해 작성할 것)*
 
 반드시 아래 JSON 형식으로만 응답해 주세요. 다른 텍스트는 절대 포함하지 마세요:
 {{
@@ -2504,6 +2543,60 @@ def api_kakao_analyze_file():
   "personality_analysis_counterpart": "...",
   "dos": ["...", "..."],
   "donts": ["...", "..."],
+  "good_examples": [
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "잘된 소통인 이유...",
+      "tip": "유지 및 심화 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "잘된 소통인 이유...",
+      "tip": "유지 및 심화 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "잘된 소통인 이유...",
+      "tip": "유지 및 심화 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "잘된 소통인 이유...",
+      "tip": "유지 및 심화 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "잘된 소통인 이유...",
+      "tip": "유지 및 심화 팁..."
+    }}
+  ],
+  "bad_examples": [
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "아쉬운 이유...",
+      "tip": "고쳐 쓰기 좋은 대안 표현 및 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "아쉬운 이유...",
+      "tip": "고쳐 쓰기 좋은 대안 표현 및 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "아쉬운 이유...",
+      "tip": "고쳐 쓰기 좋은 대안 표현 및 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "아쉬운 이유...",
+      "tip": "고쳐 쓰기 좋은 대안 표현 및 팁..."
+    }},
+    {{
+      "quote": "실제 대화 인용...",
+      "reason": "아쉬운 이유...",
+      "tip": "고쳐 쓰기 좋은 대안 표현 및 팁..."
+    }}
+  ],
   "cpr_revival": {{
     "ghosting": "...",
     "awkward": "...",
