@@ -493,6 +493,32 @@ def get_market_trend():
 
         data_date = target_date.strftime('%Y-%m-%d')
 
+        # Caching logic to handle Render 30s timeout and prevent unnecessary API load
+        from ai_cache import DB_PATH
+        import sqlite3
+        import time
+        
+        cache_key = f"market_trend_{data_date}"
+        cached_val = None
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            c = conn.cursor()
+            c.execute('SELECT summary_json, created_at FROM ai_summaries WHERE place_id=? AND purpose=?', (cache_key, 'stock'))
+            row = c.fetchone()
+            conn.close()
+            if row:
+                summary_json, created_at = row
+                is_past_date = target_date.date() < datetime.date.today()
+                # Past dates are static, cache them indefinitely. Current date caches for 1 hour.
+                ttl = 86400 * 365 if is_past_date else 3600
+                if time.time() - created_at < ttl:
+                    cached_val = json.loads(summary_json)
+        except Exception as cache_err:
+            print(f"Custom cache read failed: {cache_err}")
+            
+        if cached_val:
+            return jsonify(cached_val)
+
         top_stocks = []
         
         # 날짜가 오늘인지 확인 (오늘이면 실시간 네이버 크롤러 우선 사용)
@@ -788,8 +814,8 @@ def get_market_trend():
 {context_str}
 
 이 데이터를 바탕으로 다음 2가지를 분석해 주세요:
-1. 시장 전체의 흐름과 주도 테마에 대한 전반적인 시황 분석 (마크다운 형식, 3~4문단)
-2. 10개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 한 줄 핵심 근거(1~2문장).
+1. 시장 전체의 흐름과 주도 테마에 대한 전반적인 시황 분석 (마크다운 형식, 반드시 1~2문단 이내로 매우 간결하게 요약)
+2. 10개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 한 줄 핵심 근거(반드시 1문장으로만 간결하게).
 
 **[전문가 차트 검토 지침]**:
 1. **유기적 지표 분석**: 단일 지표만 보지 말고, 가격이 볼린저 밴드 상/하단선에 위치한 상태에서 RSI 과열 여부, SMA20 돌파 강도 등을 결합하여 주세의 강도와 신뢰성을 논리적으로 판정하십시오.
@@ -803,7 +829,7 @@ def get_market_trend():
 - 목표가와 손절가는 단순한 임의의 추정치가 아닙니다. 반드시 제공된 각 종목의 구체적인 차트 지표(최근 1개월 최고가/최저가, SMA20 가격선, 볼린저 밴드 가격 등)를 저항선과 지지선으로 삼아 논리적으로 산출해 주세요.
 - **목표가(target_price)**는 현재가보다 높은 실질적 저항선(예: 1개월 최고가 부근, 볼린저 밴드 상단선 등)을 기준으로 산정합니다.
 - **손절가(stop_loss)**는 현재가보다 낮은 실질적 지지선(예: SMA20 가격선, 1개월 최저가 등)을 기준으로 산정합니다.
-- 매 종목의 핵심 근거("reason" 필드)에 목표가와 손절가를 설정할 때 어떤 구체적인 차트 지표(예: "최근 1개월 최저가인 XXX원 지지를 전제로 손절가를 설정하고, 볼린저 밴드 상단선 돌파 가능성을 감안하여 목표가 XXX원을 산정함")를 지지와 저항으로 참고했는지 명확하게 포함시키십시오.
+- 매 종목의 핵심 근거("reason" 필드)에 목표가와 손절가를 설정할 때 어떤 구체적인 차트 지표(예: "최근 1개월 최저가인 XXX원 지지를 전제로 손절가를 설정하고, 볼린저 밴드 상단선 돌파 가능성을 감안하여 목표가 XXX원을 산정함")를 지지와 저항으로 참고했는지 명확하게 포함시키고, **분석 근거는 무조건 1문장으로만 간결하게 핵심만 요약하십시오.**
 
 반드시 아래 JSON 형식으로 응답하세요:
 {{
@@ -861,12 +887,19 @@ def get_market_trend():
                     print(f"JSON Parse Error: {e}\n{text}")
                     ai_data = None
                 
-        return jsonify({
+        response_data = {
             'success': True,
             'top_stocks': top_stocks,
             'ai_report': ai_data,
             'data_date': data_date
-        })
+        }
+        try:
+            from ai_cache import save_cached_summary
+            save_cached_summary(cache_key, "stock", response_data)
+        except Exception as save_err:
+            print(f"Custom cache save failed: {save_err}")
+            
+        return jsonify(response_data)
     except Exception as e:
         print(f"Market Trend Error: {traceback.format_exc()}")
         return jsonify({'success': False, 'error': str(e)})
