@@ -34,6 +34,9 @@ stock_bp = Blueprint('stock', __name__)
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+import socket
+socket.setdefaulttimeout(5.0)
+
 import json
 
 krx_dict = {}
@@ -493,7 +496,7 @@ def get_market_trend():
                 def get_market_cap_stocks(sosok, page):
                     url = f'https://finance.naver.com/sise/sise_market_sum.naver?sosok={sosok}&page={page}'
                     headers = {'User-Agent': 'Mozilla/5.0'}
-                    res = requests.get(url, headers=headers)
+                    res = requests.get(url, headers=headers, timeout=5.0)
                     res.encoding = 'euc-kr'
                     soup = BeautifulSoup(res.text, 'html.parser')
                     table = soup.select_one('table.type_2')
@@ -547,7 +550,7 @@ def get_market_trend():
                 def get_volume_stocks(sosok):
                     url = f'https://finance.naver.com/sise/sise_quant.naver?sosok={sosok}'
                     headers = {'User-Agent': 'Mozilla/5.0'}
-                    res = requests.get(url, headers=headers)
+                    res = requests.get(url, headers=headers, timeout=5.0)
                     res.encoding = 'euc-kr'
                     soup = BeautifulSoup(res.text, 'html.parser')
                     table = soup.select_one('table.type_2')
