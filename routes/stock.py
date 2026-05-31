@@ -667,7 +667,7 @@ def get_market_trend():
         # 크롤러가 실패했거나 오늘 날짜가 아니면 기존 KRX -> Fallback 로직 작동
         if not top_stocks:
             try:
-                df = fdr.StockListing('KRX', date=data_date)
+                df = fdr.StockListing('KRX')
                 df = df[df['Amount'].notna()]
                 df_sorted = df.sort_values(by='Amount', ascending=False).head(10)
 
@@ -693,13 +693,12 @@ def get_market_trend():
                     ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("042700", "한미반도체"), 
                     ("068270", "셀트리온"), ("005380", "현대차"), ("000270", "기아"), 
                     ("035420", "NAVER"), ("035720", "카카오"), ("373220", "LG에너지솔루션"), 
-                    ("207940", "삼성바이오로직스"), ("104480", "티케케미칼"), ("012450", "한화에어로스페이스"),
-                    ("028300", "HLB"), ("247540", "에코프로비엠"), ("086520", "에코프로")
+                    ("012450", "한화에어로스페이스"), ("247540", "에코프로비엠")
                 ]
-                fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
+                fetch_start = (target_date - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
                 fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
                 
-                # Fallback 종목의 데이터를 병렬 수집
+                # Fallback 종목의 데이터를 병렬 수집 (60일치 조회하여 보정/지표까지 직접 계산)
                 def get_fallback_stock(code_name):
                     code, name = code_name
                     try:
@@ -715,6 +714,23 @@ def get_market_trend():
                                 changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
                                 vol = int(last_row['Volume'])
                                 amt = close * vol
+                                
+                                # 지표 계산 미리 수행하여 이중 호출 방지
+                                valid_rows = valid_rows.copy()
+                                valid_rows['SMA_20'] = valid_rows['Close'].rolling(window=20).mean()
+                                delta = valid_rows['Close'].diff()
+                                gain = delta.where(delta > 0, 0)
+                                loss = -delta.where(delta < 0, 0)
+                                avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
+                                avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
+                                rs = avg_gain / avg_loss
+                                valid_rows['RSI'] = 100 - (100 / (1 + rs))
+                                
+                                valid_rows['STD_20'] = valid_rows['Close'].rolling(window=20).std()
+                                valid_rows['BB_Upper'] = valid_rows['SMA_20'] + (valid_rows['STD_20'] * 2)
+                                valid_rows['BB_Lower'] = valid_rows['SMA_20'] - (valid_rows['STD_20'] * 2)
+                                
+                                last_stat_row = valid_rows.iloc[-1]
                                 return {
                                     'code': code,
                                     'name': name,
@@ -722,7 +738,13 @@ def get_market_trend():
                                     'close': close,
                                     'changes_ratio': changes_ratio,
                                     'volume': vol,
-                                    'amount': amt
+                                    'amount': amt,
+                                    'sma_20': float(last_stat_row['SMA_20']) if not pd.isna(last_stat_row['SMA_20']) else None,
+                                    'rsi': float(last_stat_row['RSI']) if not pd.isna(last_stat_row['RSI']) else None,
+                                    'high_1m': float(valid_rows['High'].tail(21).max()),
+                                    'low_1m': float(valid_rows['Low'].tail(21).min()),
+                                    'bb_upper': float(last_stat_row['BB_Upper']) if not pd.isna(last_stat_row['BB_Upper']) else None,
+                                    'bb_lower': float(last_stat_row['BB_Lower']) if not pd.isna(last_stat_row['BB_Lower']) else None
                                 }
                     except:
                         pass
@@ -781,14 +803,19 @@ def get_market_trend():
             return item
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            top_stocks = list(executor.map(fetch_stats_and_verify, top_stocks))
+            def process_stock(s):
+                if 'rsi' in s:
+                    return s
+                return fetch_stats_and_verify(s)
+            top_stocks = list(executor.map(process_stock, top_stocks))
 
         ai_data = None
         if os.environ.get('GEMINI_API_KEY'):
             api_key = os.environ.get('GEMINI_API_KEY')
             
             context_lines = []
-            for i, s in enumerate(top_stocks):
+            # Only analyze top 5 stocks via Gemini to reduce latency by 50%+ and prevent Render timeouts
+            for i, s in enumerate(top_stocks[:5]):
                 v_sma = s.get('sma_20')
                 sma_str = f"{v_sma:.0f}" if v_sma is not None else "N/A"
                 v_rsi = s.get('rsi')
@@ -809,13 +836,13 @@ def get_market_trend():
             context_str = "\n".join(context_lines)
             
             sys_role = "당신은 월스트리트의 일류 펀드매니저이자 계량적 차트분석 수석 애널리스트입니다. 응답은 반드시 JSON 형식으로만 작성하세요."
-            p_prompt = f"""오늘 한국 주식시장 거래대금 상위 10종목과 그 기술적 지표(최근 1개월 기준)는 다음과 같습니다:
+            p_prompt = f"""오늘 한국 주식시장 거래대금 상위 5종목과 그 기술적 지표(최근 1개월 기준)는 다음과 같습니다:
 
 {context_str}
 
 이 데이터를 바탕으로 다음 2가지를 분석해 주세요:
 1. 시장 전체의 흐름과 주도 테마에 대한 전반적인 시황 분석 (마크다운 형식, 반드시 1~2문단 이내로 매우 간결하게 요약)
-2. 10개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 한 줄 핵심 근거(반드시 1문장으로만 간결하게).
+2. 5개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 한 줄 핵심 근거(반드시 1문장으로만 간결하게).
 
 **[전문가 차트 검토 지침]**:
 1. **유기적 지표 분석**: 단일 지표만 보지 말고, 가격이 볼린저 밴드 상/하단선에 위치한 상태에서 RSI 과열 여부, SMA20 돌파 강도 등을 결합하여 주세의 강도와 신뢰성을 논리적으로 판정하십시오.
@@ -883,6 +910,20 @@ def get_market_trend():
                                         item['stop_loss'] = int(current_p * 0.90)
                                 except Exception as item_err:
                                     print(f"Error correcting market trend stock {item_code}: {item_err}")
+                                    
+                        # Populate ranks 6-10 with default stats-based analysis to keep response complete
+                        analyzed_codes = {str(x.get('code', '')).split('.')[0].zfill(6) for x in ai_data['stock_analysis']}
+                        for s in top_stocks:
+                            clean_code = str(s['code']).split('.')[0].zfill(6)
+                            if clean_code not in analyzed_codes:
+                                current_p = float(s['close'])
+                                ai_data['stock_analysis'].append({
+                                    'code': s['code'],
+                                    'recommendation': "관망",
+                                    'target_price': int(current_p * 1.10),
+                                    'stop_loss': int(current_p * 0.90),
+                                    'reason': f"단기 거래대금 상위권 종목으로, 주요 지지선({int(current_p*0.90):,}원)과 저항선({int(current_p*1.10):,}원) 부근 매매 공방에 따른 기술적 관망 의견입니다."
+                                })
                 except Exception as e:
                     print(f"JSON Parse Error: {e}\n{text}")
                     ai_data = None
