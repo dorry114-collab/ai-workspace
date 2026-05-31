@@ -405,7 +405,30 @@ MACD: {macd_str} (시그널 {macd_sig_str})
                     if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
                     elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
                     import json
-                    ai_data = json.loads(text)
+                    try:
+                        ai_data = json.loads(text)
+                        if ai_data and isinstance(ai_data, dict):
+                            if 'target_price' in ai_data and 'stop_loss' in ai_data:
+                                try:
+                                    target = float(ai_data['target_price'])
+                                    stop = float(ai_data['stop_loss'])
+                                    
+                                    # Swap target & stop if they are inverted
+                                    if target < stop:
+                                        ai_data['target_price'] = int(stop)
+                                        ai_data['stop_loss'] = int(target)
+                                        target, stop = stop, target
+                                    
+                                    # Ensure target > current_p and stop < current_p
+                                    if target <= current_p:
+                                        ai_data['target_price'] = int(current_p * 1.10)
+                                    if stop >= current_p:
+                                        ai_data['stop_loss'] = int(current_p * 0.90)
+                                except Exception as inner_err:
+                                    print(f"Error correcting single stock target/stop price: {inner_err}")
+                    except Exception as e:
+                        print(f"Error decoding single stock JSON: {e}")
+                        ai_data = None
             except Exception as e:
                 print(f"AI Chart Error: {e}")
             
@@ -580,9 +603,21 @@ def get_market_trend():
                 from bs4 import BeautifulSoup
                 stocks_map = {}
                 # KOSPI 시총 상위 1~100위, KOSDAQ 시총 상위 1~100위, 그리고 당일 KOSPI/KOSDAQ 거래량 상위 1~100위 수집 후 결합
-                # 이를 통해 거래량이 적은 대형주(삼성SDI 등)와 거래대금이 급증한 테마주(디앤디파마텍 등)를 모두 확보 가능
-                for s in get_market_cap_stocks(0, 1) + get_market_cap_stocks(0, 2) + get_market_cap_stocks(1, 1) + get_market_cap_stocks(1, 2) + get_volume_stocks(0) + get_volume_stocks(1):
-                    stocks_map[s['code']] = s
+                # 네트워크 성능 향상을 위해 멀티스레딩 병렬 수집
+                with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+                    futures = [
+                        executor.submit(get_market_cap_stocks, 0, 1),
+                        executor.submit(get_market_cap_stocks, 0, 2),
+                        executor.submit(get_market_cap_stocks, 1, 1),
+                        executor.submit(get_market_cap_stocks, 1, 2),
+                        executor.submit(get_volume_stocks, 0),
+                        executor.submit(get_volume_stocks, 1)
+                    ]
+                    results = [f.result() for f in concurrent.futures.as_completed(futures)]
+                
+                for r in results:
+                    for s in r:
+                        stocks_map[s['code']] = s
 
                 all_stocks = list(stocks_map.values())
                 all_stocks.sort(key=lambda x: x['amount'], reverse=True)
@@ -625,40 +660,53 @@ def get_market_trend():
                 ]
                 fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
                 fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-                for code, name in fallback_codes:
+                
+                # Fallback 종목의 데이터를 병렬 수집
+                def get_fallback_stock(code_name):
+                    code, name = code_name
                     try:
                         hist = fdr.DataReader(code, fetch_start, fetch_end)
                         if not hist.empty:
                             hist.index = pd.to_datetime(hist.index)
                             valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
-                            if valid_rows.empty:
-                                continue
-                            last_row = valid_rows.iloc[-1]
-                            prev_row = valid_rows.iloc[-2] if len(valid_rows) > 1 else last_row
-                            close = float(last_row['Close'])
-                            prev_close = float(prev_row['Close'])
-                            changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
-                            vol = int(last_row['Volume'])
-                            amt = close * vol
-                            top_stocks.append({
-                                'code': code,
-                                'name': name,
-                                'market': 'KRX',
-                                'close': close,
-                                'changes_ratio': changes_ratio,
-                                'volume': vol,
-                                'amount': amt
-                            })
-                    except: pass
+                            if not valid_rows.empty:
+                                last_row = valid_rows.iloc[-1]
+                                prev_row = valid_rows.iloc[-2] if len(valid_rows) > 1 else last_row
+                                close = float(last_row['Close'])
+                                prev_close = float(prev_row['Close'])
+                                changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
+                                vol = int(last_row['Volume'])
+                                amt = close * vol
+                                return {
+                                    'code': code,
+                                    'name': name,
+                                    'market': 'KRX',
+                                    'close': close,
+                                    'changes_ratio': changes_ratio,
+                                    'volume': vol,
+                                    'amount': amt
+                                }
+                    except:
+                        pass
+                    return None
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+                    fallback_results = list(executor.map(get_fallback_stock, fallback_codes))
+                
+                top_stocks = [r for r in fallback_results if r is not None]
                 top_stocks = sorted(top_stocks, key=lambda x: x['amount'], reverse=True)[:10]
 
-        # KRX StockListing 데이터의 등락률을 실제 전일 대비로 재검증/보정
-        def verify_changes_ratio(item):
+        if not top_stocks:
+            return jsonify({'success': False, 'error': 'KRX 서버가 응답하지 않거나 접근이 차단되었습니다 (해외 IP 차단 가능성).'})
+
+        # 등락률 및 지표 통합 수집 (네트워크 1회만 호출하여 시간 50% 단축)
+        def fetch_stats_and_verify(item):
             try:
-                fetch_start = (target_date - datetime.timedelta(days=10)).strftime('%Y-%m-%d')
-                fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
-                hist = fdr.DataReader(item['code'], fetch_start, fetch_end)
+                start_date = (target_date - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
+                end_date = target_date.strftime('%Y-%m-%d')
+                hist = fdr.DataReader(item['code'], start_date, end_date)
                 if not hist.empty:
+                    # 해당 날짜의 실제 종가로 보정 및 등락률 재검증
                     hist.index = pd.to_datetime(hist.index)
                     valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
                     if len(valid_rows) >= 2:
@@ -666,51 +714,36 @@ def get_market_trend():
                         prev_close = float(valid_rows.iloc[-2]['Close'])
                         if prev_close > 0:
                             item['changes_ratio'] = ((close - prev_close) / prev_close) * 100
-                            item['close'] = close  # 해당 날짜의 실제 종가로 교체
-            except:
-                pass
-            return item
+                            item['close'] = close
 
-        if not top_stocks:
-            return jsonify({'success': False, 'error': 'KRX 서버가 응답하지 않거나 접근이 차단되었습니다 (해외 IP 차단 가능성).'})
-
-        # 등락률 검증 병렬 실행
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            top_stocks = list(executor.map(verify_changes_ratio, top_stocks))
-            
-        def fetch_stats(item):
-            try:
-                start_date = (target_date - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-                end_date = target_date.strftime('%Y-%m-%d')
-                hist = fdr.DataReader(item['code'], start_date, end_date)
-                if not hist.empty:
-                    hist['SMA_20'] = hist['Close'].rolling(window=20).mean()
-                    delta = hist['Close'].diff()
+                    valid_rows = valid_rows.copy()
+                    valid_rows['SMA_20'] = valid_rows['Close'].rolling(window=20).mean()
+                    delta = valid_rows['Close'].diff()
                     gain = delta.where(delta > 0, 0)
                     loss = -delta.where(delta < 0, 0)
                     avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
                     avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
                     rs = avg_gain / avg_loss
-                    hist['RSI'] = 100 - (100 / (1 + rs))
+                    valid_rows['RSI'] = 100 - (100 / (1 + rs))
                     
                     # Bollinger Bands
-                    hist['STD_20'] = hist['Close'].rolling(window=20).std()
-                    hist['BB_Upper'] = hist['SMA_20'] + (hist['STD_20'] * 2)
-                    hist['BB_Lower'] = hist['SMA_20'] - (hist['STD_20'] * 2)
+                    valid_rows['STD_20'] = valid_rows['Close'].rolling(window=20).std()
+                    valid_rows['BB_Upper'] = valid_rows['SMA_20'] + (valid_rows['STD_20'] * 2)
+                    valid_rows['BB_Lower'] = valid_rows['SMA_20'] - (valid_rows['STD_20'] * 2)
                     
-                    last_row = hist.iloc[-1]
+                    last_row = valid_rows.iloc[-1]
                     item['sma_20'] = float(last_row['SMA_20']) if not pd.isna(last_row['SMA_20']) else None
                     item['rsi'] = float(last_row['RSI']) if not pd.isna(last_row['RSI']) else None
-                    item['high_1m'] = float(hist['High'].tail(21).max())
-                    item['low_1m'] = float(hist['Low'].tail(21).min())
+                    item['high_1m'] = float(valid_rows['High'].tail(21).max())
+                    item['low_1m'] = float(valid_rows['Low'].tail(21).min())
                     item['bb_upper'] = float(last_row['BB_Upper']) if not pd.isna(last_row['BB_Upper']) else None
                     item['bb_lower'] = float(last_row['BB_Lower']) if not pd.isna(last_row['BB_Lower']) else None
             except Exception as e:
-                pass
+                print(f"Error fetching stats for {item['code']}: {e}")
             return item
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            top_stocks = list(executor.map(fetch_stats, top_stocks))
+            top_stocks = list(executor.map(fetch_stats_and_verify, top_stocks))
 
         ai_data = None
         if os.environ.get('GEMINI_API_KEY'):
@@ -784,6 +817,34 @@ def get_market_trend():
                     if "```json" in text: text = text.split("```json")[1].split("```")[0].strip()
                     elif "```" in text: text = text.split("```")[1].split("```")[0].strip()
                     ai_data = json.loads(text)
+                    if ai_data and 'stock_analysis' in ai_data and isinstance(ai_data['stock_analysis'], list):
+                        # Create mapping of clean stock code -> close price
+                        price_map = {}
+                        for s in top_stocks:
+                            clean_code = str(s['code']).split('.')[0].zfill(6)
+                            price_map[clean_code] = float(s['close'])
+                        
+                        for item in ai_data['stock_analysis']:
+                            item_code = str(item.get('code', '')).split('.')[0].zfill(6)
+                            current_p = price_map.get(item_code)
+                            if current_p:
+                                try:
+                                    target = float(item.get('target_price', 0))
+                                    stop = float(item.get('stop_loss', 0))
+                                    
+                                    # Swap target & stop if they are inverted
+                                    if target < stop:
+                                        item['target_price'] = int(stop)
+                                        item['stop_loss'] = int(target)
+                                        target, stop = stop, target
+                                    
+                                    # Ensure target > current_p and stop < current_p
+                                    if target <= current_p:
+                                        item['target_price'] = int(current_p * 1.10)
+                                    if stop >= current_p:
+                                        item['stop_loss'] = int(current_p * 0.90)
+                                except Exception as item_err:
+                                    print(f"Error correcting market trend stock {item_code}: {item_err}")
                 except Exception as e:
                     print(f"JSON Parse Error: {e}\n{text}")
                     ai_data = None
