@@ -35,16 +35,16 @@ stock_bp = Blueprint('stock', __name__)
 ssl._create_default_https_context = ssl._create_unverified_context
 
 import requests
-_orig_request = requests.api.request
-def _patched_request(method, url, **kwargs):
-    if 'timeout' not in kwargs:
-        if 'googleapis' in str(url) or 'groq' in str(url):
+_orig_send = requests.sessions.Session.send
+def _patched_send(self, request, **kwargs):
+    if 'timeout' not in kwargs or kwargs.get('timeout') is None:
+        url_str = str(request.url)
+        if 'googleapis' in url_str or 'groq' in url_str:
             kwargs['timeout'] = 25.0
         else:
             kwargs['timeout'] = 5.0
-    return _orig_request(method, url, **kwargs)
-requests.api.request = _patched_request
-requests.request = _patched_request
+    return _orig_send(self, request, **kwargs)
+requests.sessions.Session.send = _patched_send
 
 import json
 
