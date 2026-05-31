@@ -642,7 +642,7 @@ def get_market_trend():
                 stocks_map = {}
                 # KOSPI 시총 상위 1~100위, KOSDAQ 시총 상위 1~100위, 그리고 당일 KOSPI/KOSDAQ 거래량 상위 1~100위 수집 후 결합
                 # 네트워크 성능 향상을 위해 멀티스레딩 병렬 수집
-                with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                     futures = [
                         executor.submit(get_market_cap_stocks, 0, 1),
                         executor.submit(get_market_cap_stocks, 0, 2),
@@ -750,7 +750,7 @@ def get_market_trend():
                         pass
                     return None
 
-                with concurrent.futures.ThreadPoolExecutor(max_workers=15) as executor:
+                with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
                     fallback_results = list(executor.map(get_fallback_stock, fallback_codes))
                 
                 top_stocks = [r for r in fallback_results if r is not None]
@@ -802,7 +802,7 @@ def get_market_trend():
                 print(f"Error fetching stats for {item['code']}: {e}")
             return item
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
             def process_stock(s):
                 if 'rsi' in s:
                     return s
@@ -842,7 +842,7 @@ def get_market_trend():
 
 이 데이터를 바탕으로 다음 2가지를 분석해 주세요:
 1. 시장 전체의 흐름과 주도 테마에 대한 전반적인 시황 분석 (마크다운 형식, 반드시 1~2문단 이내로 매우 간결하게 요약)
-2. 5개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 한 줄 핵심 근거(반드시 1문장으로만 간결하게).
+2. 5개 종목 각각에 대한 냉철한 매매 의견(적극 매수, 매수, 관망, 매도 중 택 1), 합리적인 1개월 목표가(숫자), 손절가(숫자), 그리고 풍부한 기술적 핵심 근거(2~3문장 분량으로 상세하게).
 
 **[전문가 차트 검토 지침]**:
 1. **유기적 지표 분석**: 단일 지표만 보지 말고, 가격이 볼린저 밴드 상/하단선에 위치한 상태에서 RSI 과열 여부, SMA20 돌파 강도 등을 결합하여 주세의 강도와 신뢰성을 논리적으로 판정하십시오.
@@ -856,7 +856,7 @@ def get_market_trend():
 - 목표가와 손절가는 단순한 임의의 추정치가 아닙니다. 반드시 제공된 각 종목의 구체적인 차트 지표(최근 1개월 최고가/최저가, SMA20 가격선, 볼린저 밴드 가격 등)를 저항선과 지지선으로 삼아 논리적으로 산출해 주세요.
 - **목표가(target_price)**는 현재가보다 높은 실질적 저항선(예: 1개월 최고가 부근, 볼린저 밴드 상단선 등)을 기준으로 산정합니다.
 - **손절가(stop_loss)**는 현재가보다 낮은 실질적 지지선(예: SMA20 가격선, 1개월 최저가 등)을 기준으로 산정합니다.
-- 매 종목의 핵심 근거("reason" 필드)에 목표가와 손절가를 설정할 때 어떤 구체적인 차트 지표(예: "최근 1개월 최저가인 XXX원 지지를 전제로 손절가를 설정하고, 볼린저 밴드 상단선 돌파 가능성을 감안하여 목표가 XXX원을 산정함")를 지지와 저항으로 참고했는지 명확하게 포함시키고, **분석 근거는 무조건 1문장으로만 간결하게 핵심만 요약하십시오.**
+- 매 종목의 핵심 근거("reason" 필드)에 목표가와 손절가를 설정할 때 어떤 구체적인 차트 지표(예: "최근 1개월 최저가인 XXX원 지지를 전제로 손절가를 설정하고, 볼린저 밴드 상단선 돌파 가능성을 감안하여 목표가 XXX원을 산정함")를 지지와 저항으로 참고했는지 명확하게 포함시키고, **분석 근거는 2~3문장 분량으로 구체적이고 풍부하게 작성하십시오.**
 
 반드시 아래 JSON 형식으로 응답하세요:
 {{
