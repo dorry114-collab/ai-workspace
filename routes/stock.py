@@ -42,7 +42,7 @@ def _patched_send(self, request, **kwargs):
         if 'googleapis' in url_str or 'groq' in url_str:
             kwargs['timeout'] = 25.0
         else:
-            kwargs['timeout'] = 5.0
+            kwargs['timeout'] = 1.5
     return _orig_send(self, request, **kwargs)
 requests.sessions.Session.send = _patched_send
 
@@ -531,7 +531,7 @@ def get_market_trend():
                 def get_market_cap_stocks(sosok, page):
                     url = f'https://finance.naver.com/sise/sise_market_sum.naver?sosok={sosok}&page={page}'
                     headers = {'User-Agent': 'Mozilla/5.0'}
-                    res = requests.get(url, headers=headers, timeout=5.0)
+                    res = requests.get(url, headers=headers, timeout=1.5)
                     res.encoding = 'euc-kr'
                     soup = BeautifulSoup(res.text, 'html.parser')
                     table = soup.select_one('table.type_2')
