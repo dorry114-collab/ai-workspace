@@ -585,7 +585,7 @@ def get_market_trend():
                 def get_volume_stocks(sosok):
                     url = f'https://finance.naver.com/sise/sise_quant.naver?sosok={sosok}'
                     headers = {'User-Agent': 'Mozilla/5.0'}
-                    res = requests.get(url, headers=headers, timeout=5.0)
+                    res = requests.get(url, headers=headers, timeout=1.5)
                     res.encoding = 'euc-kr'
                     soup = BeautifulSoup(res.text, 'html.parser')
                     table = soup.select_one('table.type_2')
@@ -688,76 +688,87 @@ def get_market_trend():
                         'amount': int(row['Amount'])
                     })
             except Exception as e:
-                print(f"KRX Fetch Failed, using fallback: {e}")
+                print(f"Fallback crawler failed: {e}")
+                
+        if not top_stocks:
+            try:
+                print("[FALLBACK] Using Hardcoded KOSPI/KOSDAQ Top stocks with yfinance")
                 fallback_codes = [
-                    ("005930", "삼성전자"), ("000660", "SK하이닉스"), ("042700", "한미반도체"), 
-                    ("068270", "셀트리온"), ("005380", "현대차"), ("000270", "기아"), 
-                    ("035420", "NAVER"), ("035720", "카카오"), ("373220", "LG에너지솔루션"), 
-                    ("012450", "한화에어로스페이스"), ("247540", "에코프로비엠")
+                    '005930.KS', # 삼성전자
+                    '000660.KS', # SK하이닉스
+                    '373220.KS', # LG에너지솔루션
+                    '207940.KS', # 삼성바이오로직스
+                    '005380.KS', # 현대차
+                    '000270.KS', # 기아
+                    '068270.KS', # 셀트리온
+                    '005490.KS', # POSCO홀딩스
+                    '105560.KS', # KB금융
+                    '028260.KS', # 삼성물산
+                    '035420.KS', # NAVER
+                    '051910.KS', # LG화학
+                    '055550.KS', # 신한지주
+                    '032830.KS', # 삼성생명
+                    '003670.KS'  # 포스코퓨처엠
                 ]
-                fetch_start = (target_date - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
-                fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
                 
-                # Fallback 종목의 데이터를 병렬 수집 (60일치 조회하여 보정/지표까지 직접 계산)
-                def get_fallback_stock(code_name):
-                    code, name = code_name
+                def get_yf_stock(ticker):
                     try:
-                        hist = fdr.DataReader(code, fetch_start, fetch_end)
-                        if not hist.empty:
-                            hist.index = pd.to_datetime(hist.index)
-                            valid_rows = hist[hist.index <= pd.Timestamp(target_date)]
-                            if not valid_rows.empty:
-                                last_row = valid_rows.iloc[-1]
-                                prev_row = valid_rows.iloc[-2] if len(valid_rows) > 1 else last_row
-                                close = float(last_row['Close'])
-                                prev_close = float(prev_row['Close'])
-                                changes_ratio = ((close - prev_close) / prev_close) * 100 if prev_close > 0 else 0
-                                vol = int(last_row['Volume'])
-                                amt = close * vol
+                        code_num = ticker.split('.')[0]
+                        # 2달치 데이터
+                        fetch_start = (target_date - datetime.timedelta(days=60)).strftime('%Y-%m-%d')
+                        fetch_end = (target_date + datetime.timedelta(days=1)).strftime('%Y-%m-%d')
+                        hist = yf.download(ticker, start=fetch_start, end=fetch_end, progress=False)
+                        if hist.empty: return None
+                        
+                        # 멀티인덱스 처리 (yfinance 최신 버전)
+                        if isinstance(hist.columns, pd.MultiIndex):
+                            hist.columns = hist.columns.droplevel(1)
+                            
+                        close_prices = hist['Close']
+                        volumes = hist['Volume']
+                        
+                        if len(close_prices) < 2: return None
+                        
+                        current_price = float(close_prices.iloc[-1])
+                        prev_price = float(close_prices.iloc[-2])
+                        volume = int(volumes.iloc[-1])
+                        
+                        change = current_price - prev_price
+                        changes_ratio = (change / prev_price) * 100
+                        amount = current_price * volume # 거래대금 추정
+                        
+                        # 종목명은 krx_dict에서 조회
+                        name = "Unknown"
+                        for k, v in krx_dict.items():
+                            if v == code_num:
+                                name = k
+                                break
                                 
-                                # 지표 계산 미리 수행하여 이중 호출 방지
-                                valid_rows = valid_rows.copy()
-                                valid_rows['SMA_20'] = valid_rows['Close'].rolling(window=20).mean()
-                                delta = valid_rows['Close'].diff()
-                                gain = delta.where(delta > 0, 0)
-                                loss = -delta.where(delta < 0, 0)
-                                avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
-                                avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
-                                rs = avg_gain / avg_loss
-                                valid_rows['RSI'] = 100 - (100 / (1 + rs))
-                                
-                                valid_rows['STD_20'] = valid_rows['Close'].rolling(window=20).std()
-                                valid_rows['BB_Upper'] = valid_rows['SMA_20'] + (valid_rows['STD_20'] * 2)
-                                valid_rows['BB_Lower'] = valid_rows['SMA_20'] - (valid_rows['STD_20'] * 2)
-                                
-                                last_stat_row = valid_rows.iloc[-1]
-                                return {
-                                    'code': code,
-                                    'name': name,
-                                    'market': 'KRX',
-                                    'close': close,
-                                    'changes_ratio': changes_ratio,
-                                    'volume': vol,
-                                    'amount': amt,
-                                    'sma_20': float(last_stat_row['SMA_20']) if not pd.isna(last_stat_row['SMA_20']) else None,
-                                    'rsi': float(last_stat_row['RSI']) if not pd.isna(last_stat_row['RSI']) else None,
-                                    'high_1m': float(valid_rows['High'].tail(21).max()),
-                                    'low_1m': float(valid_rows['Low'].tail(21).min()),
-                                    'bb_upper': float(last_stat_row['BB_Upper']) if not pd.isna(last_stat_row['BB_Upper']) else None,
-                                    'bb_lower': float(last_stat_row['BB_Lower']) if not pd.isna(last_stat_row['BB_Lower']) else None
-                                }
-                    except:
-                        pass
-                    return None
-
+                        return {
+                            'code': code_num,
+                            'name': name,
+                            'market': 'KOSPI' if '.KS' in ticker else 'KOSDAQ',
+                            'close': current_price,
+                            'change': change,
+                            'changes_ratio': changes_ratio,
+                            'volume': volume,
+                            'amount': amount
+                        }
+                    except Exception as e:
+                        print(f"yfinance fallback failed for {ticker}: {e}")
+                        return None
+                        
                 with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
-                    fallback_results = list(executor.map(get_fallback_stock, fallback_codes))
-                
-                top_stocks = [r for r in fallback_results if r is not None]
-                top_stocks = sorted(top_stocks, key=lambda x: x['amount'], reverse=True)[:10]
+                    fallback_results = list(executor.map(get_yf_stock, fallback_codes))
+                    
+                valid_fallbacks = [r for r in fallback_results if r is not None]
+                valid_fallbacks.sort(key=lambda x: x['amount'], reverse=True)
+                top_stocks = valid_fallbacks[:10]
+            except Exception as e:
+                print(f"Fallback crawler failed completely: {e}")
 
         if not top_stocks:
-            return jsonify({'success': False, 'error': 'KRX 서버가 응답하지 않거나 접근이 차단되었습니다 (해외 IP 차단 가능성).'})
+            return jsonify({'success': False, 'error': '데이터를 가져올 수 없습니다. 주말/휴장일이거나 네트워크 문제일 수 있습니다.'})
 
         # 등락률 및 지표 통합 수집 (네트워크 1회만 호출하여 시간 50% 단축)
         def fetch_stats_and_verify(item):
